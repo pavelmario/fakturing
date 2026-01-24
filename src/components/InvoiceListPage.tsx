@@ -46,8 +46,13 @@ const formatDate = (iso: string): string => {
 };
 
 const formatTotal = (value: number): string => {
-  if (!Number.isFinite(value)) return "0.00";
-  return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (!Number.isFinite(value)) return "0,00 Kč";
+  return new Intl.NumberFormat("cs-CZ", {
+    style: "currency",
+    currency: "CZK",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 };
 
 const getInvoiceStatus = (invoice: InvoiceRow): "paid" | "overdue" | "unpaid" => {
