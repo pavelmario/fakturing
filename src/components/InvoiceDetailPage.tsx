@@ -388,6 +388,14 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     0
   );
 
+  const formatUiTotal = (value: number) =>
+    new Intl.NumberFormat("cs-CZ", {
+      style: "currency",
+      currency: "CZK",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+
   const invoiceIssueDate = invoice?.issueDate
     ? new Date(invoice.issueDate).toLocaleDateString("cs-CZ").replace(/\s/g, "")
     : "";
@@ -1091,6 +1099,11 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              <span className="font-semibold text-gray-900">Total:</span>{" "}
+              {formatUiTotal(invoiceTotal)}
             </div>
           </div>
 
