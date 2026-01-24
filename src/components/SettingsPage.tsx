@@ -577,28 +577,6 @@ export function SettingsPage() {
             </div>
           </div>
 
-          {/* Saved Data Display */}
-          {savedData && (
-            <div className="mb-8 bg-green-50 border-l-4 border-green-400 p-4 max-h-64 overflow-y-auto">
-              <p className="text-sm text-green-800 font-semibold">✓ Settings saved locally and synced via Evolu</p>
-              <div className="mt-3 space-y-1 text-sm text-green-700">
-                <p><span className="font-medium">Name:</span> {savedData.name}</p>
-                {savedData.email && <p><span className="font-medium">E-mail:</span> {savedData.email}</p>}
-                {savedData.phone && <p><span className="font-medium">Phone:</span> {savedData.phone}</p>}
-                {savedData.addressLine1 && <p><span className="font-medium">Address:</span> {savedData.addressLine1}</p>}
-                {savedData.addressLine2 && <p><span className="font-medium"></span> {savedData.addressLine2}</p>}
-                {savedData.companyIdentificationNumber && (
-                  <p><span className="font-medium">Company ID:</span> {savedData.companyIdentificationNumber}</p>
-                )}
-                {savedData.vatNumber && <p><span className="font-medium">VAT Number:</span> {savedData.vatNumber}</p>}
-                {savedData.bankAccount && <p><span className="font-medium">Bank Account:</span> {savedData.bankAccount}</p>}
-                {savedData.swift && <p><span className="font-medium">SWIFT:</span> {savedData.swift}</p>}
-                {savedData.iban && <p><span className="font-medium">IBAN:</span> {savedData.iban}</p>}
-              </div>
-              {lastSyncTime && <p className="text-xs text-green-600 mt-3 pt-3 border-t border-green-200">Last synced: {lastSyncTime}</p>}
-            </div>
-          )}
-
           {/* Save Button */}
           <button
             onClick={handleSave}
