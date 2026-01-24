@@ -19,12 +19,12 @@ type InvoiceItemForm = {
 
 type InvoiceNumberRow = {
   id: string;
-  invoiceNumber: string;
+  invoiceNumber: string | null;
 };
 
 type ClientRow = {
   id: string;
-  name: string;
+  name: string | null;
   email?: string | null;
   phone?: string | null;
   addressLine1?: string | null;
@@ -35,7 +35,7 @@ type ClientRow = {
 
 type UserProfileRow = {
   id: string;
-  name: string;
+  name: string | null;
   email?: string | null;
   phone?: string | null;
   addressLine1?: string | null;
@@ -46,6 +46,8 @@ type UserProfileRow = {
   iban?: string | null;
   swift?: string | null;
 };
+
+const InvoiceId = Evolu.id("Invoice");
 
 const emptyItem = (): InvoiceItemForm => ({
   amount: "",
@@ -233,6 +235,12 @@ const pdfStyles = StyleSheet.create({
 export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps) {
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
+  const invoiceIdValue = useMemo(() => {
+    const result = InvoiceId.from(invoiceId);
+    return result.ok
+      ? result.value
+      : Evolu.createIdFromString<"Invoice">("invalid-invoice-id");
+  }, [invoiceId]);
 
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [clientName, setClientName] = useState("");
@@ -264,7 +272,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     [evolu, owner.id]
   );
 
-  const clients = useQuery(clientsQuery) as ClientRow[];
+  const clients = useQuery(clientsQuery) as readonly ClientRow[];
 
   const profileQuery = useMemo(
     () =>
@@ -280,7 +288,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     [evolu, owner.id]
   );
 
-  const profileRows = useQuery(profileQuery) as UserProfileRow[];
+  const profileRows = useQuery(profileQuery) as readonly UserProfileRow[];
   const profile = profileRows[0] ?? null;
 
   const invoiceQuery = useMemo(
@@ -289,17 +297,19 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
         db
           .selectFrom("invoice")
           .selectAll()
-          .where("id", "=", invoiceId)
+          .where("id", "=", invoiceIdValue)
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
           .limit(1)
       ),
-    [evolu, invoiceId, owner.id]
+    [evolu, invoiceIdValue, owner.id]
   );
 
   const invoiceRows = useQuery(invoiceQuery);
   const invoice = invoiceRows[0] ?? null;
+  const invoiceNumberValue = invoice?.invoiceNumber ?? "";
+  const sanitizedInvoiceNumber = invoiceNumberValue.replace(/-/g, "");
 
   const trimmedInvoiceNumber = invoiceNumber.trim();
   const duplicateInvoiceQuery = useMemo(
@@ -315,14 +325,19 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     [evolu, owner.id]
   );
 
-  const duplicateInvoices = useQuery(duplicateInvoiceQuery) as InvoiceNumberRow[];
+  const duplicateInvoices = useQuery(duplicateInvoiceQuery) as readonly InvoiceNumberRow[];
   const hasDuplicateInvoiceNumber = Boolean(
     trimmedInvoiceNumber &&
       duplicateInvoices.some((row) => row.id !== invoice?.id && row.invoiceNumber === trimmedInvoiceNumber)
   );
 
   const selectedClient =
-    clients.find((client) => client.name === (invoice?.clientName ?? clientName)) ?? null;
+    clients.find(
+      (client) =>
+        client.name && client.name === (invoice?.clientName ?? clientName)
+    ) ?? null;
+  const displayClientName =
+    (selectedClient?.name ?? invoice?.clientName ?? clientName) || "—";
 
   const latestInvoiceQuery = useMemo(
     () =>
@@ -441,7 +456,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
         return;
       }
 
-      const variableSymbol = invoice.invoiceNumber.replace(/-/g, "");
+      const variableSymbol = sanitizedInvoiceNumber;
       const formattedAmount = Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
       const accountValue = profile?.swift ? `${ibanCandidate}+${profile.swift}` : ibanCandidate;
       const parts = [
@@ -472,7 +487,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
       <Page size="A4" style={pdfStyles.page}>
         <View style={pdfStyles.headerRow}>
           <Text />
-          <Text style={pdfStyles.headerTitle}>{`Faktura ${invoice.invoiceNumber}`}</Text>
+          <Text style={pdfStyles.headerTitle}>{`Faktura ${invoiceNumberValue || "—"}`}</Text>
         </View>
         <View style={pdfStyles.headerLine} />
 
@@ -498,7 +513,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
           <View style={pdfStyles.column}>
             <Text style={pdfStyles.label}>Odběratel</Text>
-            <Text style={pdfStyles.textBold}>{selectedClient?.name ?? invoice.clientName}</Text>
+            <Text style={pdfStyles.textBold}>{displayClientName}</Text>
             <Text style={pdfStyles.textMuted}>{selectedClient?.addressLine1 ?? ""}</Text>
             <Text style={pdfStyles.textMuted}>{selectedClient?.addressLine2 ?? ""}</Text>
             <View style={{ marginTop: 6 }}>
@@ -527,7 +542,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
               </View>
               <View style={pdfStyles.detailRow}>
                 <Text style={pdfStyles.textMuted}>Variabilní symbol</Text>
-                <Text>{invoice.invoiceNumber.replace(/-/g, "")}</Text>
+                <Text>{sanitizedInvoiceNumber}</Text>
               </View>
               <View style={pdfStyles.detailRow}>
                 <Text style={pdfStyles.textMuted}>Způsob platby</Text>
@@ -790,17 +805,30 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     setSaveMessage(null);
     try {
       const nextInvoiceNumber = getNextInvoiceNumber(latestInvoiceNumber ?? "");
+      const safeClientName = invoice.clientName ?? clientName.trim();
+      if (!safeClientName) {
+        alert("Invoice is missing a client name");
+        return;
+      }
+      if (!invoice.issueDate) {
+        alert("Invoice is missing an issue date");
+        return;
+      }
+      if (invoice.paymentDays == null) {
+        alert("Invoice is missing payment terms");
+        return;
+      }
 
       const payload = {
         invoiceNumber: nextInvoiceNumber,
-        clientName: invoice.clientName,
+        clientName: safeClientName,
         issueDate: invoice.issueDate,
         paymentDate: invoice.paymentDate,
         paymentDays: invoice.paymentDays,
         purchaseOrderNumber: invoice.purchaseOrderNumber,
-        btcInvoice: invoice.btcInvoice,
+        btcInvoice: invoice.btcInvoice ?? Evolu.sqliteFalse,
         btcAddress: invoice.btcAddress,
-        items: invoice.items,
+        items: invoice.items ?? Evolu.Json.orThrow("[]"),
         deleted: Evolu.sqliteFalse,
       };
 
@@ -897,11 +925,13 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
               >
                 <option value="">Select a client</option>
-                {clients.map((client) => (
-                  <option key={client.name} value={client.name}>
-                    {client.name}
-                  </option>
-                ))}
+                {clients
+                  .filter((client): client is { id: string; name: string } => Boolean(client.name))
+                  .map((client) => (
+                    <option key={client.id} value={client.name}>
+                      {client.name}
+                    </option>
+                  ))}
               </select>
               {clients.length === 0 ? (
                 <p className="text-xs text-gray-500 mt-2">No active clients available.</p>
@@ -1111,7 +1141,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
             {pdfDocument ? (
               <PDFDownloadLink
                 document={pdfDocument}
-                fileName={`invoice-${invoice.invoiceNumber || invoice.id}.pdf`}
+                fileName={`invoice-${invoiceNumberValue || invoice.id}.pdf`}
                 className="w-full sm:w-auto px-6 py-3 rounded-lg font-semibold bg-gray-900 text-white hover:bg-gray-800 text-center"
               >
                 {({ loading }) => (loading ? "Preparing PDF..." : "Export to PDF")}

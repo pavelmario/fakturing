@@ -355,6 +355,9 @@ export function SettingsPage() {
                 <p className="text-xs text-gray-500 mt-1">
                   Current relay: {connectedRelayUrl || "Not connected"}
                 </p>
+                <p className="text-xs text-gray-500">
+                  Last sync: {lastSyncTime || "Not synced yet"}
+                </p>
                 <p className="text-xs text-gray-500">Default: wss://free.evoluhq.com</p>
               </div>
               

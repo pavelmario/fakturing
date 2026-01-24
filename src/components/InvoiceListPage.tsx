@@ -11,11 +11,11 @@ type InvoiceItem = {
 
 type InvoiceRow = {
   id: string;
-  invoiceNumber: string;
-  clientName: string;
-  issueDate: string;
+  invoiceNumber: string | null;
+  clientName: string | null;
+  issueDate: string | null;
   paymentDate?: string | null;
-  paymentDays: number;
+  paymentDays: number | null;
   btcInvoice?: number | null;
   items: unknown;
 };
@@ -39,7 +39,8 @@ const parseItems = (raw: unknown): InvoiceItem[] => {
   return [];
 };
 
-const formatDate = (iso: string): string => {
+const formatDate = (iso: string | null): string => {
+  if (!iso) return "—";
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return iso;
   return parsed.toLocaleDateString();
@@ -57,6 +58,7 @@ const formatTotal = (value: number): string => {
 
 const getInvoiceStatus = (invoice: InvoiceRow): "paid" | "overdue" | "unpaid" => {
   if (invoice.paymentDate) return "paid";
+  if (!invoice.issueDate) return "unpaid";
   const issueDate = new Date(invoice.issueDate);
   if (!Number.isNaN(issueDate.getTime())) {
     const dueDate = new Date(issueDate);
@@ -71,7 +73,8 @@ const getInvoiceStatus = (invoice: InvoiceRow): "paid" | "overdue" | "unpaid" =>
   return "unpaid";
 };
 
-const getYear = (iso: string): number | null => {
+const getYear = (iso: string | null): number | null => {
+  if (!iso) return null;
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed.getFullYear();
@@ -123,7 +126,7 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
     [evolu, owner.id]
   );
 
-  const invoices = useQuery(invoicesQuery) as InvoiceRow[];
+  const invoices = useQuery(invoicesQuery) as readonly InvoiceRow[];
 
   const profileQuery = useMemo(
     () =>
@@ -267,12 +270,14 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-lg font-semibold text-gray-900">{invoice.invoiceNumber}&nbsp;</div>
+                          <div className="text-lg font-semibold text-gray-900">
+                            {invoice.invoiceNumber ?? "—"}&nbsp;
+                          </div>
                           <span className={`px-2 py-1 rounded-full text-xs font-semibold uppercase ${statusStyles}`}>
                             ({status}){isBtcInvoice ? " ₿" : ""}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-600">{invoice.clientName}</div>
+                        <div className="text-sm text-gray-600">{invoice.clientName ?? "—"}</div>
                       </div>
                       <div className="text-sm text-gray-600">{formatDate(invoice.issueDate)}</div>
                     </div>

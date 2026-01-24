@@ -12,7 +12,7 @@ type InvoiceItemForm = {
 
 type InvoiceNumberRow = {
   id: string;
-  invoiceNumber: string;
+  invoiceNumber: string | null;
 };
 
 const emptyItem = (): InvoiceItemForm => ({
@@ -42,7 +42,7 @@ export function InvoiceCreatePage() {
       evolu.createQuery((db) =>
         db
           .selectFrom("client")
-          .select(["name"])
+          .select(["id", "name"])
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
@@ -55,6 +55,10 @@ export function InvoiceCreatePage() {
 
   const currentYear = new Date().getFullYear();
   const yearPrefix = `${currentYear}-`;
+  const yearPrefixPattern = useMemo(
+    () => Evolu.NonEmptyTrimmedString100.orThrow(`${yearPrefix}%`),
+    [yearPrefix]
+  );
   const latestInvoiceQuery = useMemo(
     () =>
       evolu.createQuery((db) =>
@@ -64,17 +68,24 @@ export function InvoiceCreatePage() {
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
-          .where("invoiceNumber", "like", `${yearPrefix}%`)
+          .where("invoiceNumber", "like", yearPrefixPattern)
           .orderBy("invoiceNumber", "desc")
           .limit(1)
       ),
-    [evolu, owner.id, yearPrefix]
+    [evolu, owner.id, yearPrefixPattern]
   );
 
   const latestInvoiceRows = useQuery(latestInvoiceQuery);
   const latestInvoiceNumber = latestInvoiceRows[0]?.invoiceNumber ?? "";
 
   const trimmedInvoiceNumber = invoiceNumber.trim();
+  const invoiceNumberResult = useMemo(
+    () => Evolu.NonEmptyTrimmedString100.from(trimmedInvoiceNumber),
+    [trimmedInvoiceNumber]
+  );
+  const safeInvoiceNumber = invoiceNumberResult.ok
+    ? invoiceNumberResult.value
+    : Evolu.NonEmptyTrimmedString100.orThrow("__invalid__");
   const duplicateInvoiceQuery = useMemo(
     () =>
       evolu.createQuery((db) =>
@@ -82,16 +93,18 @@ export function InvoiceCreatePage() {
           .selectFrom("invoice")
           .select(["id", "invoiceNumber"])
           .where("ownerId", "=", owner.id)
-          .where("invoiceNumber", "=", trimmedInvoiceNumber)
+          .where("invoiceNumber", "=", safeInvoiceNumber)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
           .limit(1)
       ),
-    [evolu, owner.id, trimmedInvoiceNumber]
+    [evolu, owner.id, safeInvoiceNumber]
   );
 
-  const duplicateInvoices = useQuery(duplicateInvoiceQuery) as InvoiceNumberRow[];
-  const hasDuplicateInvoiceNumber = Boolean(trimmedInvoiceNumber && duplicateInvoices.length > 0);
+  const duplicateInvoices = useQuery(duplicateInvoiceQuery) as readonly InvoiceNumberRow[];
+  const hasDuplicateInvoiceNumber = Boolean(
+    invoiceNumberResult.ok && duplicateInvoices.length > 0
+  );
 
   useEffect(() => {
     if (issueDate) return;
@@ -277,8 +290,8 @@ export function InvoiceCreatePage() {
               >
                 <option value="">Select a client</option>
                 {clients.map((client) => (
-                  <option key={client.name} value={client.name}>
-                    {client.name}
+                  <option key={client.id} value={client.name ?? ""} disabled={!client.name}>
+                    {client.name ?? "Unnamed client"}
                   </option>
                 ))}
               </select>

@@ -30,7 +30,9 @@ export function ClientsListPage({ onViewDetails, onCreateClient }: ClientsListPa
   const clients = useQuery(clientsQuery);
   const normalizedSearch = search.trim().toLowerCase();
   const filteredClients = normalizedSearch
-    ? clients.filter((client) => client.name.toLowerCase().includes(normalizedSearch))
+    ? clients.filter((client) =>
+        (client.name ?? "").toLowerCase().includes(normalizedSearch)
+      )
     : clients;
 
   return (
@@ -70,7 +72,9 @@ export function ClientsListPage({ onViewDetails, onCreateClient }: ClientsListPa
               {filteredClients.map((client) => (
                 <div key={client.id} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <div className="text-lg font-semibold text-gray-900">{client.name}</div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {client.name ?? "Unnamed client"}
+                    </div>
                     <div className="text-sm text-gray-600 space-y-1 mt-1">
                       <div>{client.phone || "—"}</div>
                       <div>{client.email || "—"}</div>

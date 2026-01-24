@@ -8,9 +8,17 @@ type ClientDetailPageProps = {
 	onBack: () => void;
 };
 
+const ClientId = Evolu.id("Client");
+
 export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 	const evolu = useEvolu();
 	const owner = use(evolu.appOwner);
+	const clientIdValue = useMemo(() => {
+		const result = ClientId.from(clientId);
+		return result.ok
+			? result.value
+			: Evolu.createIdFromString<"Client">("invalid-client-id");
+	}, [clientId]);
 
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
@@ -31,13 +39,13 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 				db
 					.selectFrom("client")
 					.selectAll()
-					.where("id", "=", clientId)
+					.where("id", "=", clientIdValue)
 					.where("ownerId", "=", owner.id)
 					.where("isDeleted", "is not", Evolu.sqliteTrue)
 					.where("deleted", "is not", Evolu.sqliteTrue)
 					.limit(1)
 			),
-		[evolu, clientId, owner.id]
+		[evolu, clientIdValue, owner.id]
 	);
 
 	const clientRows = useQuery(clientQuery);
