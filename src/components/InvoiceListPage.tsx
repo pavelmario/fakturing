@@ -66,6 +66,12 @@ const getInvoiceStatus = (invoice: InvoiceRow): "paid" | "overdue" | "unpaid" =>
   return "unpaid";
 };
 
+const getYear = (iso: string): number | null => {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.getFullYear();
+};
+
 export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListPageProps) {
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
@@ -131,6 +137,49 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
   const profileRows = useQuery(profileQuery);
   const isDiscreteMode = profileRows[0]?.discreteMode === Evolu.sqliteTrue;
 
+  const currentYear = new Date().getFullYear();
+  const stats = invoices.reduce(
+    (acc, invoice) => {
+      const items = parseItems(invoice.items);
+      const total = items.reduce((sum, item) => {
+        const amount = Number(item.amount ?? 0);
+        const unitPrice = Number(item.unitPrice ?? 0);
+        if (!Number.isFinite(amount) || !Number.isFinite(unitPrice)) return sum;
+        return sum + amount * unitPrice;
+      }, 0);
+
+      const status = getInvoiceStatus(invoice);
+      const year = getYear(invoice.issueDate);
+
+      if (year === currentYear) {
+        acc.year.count += 1;
+        acc.year.total += total;
+        if (status === "paid") {
+          acc.paidYear.count += 1;
+          acc.paidYear.total += total;
+        }
+      }
+
+      if (status === "unpaid") {
+        acc.unpaid.count += 1;
+        acc.unpaid.total += total;
+      } else if (status === "overdue") {
+        acc.unpaid.count += 1;
+        acc.unpaid.total += total;
+        acc.overdue.count += 1;
+        acc.overdue.total += total;
+      }
+
+      return acc;
+    },
+    {
+      year: { count: 0, total: 0 },
+      unpaid: { count: 0, total: 0 },
+      overdue: { count: 0, total: 0 },
+      paidYear: { count: 0, total: 0 },
+    }
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-4xl mx-auto px-4 py-12">
@@ -143,6 +192,45 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
             >
               Create Invoice
             </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="text-xs uppercase text-gray-500">Issued this year</div>
+              <div className="mt-2 text-lg font-semibold text-gray-900">
+                {stats.year.count} invoices
+              </div>
+              <div className="text-sm text-gray-700">
+                Total: {isDiscreteMode ? "#####" : formatTotal(stats.year.total)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="text-xs uppercase text-gray-500">Unpaid</div>
+              <div className="mt-2 text-lg font-semibold text-gray-900">
+                {stats.unpaid.count} invoices
+              </div>
+              <div className="text-sm text-gray-700">
+                Total: {isDiscreteMode ? "#####" : formatTotal(stats.unpaid.total)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="text-xs uppercase text-gray-500">Overdue</div>
+              <div className="mt-2 text-lg font-semibold text-gray-900">
+                {stats.overdue.count} invoices
+              </div>
+              <div className="text-sm text-gray-700">
+                Total: {isDiscreteMode ? "#####" : formatTotal(stats.overdue.total)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="text-xs uppercase text-gray-500">Paid this year</div>
+              <div className="mt-2 text-lg font-semibold text-gray-900">
+                {stats.paidYear.count} invoices
+              </div>
+              <div className="text-sm text-gray-700">
+                Total: {isDiscreteMode ? "#####" : formatTotal(stats.paidYear.total)}
+              </div>
+            </div>
           </div>
 
           {invoices.length === 0 ? (
