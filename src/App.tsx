@@ -3,14 +3,23 @@ import { ClientDetailPage } from "./components/ClientDetailPage";
 import { ClientsListPage } from "./components/ClientsListPage";
 import { ClientsPage } from "./components/ClientsPage";
 import { InvoiceCreatePage } from "./components/InvoiceCreatePage";
+import { InvoiceDetailPage } from "./components/InvoiceDetailPage";
+import { InvoiceListPage } from "./components/InvoiceListPage";
 import { SettingsPage } from "./components/SettingsPage";
 import "./index.css";
 
 function App() {
   const [page, setPage] = useState<
-    "settings" | "clients" | "clients-list" | "client-detail" | "invoice-create"
+    | "settings"
+    | "clients"
+    | "clients-list"
+    | "client-detail"
+    | "invoice-create"
+    | "invoice-list"
+    | "invoice-detail"
   >("settings");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   return (
     <Suspense
@@ -26,6 +35,7 @@ function App() {
             onClick={() => {
               setPage("settings");
               setSelectedClientId(null);
+              setSelectedInvoiceId(null);
             }}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
               page === "settings"
@@ -39,6 +49,7 @@ function App() {
             onClick={() => {
               setPage("clients-list");
               setSelectedClientId(null);
+              setSelectedInvoiceId(null);
             }}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
               page === "clients-list" || page === "client-detail"
@@ -50,16 +61,17 @@ function App() {
           </button>
           <button
             onClick={() => {
-              setPage("invoice-create");
+              setPage("invoice-list");
               setSelectedClientId(null);
+              setSelectedInvoiceId(null);
             }}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              page === "invoice-create"
+              page === "invoice-list"
                 ? "bg-blue-600 text-white"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            Create Invoice
+            Invoices
           </button>
         </div>
       </div>
@@ -70,14 +82,37 @@ function App() {
         <ClientsPage />
       ) : page === "invoice-create" ? (
         <InvoiceCreatePage />
+      ) : page === "invoice-list" ? (
+        <InvoiceListPage
+          onCreateInvoice={() => {
+            setPage("invoice-create");
+            setSelectedClientId(null);
+            setSelectedInvoiceId(null);
+          }}
+          onViewDetails={(invoiceId) => {
+            setSelectedInvoiceId(invoiceId);
+            setSelectedClientId(null);
+            setPage("invoice-detail");
+          }}
+        />
+      ) : page === "invoice-detail" && selectedInvoiceId ? (
+        <InvoiceDetailPage
+          invoiceId={selectedInvoiceId}
+          onBack={() => {
+            setPage("invoice-list");
+            setSelectedInvoiceId(null);
+          }}
+        />
       ) : page === "clients-list" ? (
         <ClientsListPage
           onViewDetails={(clientId) => {
             setSelectedClientId(clientId);
+            setSelectedInvoiceId(null);
             setPage("client-detail");
           }}
           onCreateClient={() => {
             setSelectedClientId(null);
+            setSelectedInvoiceId(null);
             setPage("clients");
           }}
         />
@@ -87,16 +122,19 @@ function App() {
           onBack={() => {
             setPage("clients-list");
             setSelectedClientId(null);
+            setSelectedInvoiceId(null);
           }}
         />
       ) : (
         <ClientsListPage
           onViewDetails={(clientId) => {
             setSelectedClientId(clientId);
+            setSelectedInvoiceId(null);
             setPage("client-detail");
           }}
           onCreateClient={() => {
             setSelectedClientId(null);
+            setSelectedInvoiceId(null);
             setPage("clients");
           }}
         />

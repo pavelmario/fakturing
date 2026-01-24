@@ -52,6 +52,7 @@ export const Schema = {
     invoiceNumber: Evolu.NonEmptyTrimmedString100,
     clientName: Evolu.NonEmptyTrimmedString100,
     issueDate: Evolu.DateIso,
+    paymentDate: Evolu.nullOr(Evolu.DateIso),
     paymentDays: Evolu.NonNegativeNumber,
     purchaseOrderNumber: Evolu.nullOr(Evolu.TrimmedString100),
     items: Evolu.Json,
