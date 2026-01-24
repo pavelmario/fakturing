@@ -2,12 +2,13 @@ import { Suspense, useState } from "react";
 import { ClientDetailPage } from "./components/ClientDetailPage";
 import { ClientsListPage } from "./components/ClientsListPage";
 import { ClientsPage } from "./components/ClientsPage";
+import { InvoiceCreatePage } from "./components/InvoiceCreatePage";
 import { SettingsPage } from "./components/SettingsPage";
 import "./index.css";
 
 function App() {
   const [page, setPage] = useState<
-    "settings" | "clients" | "clients-list" | "client-detail"
+    "settings" | "clients" | "clients-list" | "client-detail" | "invoice-create"
   >("settings");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
@@ -47,6 +48,19 @@ function App() {
           >
             Clients List
           </button>
+          <button
+            onClick={() => {
+              setPage("invoice-create");
+              setSelectedClientId(null);
+            }}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+              page === "invoice-create"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            Create Invoice
+          </button>
         </div>
       </div>
 
@@ -54,6 +68,8 @@ function App() {
         <SettingsPage />
       ) : page === "clients" ? (
         <ClientsPage />
+      ) : page === "invoice-create" ? (
+        <InvoiceCreatePage />
       ) : page === "clients-list" ? (
         <ClientsListPage
           onViewDetails={(clientId) => {
