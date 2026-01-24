@@ -35,6 +35,17 @@ export const Schema = {
     swift: Evolu.nullOr(Evolu.TrimmedString100),
     iban: Evolu.nullOr(Evolu.TrimmedString100),
   },
+  client: {
+    id: Evolu.id("Client"),
+    name: Evolu.NonEmptyTrimmedString100,
+    email: Evolu.nullOr(Evolu.TrimmedString100),
+    phone: Evolu.nullOr(Evolu.TrimmedString100),
+    addressLine1: Evolu.nullOr(Evolu.TrimmedString1000),
+    addressLine2: Evolu.nullOr(Evolu.TrimmedString1000),
+    companyIdentificationNumber: Evolu.nullOr(Evolu.TrimmedString100),
+    vatNumber: Evolu.nullOr(Evolu.TrimmedString100),
+    note: Evolu.nullOr(Evolu.TrimmedString1000),
+  },
 };
 
 export type UserProfileInput = {
