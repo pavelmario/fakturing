@@ -36,19 +36,6 @@ function App() {
           </button>
           <button
             onClick={() => {
-              setPage("clients");
-              setSelectedClientId(null);
-            }}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              page === "clients"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Create Client
-          </button>
-          <button
-            onClick={() => {
               setPage("clients-list");
               setSelectedClientId(null);
             }}
@@ -73,6 +60,10 @@ function App() {
             setSelectedClientId(clientId);
             setPage("client-detail");
           }}
+          onCreateClient={() => {
+            setSelectedClientId(null);
+            setPage("clients");
+          }}
         />
       ) : selectedClientId ? (
         <ClientDetailPage
@@ -87,6 +78,10 @@ function App() {
           onViewDetails={(clientId) => {
             setSelectedClientId(clientId);
             setPage("client-detail");
+          }}
+          onCreateClient={() => {
+            setSelectedClientId(null);
+            setPage("clients");
           }}
         />
       )}

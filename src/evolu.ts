@@ -45,6 +45,7 @@ export const Schema = {
     companyIdentificationNumber: Evolu.nullOr(Evolu.TrimmedString100),
     vatNumber: Evolu.nullOr(Evolu.TrimmedString100),
     note: Evolu.nullOr(Evolu.TrimmedString1000),
+    deleted: Evolu.nullOr(Evolu.SqliteBoolean),
   },
 };
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import * as Evolu from "@evolu/common";
 import { useEvolu } from "../evolu";
 
 export function ClientsPage() {
@@ -39,6 +40,7 @@ export function ClientsPage() {
         companyIdentificationNumber: toNullable(companyIdentificationNumber),
         vatNumber: toNullable(vatNumber),
         note: toNullable(note),
+        deleted: Evolu.sqliteFalse,
       });
 
       if (!result.ok) {
