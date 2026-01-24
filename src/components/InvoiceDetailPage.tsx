@@ -65,6 +65,8 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentDays, setPaymentDays] = useState("14");
   const [purchaseOrderNumber, setPurchaseOrderNumber] = useState("");
+  const [btcInvoice, setBtcInvoice] = useState(false);
+  const [btcAddress, setBtcAddress] = useState("");
   const [items, setItems] = useState<InvoiceItemForm[]>([emptyItem()]);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -132,6 +134,8 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     setPaymentDate(toDateInputValue(source?.paymentDate ?? ""));
     setPaymentDays(source?.paymentDays != null ? String(source.paymentDays) : "14");
     setPurchaseOrderNumber(source?.purchaseOrderNumber ?? "");
+    setBtcInvoice(source?.btcInvoice === Evolu.sqliteTrue);
+    setBtcAddress(source?.btcAddress ?? "");
     setItems(parseItems(source?.items));
   };
 
@@ -235,6 +239,8 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
         paymentDate: paymentDateValue,
         paymentDays: paymentDaysResult.value,
         purchaseOrderNumber: toNullable(purchaseOrderNumber),
+        btcInvoice: btcInvoice ? Evolu.sqliteTrue : Evolu.sqliteFalse,
+        btcAddress: toNullable(btcAddress),
         items: itemsResult.value,
       });
 
@@ -442,6 +448,37 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
               />
             </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                id="btcInvoice"
+                type="checkbox"
+                checked={btcInvoice}
+                onChange={(e) => setBtcInvoice(e.target.checked)}
+                disabled={!isEditing}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:bg-gray-50"
+              />
+              <label htmlFor="btcInvoice" className="text-sm font-medium text-gray-700">
+                Bitcoin invoice
+              </label>
+            </div>
+
+            {btcInvoice ? (
+              <div>
+                <label htmlFor="btcAddress" className="block text-sm font-medium text-gray-700 mb-2">
+                  BTC address
+                </label>
+                <input
+                  id="btcAddress"
+                  type="text"
+                  value={btcAddress}
+                  onChange={(e) => setBtcAddress(e.target.value)}
+                  disabled={!isEditing}
+                  placeholder="bc1..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                />
+              </div>
+            ) : null}
 
             <div>
               <div className="flex items-center justify-between mb-3">

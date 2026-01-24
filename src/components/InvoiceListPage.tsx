@@ -16,6 +16,7 @@ type InvoiceRow = {
   issueDate: string;
   paymentDate?: string | null;
   paymentDays: number;
+  btcInvoice?: number | null;
   items: unknown;
 };
 
@@ -93,7 +94,16 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
       evolu.createQuery((db) =>
         db
           .selectFrom("invoice")
-          .select(["id", "invoiceNumber", "clientName", "issueDate", "paymentDate", "paymentDays", "items"])
+          .select([
+            "id",
+            "invoiceNumber",
+            "clientName",
+            "issueDate",
+            "paymentDate",
+            "paymentDays",
+            "btcInvoice",
+            "items",
+          ])
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
@@ -134,6 +144,7 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                   return sum + amount * unitPrice;
                 }, 0);
                 const status = getInvoiceStatus(invoice);
+                const isBtcInvoice = invoice.btcInvoice === Evolu.sqliteTrue;
                 const statusStyles =
                   status === "paid"
                     ? "bg-emerald-100 text-emerald-800"
@@ -148,7 +159,7 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="text-lg font-semibold text-gray-900">{invoice.invoiceNumber}&nbsp;</div>
                           <span className={`px-2 py-1 rounded-full text-xs font-semibold uppercase ${statusStyles}`}>
-                            ({status})
+                            ({status}){isBtcInvoice ? " ₿" : ""}
                           </span>
                         </div>
                         <div className="text-sm text-gray-600">{invoice.clientName}</div>

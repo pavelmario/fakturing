@@ -55,6 +55,8 @@ export const Schema = {
     paymentDate: Evolu.nullOr(Evolu.DateIso),
     paymentDays: Evolu.NonNegativeNumber,
     purchaseOrderNumber: Evolu.nullOr(Evolu.TrimmedString100),
+    btcInvoice: Evolu.SqliteBoolean,
+    btcAddress: Evolu.nullOr(Evolu.TrimmedString100),
     items: Evolu.Json,
     deleted: Evolu.nullOr(Evolu.SqliteBoolean),
   },

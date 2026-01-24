@@ -31,6 +31,8 @@ export function InvoiceCreatePage() {
   const [issueDate, setIssueDate] = useState("");
   const [paymentDays, setPaymentDays] = useState("14");
   const [purchaseOrderNumber, setPurchaseOrderNumber] = useState("");
+  const [btcInvoice, setBtcInvoice] = useState(false);
+  const [btcAddress, setBtcAddress] = useState("");
   const [items, setItems] = useState<InvoiceItemForm[]>([emptyItem()]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -197,6 +199,8 @@ export function InvoiceCreatePage() {
         issueDate: issueDateResult.value,
         paymentDays: paymentDaysResult.value,
         purchaseOrderNumber: toNullable(purchaseOrderNumber),
+        btcInvoice: btcInvoice ? Evolu.sqliteTrue : Evolu.sqliteFalse,
+        btcAddress: toNullable(btcAddress),
         items: itemsResult.value,
         deleted: Evolu.sqliteFalse,
       };
@@ -223,6 +227,8 @@ export function InvoiceCreatePage() {
       setIssueDate("");
       setPaymentDays("14");
       setPurchaseOrderNumber("");
+      setBtcInvoice(false);
+      setBtcAddress("");
       setItems([emptyItem()]);
     } catch (error) {
       console.error("Error saving invoice:", error);
@@ -280,6 +286,35 @@ export function InvoiceCreatePage() {
                 <p className="text-xs text-gray-500 mt-2">No active clients available.</p>
               ) : null}
             </div>
+
+            <div className="flex items-center gap-3">
+              <input
+                id="btcInvoice"
+                type="checkbox"
+                checked={btcInvoice}
+                onChange={(e) => setBtcInvoice(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <label htmlFor="btcInvoice" className="text-sm font-medium text-gray-700">
+                Bitcoin invoice
+              </label>
+            </div>
+
+            {btcInvoice ? (
+              <div>
+                <label htmlFor="btcAddress" className="block text-sm font-medium text-gray-700 mb-2">
+                  BTC address
+                </label>
+                <input
+                  id="btcAddress"
+                  type="text"
+                  value={btcAddress}
+                  onChange={(e) => setBtcAddress(e.target.value)}
+                  placeholder="bc1..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
