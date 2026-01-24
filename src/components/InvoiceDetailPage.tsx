@@ -1,6 +1,7 @@
 import { use, useEffect, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
+import { Document, Font, Page, PDFDownloadLink, StyleSheet, Text, View } from "@react-pdf/renderer";
 import { useEvolu } from "../evolu";
 
 type InvoiceDetailPageProps = {
@@ -18,6 +19,29 @@ type InvoiceItemForm = {
 type InvoiceNumberRow = {
   id: string;
   invoiceNumber: string;
+};
+
+type ClientRow = {
+  id: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  companyIdentificationNumber?: string | null;
+  vatNumber?: string | null;
+};
+
+type UserProfileRow = {
+  id: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  companyIdentificationNumber?: string | null;
+  vatNumber?: string | null;
+  bankAccount?: string | null;
 };
 
 const emptyItem = (): InvoiceItemForm => ({
@@ -55,6 +79,122 @@ const toDateInputValue = (value?: string | null) => {
   return value.includes("T") ? value.slice(0, 10) : value;
 };
 
+Font.register({
+  family: "NotoSans",
+  src: "https://fonts.gstatic.com/s/notosans/v42/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A99d.ttf",
+  fontWeight: 400,
+});
+
+Font.register({
+  family: "NotoSans",
+  src: "https://fonts.gstatic.com/s/notosans/v42/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyAaBN9d.ttf",
+  fontWeight: 700,
+});
+
+const pdfStyles = StyleSheet.create({
+  page: {
+    padding: 40,
+    fontSize: 10,
+    fontFamily: "NotoSans",
+    color: "#111827",
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 700,
+  },
+  headerLine: {
+    height: 2,
+    backgroundColor: "#6b7280",
+    marginBottom: 18,
+  },
+  columns: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 24,
+  },
+  column: {
+    flexGrow: 1,
+    flexBasis: 0,
+  },
+  label: {
+    fontSize: 9,
+    color: "#6b7280",
+    marginBottom: 4,
+    textTransform: "uppercase",
+  },
+  sectionTitle: {
+    fontSize: 10,
+    fontWeight: 600,
+    marginBottom: 8,
+  },
+  textBold: {
+    fontWeight: 700,
+  },
+  textMuted: {
+    color: "#6b7280",
+  },
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  tableHeader: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#d1d5db",
+    paddingBottom: 6,
+    marginTop: 16,
+  },
+  tableRow: {
+    flexDirection: "row",
+    paddingVertical: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#e5e7eb",
+  },
+  colQty: { width: "10%" },
+  colUnit: { width: "10%" },
+  colDesc: { width: "45%" },
+  colUnitPrice: { width: "17%", textAlign: "right" },
+  colTotal: { width: "18%", textAlign: "right" },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "baseline",
+    marginTop: 8,
+  },
+  totalLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  totalValue: {
+    fontSize: 14,
+    fontWeight: 700,
+    marginLeft: 12,
+  },
+  footerLine: {
+    height: 2,
+    backgroundColor: "#6b7280",
+    marginTop: 18,
+    width: "50%",
+    alignSelf: "flex-end",
+  },
+  footer: {
+    position: "absolute",
+    left: 40,
+    right: 40,
+    bottom: 32,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    color: "#6b7280",
+  },
+});
+
 export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps) {
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
@@ -78,7 +218,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
       evolu.createQuery((db) =>
         db
           .selectFrom("client")
-          .select(["name"])
+          .selectAll()
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
@@ -87,7 +227,24 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     [evolu, owner.id]
   );
 
-  const clients = useQuery(clientsQuery);
+  const clients = useQuery(clientsQuery) as ClientRow[];
+
+  const profileQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("userProfile")
+          .selectAll()
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .orderBy("updatedAt", "desc")
+          .limit(1)
+      ),
+    [evolu, owner.id]
+  );
+
+  const profileRows = useQuery(profileQuery) as UserProfileRow[];
+  const profile = profileRows[0] ?? null;
 
   const invoiceQuery = useMemo(
     () =>
@@ -126,6 +283,165 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     trimmedInvoiceNumber &&
       duplicateInvoices.some((row) => row.id !== invoice?.id && row.invoiceNumber === trimmedInvoiceNumber)
   );
+
+  const selectedClient =
+    clients.find((client) => client.name === (invoice?.clientName ?? clientName)) ?? null;
+
+  const normalizedItems = items
+    .map((item) => ({
+      amount: Number.isFinite(Number(item.amount)) ? Number(item.amount) : 0,
+      unit: item.unit.trim(),
+      description: item.description.trim(),
+      unitPrice: Number.isFinite(Number(item.unitPrice)) ? Number(item.unitPrice) : 0,
+    }))
+    .filter((item) => item.description || item.unit || item.amount || item.unitPrice);
+
+  const formatNumber = (value: number, maxFraction = 2) =>
+    new Intl.NumberFormat("cs-CZ", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: maxFraction,
+    }).format(value);
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("cs-CZ", {
+      style: "currency",
+      currency: "CZK",
+      minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+      maximumFractionDigits: Number.isInteger(value) ? 0 : 2,
+    }).format(value);
+
+  const invoiceTotal = normalizedItems.reduce(
+    (sum, item) => sum + (Number(item.amount) || 0) * (Number(item.unitPrice) || 0),
+    0
+  );
+
+  const invoiceIssueDate = invoice?.issueDate
+    ? new Date(invoice.issueDate).toLocaleDateString("cs-CZ").replace(/\s/g, "")
+    : "";
+  const invoiceDueDate = (() => {
+    if (!invoice?.issueDate) return "";
+    const issue = new Date(invoice.issueDate);
+    const paymentDaysValue = invoice.paymentDays ?? 0;
+    if (Number.isNaN(paymentDaysValue)) return "";
+    const due = new Date(issue);
+    due.setDate(issue.getDate() + paymentDaysValue);
+    return due.toLocaleDateString("cs-CZ").replace(/\s/g, "");
+  })();
+
+  const pdfDocument = invoice ? (
+    <Document>
+      <Page size="A4" style={pdfStyles.page}>
+        <View style={pdfStyles.headerRow}>
+          <Text />
+          <Text style={pdfStyles.headerTitle}>{`Faktura ${invoice.invoiceNumber}`}</Text>
+        </View>
+        <View style={pdfStyles.headerLine} />
+
+        <View style={pdfStyles.columns}>
+          <View style={pdfStyles.column}>
+            <Text style={pdfStyles.label}>Dodavatel</Text>
+            <Text style={pdfStyles.textBold}>{profile?.name ?? ""}</Text>
+            <Text style={pdfStyles.textMuted}>{profile?.addressLine1 ?? ""}</Text>
+            <Text style={pdfStyles.textMuted}>{profile?.addressLine2 ?? ""}</Text>
+            <View style={{ marginTop: 6 }}>
+              <View style={pdfStyles.detailRow}>
+                <Text style={pdfStyles.textMuted}>IČO</Text>
+                <Text>{profile?.companyIdentificationNumber ?? ""}</Text>
+              </View>
+              <View style={pdfStyles.detailRow}>
+                <Text style={pdfStyles.textMuted}>
+                  {profile?.vatNumber ? "DIČ" : "Neplátce DPH"}
+                </Text>
+                <Text>{profile?.vatNumber ?? ""}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={pdfStyles.column}>
+            <Text style={pdfStyles.label}>Odběratel</Text>
+            <Text style={pdfStyles.textBold}>{selectedClient?.name ?? invoice.clientName}</Text>
+            <Text style={pdfStyles.textMuted}>{selectedClient?.addressLine1 ?? ""}</Text>
+            <Text style={pdfStyles.textMuted}>{selectedClient?.addressLine2 ?? ""}</Text>
+            <View style={{ marginTop: 6 }}>
+              {selectedClient?.companyIdentificationNumber ? (
+                <View style={pdfStyles.detailRow}>
+                  <Text style={pdfStyles.textMuted}>IČO</Text>
+                  <Text>{selectedClient.companyIdentificationNumber}</Text>
+                </View>
+              ) : null}
+              <View style={pdfStyles.detailRow}>
+                <Text style={pdfStyles.textMuted}>
+                  {selectedClient?.vatNumber ? "DIČ" : "Neplátce DPH"}
+                </Text>
+                <Text>{selectedClient?.vatNumber ?? ""}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={{ marginTop: 18 }}>
+          <View style={pdfStyles.columns}>
+            <View style={pdfStyles.column}>
+               <View style={pdfStyles.detailRow}>
+                <Text style={pdfStyles.textMuted}>Bankovní účet</Text>
+                <Text>{profile?.bankAccount ?? ""}</Text>
+              </View>
+              <View style={pdfStyles.detailRow}>
+                <Text style={pdfStyles.textMuted}>Variabilní symbol</Text>
+                <Text>{invoice.invoiceNumber.replace(/-/g, "")}</Text>
+              </View>
+              <View style={pdfStyles.detailRow}>
+                <Text style={pdfStyles.textMuted}>Způsob platby</Text>
+                <Text>Převodem</Text>
+              </View>
+            </View>
+            <View style={pdfStyles.column}>
+              <View style={pdfStyles.detailRow}>
+                <Text style={pdfStyles.textMuted}>Datum vystavení</Text>
+                <Text>{invoiceIssueDate}</Text>
+              </View>
+              <View style={pdfStyles.detailRow}>
+                <Text style={pdfStyles.textMuted}>Datum splatnosti</Text>
+                <Text>{invoiceDueDate}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={pdfStyles.tableHeader}>
+          <Text style={[pdfStyles.colQty, pdfStyles.textMuted]}>Počet</Text>
+          <Text style={[pdfStyles.colUnit, pdfStyles.textMuted]}>MJ</Text>
+          <Text style={[pdfStyles.colDesc, pdfStyles.textMuted]}>Popis</Text>
+          <Text style={[pdfStyles.colUnitPrice, pdfStyles.textMuted]}>Cena za MJ</Text>
+          <Text style={[pdfStyles.colTotal, pdfStyles.textMuted]}>Cena</Text>
+        </View>
+
+        {normalizedItems.map((item, index) => {
+          const lineTotal = (Number(item.amount) || 0) * (Number(item.unitPrice) || 0);
+          return (
+            <View style={pdfStyles.tableRow} key={`${item.description}-${index}`}>
+              <Text style={pdfStyles.colQty}>
+                {item.amount ? formatNumber(Number(item.amount)) : ""}
+              </Text>
+              <Text style={pdfStyles.colUnit}>{item.unit}</Text>
+              <Text style={pdfStyles.colDesc}>{item.description}</Text>
+              <Text style={pdfStyles.colUnitPrice}>{formatCurrency(item.unitPrice)}</Text>
+              <Text style={pdfStyles.colTotal}>{formatCurrency(lineTotal)}</Text>
+            </View>
+          );
+        })}
+
+        <View style={pdfStyles.footerLine} />
+        <View style={pdfStyles.totalRow}>
+          <Text style={pdfStyles.totalValue}>{formatCurrency(invoiceTotal)}</Text>
+        </View>
+        <View style={pdfStyles.footer}>
+          <Text>Fyzická osoba zapsaná v živnostenském rejstříku.</Text>
+          <Text>{[profile?.email, profile?.phone].filter(Boolean).join(" | ")}</Text>
+        </View>
+      </Page>
+    </Document>
+  ) : null;
 
   const hydrateForm = (source: typeof invoice) => {
     setInvoiceNumber(source?.invoiceNumber ?? "");
@@ -586,6 +902,15 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           </div>
 
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
+            {pdfDocument ? (
+              <PDFDownloadLink
+                document={pdfDocument}
+                fileName={`invoice-${invoice.invoiceNumber || invoice.id}.pdf`}
+                className="w-full sm:w-auto px-6 py-3 rounded-lg font-semibold bg-gray-900 text-white hover:bg-gray-800 text-center"
+              >
+                {({ loading }) => (loading ? "Preparing PDF..." : "Export to PDF")}
+              </PDFDownloadLink>
+            ) : null}
             {!isEditing ? (
               <>
                 <button
