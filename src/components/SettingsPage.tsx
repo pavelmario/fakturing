@@ -235,25 +235,48 @@ export function SettingsPage() {
   };
 
   // Clear all local data
-  const handleClearData = () => {
-    if (confirm("Are you sure you want to clear all local data? This will log you out and you'll need your backup phrase to restore your data.")) {
-      evolu.resetAppOwner();
-      // Reset all form fields
-      setMnemonicInput("");
-      setName("");
-      setEmail("");
-      setPhone("");
-      setAddressLine1("");
-      setAddressLine2("");
-      setCompanyIdentificationNumber("");
-      setVatNumber("");
-      setBankAccount("");
-      setSwift("");
-      setIban("");
-      setSavedData(null);
-      setLastSyncTime("");
-      alert("All local data has been cleared.");
+  const handleClearData = async () => {
+    if (
+      !confirm(
+        "Are you sure you want to clear all local data? This will log you out and you'll need your backup phrase to restore your data."
+      )
+    ) {
+      return;
     }
+
+    const deleteDatabase = (dbName: string) =>
+      new Promise<void>((resolve) => {
+        const request = indexedDB.deleteDatabase(dbName);
+        request.onsuccess = () => resolve();
+        request.onerror = () => resolve();
+        request.onblocked = () => resolve();
+      });
+
+    try {
+      evolu.resetAppOwner();
+      await deleteDatabase("invoice-manager");
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("invoiceApp_relayUrl");
+      }
+    } catch (error) {
+      console.error("Failed to clear local data:", error);
+    }
+
+    // Reset all form fields
+    setMnemonicInput("");
+    setName("");
+    setEmail("");
+    setPhone("");
+    setAddressLine1("");
+    setAddressLine2("");
+    setCompanyIdentificationNumber("");
+    setVatNumber("");
+    setBankAccount("");
+    setSwift("");
+    setIban("");
+    setSavedData(null);
+    setLastSyncTime("");
+    alert("All local data has been cleared.");
   };
 
   // Save relay URL and reconnect
