@@ -80,16 +80,16 @@ export function InvoiceCreatePage() {
           .selectFrom("invoice")
           .select(["id", "invoiceNumber"])
           .where("ownerId", "=", owner.id)
+          .where("invoiceNumber", "=", trimmedInvoiceNumber)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
+          .limit(1)
       ),
-    [evolu, owner.id]
+    [evolu, owner.id, trimmedInvoiceNumber]
   );
 
   const duplicateInvoices = useQuery(duplicateInvoiceQuery) as InvoiceNumberRow[];
-  const hasDuplicateInvoiceNumber = Boolean(
-    trimmedInvoiceNumber && duplicateInvoices.some((row) => row.invoiceNumber === trimmedInvoiceNumber)
-  );
+  const hasDuplicateInvoiceNumber = Boolean(trimmedInvoiceNumber && duplicateInvoices.length > 0);
 
   useEffect(() => {
     if (issueDate) return;

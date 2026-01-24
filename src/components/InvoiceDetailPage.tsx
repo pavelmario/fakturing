@@ -121,7 +121,8 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
   const duplicateInvoices = useQuery(duplicateInvoiceQuery) as InvoiceNumberRow[];
   const hasDuplicateInvoiceNumber = Boolean(
-    trimmedInvoiceNumber && duplicateInvoices.some((row) => row.id !== invoice?.id && row.invoiceNumber === trimmedInvoiceNumber)
+    trimmedInvoiceNumber &&
+      duplicateInvoices.some((row) => row.id !== invoice?.id && row.invoiceNumber === trimmedInvoiceNumber)
   );
 
   const hydrateForm = (source: typeof invoice) => {
@@ -135,11 +136,10 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
   };
 
   useEffect(() => {
-    if (!invoice || isEditing) return;
     hydrateForm(invoice);
     setIsEditing(false);
     setSaveMessage(null);
-  }, [invoice, isEditing]);
+  }, [invoice]);
 
   const toNullable = (value: string) => {
     const trimmed = value.trim();
@@ -258,6 +258,23 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     hydrateForm(invoice);
     setIsEditing(false);
     setSaveMessage(null);
+  };
+
+  const handleCancelPayment = () => {
+    if (!invoice?.id) return;
+
+    const result = evolu.update("invoice", {
+      id: invoice.id,
+      paymentDate: null,
+    });
+
+    if (!result.ok) {
+      console.error("Payment cancel error:", result.error);
+      alert("Error clearing payment date");
+      return;
+    }
+
+    setPaymentDate("");
   };
 
   const handleDelete = async () => {
@@ -560,6 +577,13 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                   }`}
                 >
                   {isSaving ? "Saving..." : "Save"}
+                </button>
+                <button
+                  onClick={handleCancelPayment}
+                  disabled={isSaving || isDeleting}
+                  className="w-full sm:w-auto px-6 py-3 rounded-lg font-semibold bg-amber-100 text-amber-800 hover:bg-amber-200"
+                >
+                  Cancel Payment
                 </button>
                 <button
                   onClick={handleCancel}

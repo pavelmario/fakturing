@@ -69,6 +69,25 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
 
+  const handleMarkPayment = (invoiceId: string) => {
+    const paymentDateResult = Evolu.dateToDateIso(new Date());
+    if (!paymentDateResult.ok) {
+      console.error("Payment date error:", paymentDateResult.error);
+      alert("Unable to set payment date");
+      return;
+    }
+
+    const result = evolu.update("invoice", {
+      id: invoiceId,
+      paymentDate: paymentDateResult.value,
+    });
+
+    if (!result.ok) {
+      console.error("Payment update error:", result.error);
+      alert("Error updating payment date");
+    }
+  };
+
   const invoicesQuery = useMemo(
     () =>
       evolu.createQuery((db) =>
@@ -127,9 +146,9 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-lg font-semibold text-gray-900">{invoice.invoiceNumber}</div>
+                          <div className="text-lg font-semibold text-gray-900">{invoice.invoiceNumber}&nbsp;</div>
                           <span className={`px-2 py-1 rounded-full text-xs font-semibold uppercase ${statusStyles}`}>
-                            {status}
+                            ({status})
                           </span>
                         </div>
                         <div className="text-sm text-gray-600">{invoice.clientName}</div>
@@ -139,12 +158,22 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                     <div className="text-sm text-gray-700">{firstDescription}</div>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div className="text-sm font-semibold text-gray-900">Total: {formatTotal(total)}</div>
-                      <button
-                        onClick={() => onViewDetails(invoice.id)}
-                        className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
-                      >
-                        View Details
-                      </button>
+                      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        {!invoice.paymentDate ? (
+                          <button
+                            onClick={() => handleMarkPayment(invoice.id)}
+                            className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold transition bg-emerald-600 text-white hover:bg-emerald-700"
+                          >
+                            Mark Payment
+                          </button>
+                        ) : null}
+                        <button
+                          onClick={() => onViewDetails(invoice.id)}
+                          className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                          View Details
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
