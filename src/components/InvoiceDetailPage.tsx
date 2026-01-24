@@ -1,7 +1,8 @@
 import { use, useEffect, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
-import { Document, Font, Page, PDFDownloadLink, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Font, Image, Page, PDFDownloadLink, StyleSheet, Text, View } from "@react-pdf/renderer";
+import QRCode from "qrcode";
 import { useEvolu } from "../evolu";
 
 type InvoiceDetailPageProps = {
@@ -42,6 +43,8 @@ type UserProfileRow = {
   companyIdentificationNumber?: string | null;
   vatNumber?: string | null;
   bankAccount?: string | null;
+  iban?: string | null;
+  swift?: string | null;
 };
 
 const emptyItem = (): InvoiceItemForm => ({
@@ -177,12 +180,36 @@ const pdfStyles = StyleSheet.create({
     fontWeight: 700,
     marginLeft: 12,
   },
+  summaryRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginTop: 18,
+  },
+  qrBlock: {
+    width: 120,
+    alignItems: "flex-start",
+  },
+  qrImage: {
+    width: 110,
+    height: 110,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    padding: 6,
+  },
+  qrLabel: {
+    marginTop: 6,
+    fontSize: 9,
+    color: "#6b7280",
+  },
+  totalBlock: {
+    width: "50%",
+    alignItems: "flex-end",
+  },
   footerLine: {
     height: 2,
     backgroundColor: "#6b7280",
-    marginTop: 18,
-    width: "50%",
-    alignSelf: "flex-end",
+    width: "100%",
   },
   footer: {
     position: "absolute",
@@ -213,6 +240,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
   const clientsQuery = useMemo(
     () =>
@@ -365,6 +393,64 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     return due.toLocaleDateString("cs-CZ").replace(/\s/g, "");
   })();
 
+  const invoiceDueDateQr = (() => {
+    if (!invoice?.issueDate) return "";
+    const issue = new Date(invoice.issueDate);
+    const paymentDaysValue = invoice.paymentDays ?? 0;
+    if (Number.isNaN(paymentDaysValue)) return "";
+    const due = new Date(issue);
+    due.setDate(issue.getDate() + paymentDaysValue);
+    const yyyy = String(due.getFullYear());
+    const mm = String(due.getMonth() + 1).padStart(2, "0");
+    const dd = String(due.getDate()).padStart(2, "0");
+    return `${yyyy}${mm}${dd}`;
+  })();
+
+  useEffect(() => {
+    const buildQr = async () => {
+      if (!invoice || invoice.btcInvoice === Evolu.sqliteTrue) {
+        setQrCodeDataUrl(null);
+        return;
+      }
+
+      const ibanCandidate = (profile?.iban ?? profile?.bankAccount ?? "").replace(/\s/g, "");
+      if (!ibanCandidate) {
+        setQrCodeDataUrl(null);
+        return;
+      }
+
+      const amount = Number.isFinite(invoiceTotal) ? invoiceTotal : 0;
+      if (!amount || amount <= 0) {
+        setQrCodeDataUrl(null);
+        return;
+      }
+
+      const variableSymbol = invoice.invoiceNumber.replace(/-/g, "");
+      const formattedAmount = Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+      const accountValue = profile?.swift ? `${ibanCandidate}+${profile.swift}` : ibanCandidate;
+      const parts = [
+        "SPD*1.0",
+        `ACC:${accountValue}`,
+        "PT:IP",
+        `AM:${formattedAmount}`,
+        variableSymbol ? `X-VS:${variableSymbol}` : "",
+        invoiceDueDateQr ? `DT:${invoiceDueDateQr}` : "",
+        "MSG:QRPLATBA",
+        "",
+      ].filter((value) => value !== undefined);
+
+      try {
+        const dataUrl = await QRCode.toDataURL(parts.join("*"), { margin: 0, width: 256 });
+        setQrCodeDataUrl(dataUrl);
+      } catch (error) {
+        console.error("Failed to generate QR code:", error);
+        setQrCodeDataUrl(null);
+      }
+    };
+
+    buildQr();
+  }, [invoice, invoiceTotal, invoiceDueDateQr, profile?.iban, profile?.bankAccount, profile?.swift]);
+
   const pdfDocument = invoice ? (
     <Document>
       <Page size="A4" style={pdfStyles.page}>
@@ -468,9 +554,21 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           );
         })}
 
-        <View style={pdfStyles.footerLine} />
-        <View style={pdfStyles.totalRow}>
-          <Text style={pdfStyles.totalValue}>{formatCurrency(invoiceTotal)}</Text>
+        <View style={pdfStyles.summaryRow}>
+          {qrCodeDataUrl ? (
+            <View style={pdfStyles.qrBlock}>
+              <Image style={pdfStyles.qrImage} src={qrCodeDataUrl} />
+              <Text style={pdfStyles.qrLabel}>QR Platba</Text>
+            </View>
+          ) : (
+            <View />
+          )}
+          <View style={pdfStyles.totalBlock}>
+            <View style={pdfStyles.footerLine} />
+            <View style={pdfStyles.totalRow}>
+              <Text style={pdfStyles.totalValue}>{formatCurrency(invoiceTotal)}</Text>
+            </View>
+          </View>
         </View>
         <View style={pdfStyles.footer}>
           <Text>Fyzická osoba zapsaná v živnostenském rejstříku.</Text>
