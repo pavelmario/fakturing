@@ -114,6 +114,23 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
 
   const invoices = useQuery(invoicesQuery) as InvoiceRow[];
 
+  const profileQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("userProfile")
+          .select(["discreteMode"])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .orderBy("updatedAt", "desc")
+          .limit(1)
+      ),
+    [evolu, owner.id]
+  );
+
+  const profileRows = useQuery(profileQuery);
+  const isDiscreteMode = profileRows[0]?.discreteMode === Evolu.sqliteTrue;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-4xl mx-auto px-4 py-12">
@@ -168,7 +185,9 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                     </div>
                     <div className="text-sm text-gray-700">{firstDescription}</div>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div className="text-sm font-semibold text-gray-900">Total: {formatTotal(total)}</div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        Total: {isDiscreteMode ? "#####" : formatTotal(total)}
+                      </div>
                       <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                         {!invoice.paymentDate ? (
                           <button

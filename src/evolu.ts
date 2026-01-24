@@ -34,6 +34,7 @@ export const Schema = {
     bankAccount: Evolu.nullOr(Evolu.TrimmedString100),
     swift: Evolu.nullOr(Evolu.TrimmedString100),
     iban: Evolu.nullOr(Evolu.TrimmedString100),
+    discreteMode: Evolu.nullOr(Evolu.SqliteBoolean),
   },
   client: {
     id: Evolu.id("Client"),
@@ -73,6 +74,7 @@ export type UserProfileInput = {
   bankAccount?: string;
   swift?: string;
   iban?: string;
+  discreteMode?: 0 | 1 | null;
 };
 
 const evolu = createEvolu(evoluReactWebDeps)(Schema, {

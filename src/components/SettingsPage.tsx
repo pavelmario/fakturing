@@ -20,6 +20,7 @@ export function SettingsPage() {
   const [bankAccount, setBankAccount] = useState<string>("");
   const [swift, setSwift] = useState<string>("");
   const [iban, setIban] = useState<string>("");
+  const [discreteMode, setDiscreteMode] = useState<boolean>(false);
   const [savedData, setSavedData] = useState<{
     name: string;
     email?: string;
@@ -31,6 +32,7 @@ export function SettingsPage() {
     bankAccount?: string;
     swift?: string;
     iban?: string;
+    discreteMode?: boolean;
   } | null>(null);
   const [showMnemonicInput, setShowMnemonicInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -125,6 +127,7 @@ export function SettingsPage() {
       bankAccount: profile.bankAccount ?? undefined,
       swift: profile.swift ?? undefined,
       iban: profile.iban ?? undefined,
+      discreteMode: profile.discreteMode === Evolu.sqliteTrue,
     });
     setName(profile.name ?? "");
     setEmail(profile.email ?? "");
@@ -136,6 +139,7 @@ export function SettingsPage() {
     setBankAccount(profile.bankAccount ?? "");
     setSwift(profile.swift ?? "");
     setIban(profile.iban ?? "");
+    setDiscreteMode(profile.discreteMode === Evolu.sqliteTrue);
     setLastSyncTime(profile.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "");
   }, [profile]);
   const handleGenerateMnemonic = async () => {
@@ -207,6 +211,7 @@ export function SettingsPage() {
         bankAccount: toNullable(bankAccount),
         swift: toNullable(swift),
         iban: toNullable(iban),
+        discreteMode: discreteMode ? Evolu.sqliteTrue : Evolu.sqliteFalse,
       };
 
       if (profile?.id) {
@@ -597,6 +602,19 @@ export function SettingsPage() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="border-t pt-4 mt-4">
+              <h3 className="font-semibold text-gray-700 mb-3">Preferences</h3>
+              <label className="flex items-center gap-3 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={discreteMode}
+                  onChange={(e) => setDiscreteMode(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                Discrete mode
+              </label>
             </div>
           </div>
 
