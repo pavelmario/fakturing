@@ -10,6 +10,11 @@ type InvoiceItemForm = {
   unitPrice: string;
 };
 
+type InvoiceNumberRow = {
+  id: string;
+  invoiceNumber: string;
+};
+
 const emptyItem = (): InvoiceItemForm => ({
   amount: "",
   unit: "",
@@ -67,6 +72,25 @@ export function InvoiceCreatePage() {
   const latestInvoiceRows = useQuery(latestInvoiceQuery);
   const latestInvoiceNumber = latestInvoiceRows[0]?.invoiceNumber ?? "";
 
+  const trimmedInvoiceNumber = invoiceNumber.trim();
+  const duplicateInvoiceQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("invoice")
+          .select(["id", "invoiceNumber"])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue)
+      ),
+    [evolu, owner.id]
+  );
+
+  const duplicateInvoices = useQuery(duplicateInvoiceQuery) as InvoiceNumberRow[];
+  const hasDuplicateInvoiceNumber = Boolean(
+    trimmedInvoiceNumber && duplicateInvoices.some((row) => row.invoiceNumber === trimmedInvoiceNumber)
+  );
+
   useEffect(() => {
     if (issueDate) return;
     const todayIso = new Date().toISOString().slice(0, 10);
@@ -110,7 +134,7 @@ export function InvoiceCreatePage() {
   const handleSave = async () => {
     setSaveMessage(null);
 
-    if (!invoiceNumber.trim()) {
+    if (!trimmedInvoiceNumber) {
       alert("Please enter an invoice number");
       return;
     }
@@ -144,6 +168,11 @@ export function InvoiceCreatePage() {
       return;
     }
 
+    if (hasDuplicateInvoiceNumber) {
+      const confirmed = confirm("This invoice number already exists. Save anyway?");
+      if (!confirmed) return;
+    }
+
     setIsSaving(true);
     try {
       const normalizedItems = items
@@ -163,7 +192,7 @@ export function InvoiceCreatePage() {
       }
 
       const payload = {
-        invoiceNumber: invoiceNumber.trim(),
+        invoiceNumber: trimmedInvoiceNumber,
         clientName: clientName.trim(),
         issueDate: issueDateResult.value,
         paymentDays: paymentDaysResult.value,

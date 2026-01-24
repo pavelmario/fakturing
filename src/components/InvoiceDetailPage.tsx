@@ -15,6 +15,11 @@ type InvoiceItemForm = {
   unitPrice: string;
 };
 
+type InvoiceNumberRow = {
+  id: string;
+  invoiceNumber: string;
+};
+
 const emptyItem = (): InvoiceItemForm => ({
   amount: "",
   unit: "",
@@ -100,6 +105,25 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
   const invoiceRows = useQuery(invoiceQuery);
   const invoice = invoiceRows[0] ?? null;
 
+  const trimmedInvoiceNumber = invoiceNumber.trim();
+  const duplicateInvoiceQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("invoice")
+          .select(["id", "invoiceNumber"])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue)
+      ),
+    [evolu, owner.id]
+  );
+
+  const duplicateInvoices = useQuery(duplicateInvoiceQuery) as InvoiceNumberRow[];
+  const hasDuplicateInvoiceNumber = Boolean(
+    trimmedInvoiceNumber && duplicateInvoices.some((row) => row.id !== invoice?.id && row.invoiceNumber === trimmedInvoiceNumber)
+  );
+
   const hydrateForm = (source: typeof invoice) => {
     setInvoiceNumber(source?.invoiceNumber ?? "");
     setClientName(source?.clientName ?? "");
@@ -111,10 +135,11 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
   };
 
   useEffect(() => {
+    if (!invoice || isEditing) return;
     hydrateForm(invoice);
     setIsEditing(false);
     setSaveMessage(null);
-  }, [invoice]);
+  }, [invoice, isEditing]);
 
   const toNullable = (value: string) => {
     const trimmed = value.trim();
@@ -133,7 +158,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
   const handleSave = async () => {
     if (!invoice?.id) return;
-    if (!invoiceNumber.trim()) {
+    if (!trimmedInvoiceNumber) {
       alert("Please enter an invoice number");
       return;
     }
@@ -178,6 +203,11 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
       return;
     }
 
+    if (hasDuplicateInvoiceNumber) {
+      const confirmed = confirm("This invoice number already exists. Update anyway?");
+      if (!confirmed) return;
+    }
+
     setIsSaving(true);
     setSaveMessage(null);
     try {
@@ -199,7 +229,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
       const result = evolu.update("invoice", {
         id: invoice.id,
-        invoiceNumber: invoiceNumber.trim(),
+        invoiceNumber: trimmedInvoiceNumber,
         clientName: clientName.trim(),
         issueDate: issueDateResult.value,
         paymentDate: paymentDateValue,
