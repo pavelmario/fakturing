@@ -370,7 +370,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
             <div>
               <label htmlFor="paymentDate" className="block text-sm font-medium text-gray-700 mb-2">
-                Payment Date
+                Paid on
               </label>
               <input
                 id="paymentDate"

@@ -14,6 +14,8 @@ type InvoiceRow = {
   invoiceNumber: string;
   clientName: string;
   issueDate: string;
+  paymentDate?: string | null;
+  paymentDays: number;
   items: unknown;
 };
 
@@ -47,6 +49,22 @@ const formatTotal = (value: number): string => {
   return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+const getInvoiceStatus = (invoice: InvoiceRow): "paid" | "overdue" | "unpaid" => {
+  if (invoice.paymentDate) return "paid";
+  const issueDate = new Date(invoice.issueDate);
+  if (!Number.isNaN(issueDate.getTime())) {
+    const dueDate = new Date(issueDate);
+    const days = Number(invoice.paymentDays ?? 0);
+    if (Number.isFinite(days)) {
+      dueDate.setDate(dueDate.getDate() + days);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (dueDate < today) return "overdue";
+    }
+  }
+  return "unpaid";
+};
+
 export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListPageProps) {
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
@@ -56,11 +74,10 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
       evolu.createQuery((db) =>
         db
           .selectFrom("invoice")
-          .select(["id", "invoiceNumber", "clientName", "issueDate", "items"])
+          .select(["id", "invoiceNumber", "clientName", "issueDate", "paymentDate", "paymentDays", "items"])
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
-          .orderBy("issueDate", "desc")
           .orderBy("invoiceNumber", "desc")
       ),
     [evolu, owner.id]
@@ -97,12 +114,24 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                   if (!Number.isFinite(amount) || !Number.isFinite(unitPrice)) return sum;
                   return sum + amount * unitPrice;
                 }, 0);
+                const status = getInvoiceStatus(invoice);
+                const statusStyles =
+                  status === "paid"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : status === "overdue"
+                    ? "bg-red-100 text-red-800"
+                    : "bg-amber-100 text-amber-800";
 
                 return (
                   <div key={invoice.id} className="py-4 flex flex-col gap-2">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
-                        <div className="text-lg font-semibold text-gray-900">{invoice.invoiceNumber}</div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-lg font-semibold text-gray-900">{invoice.invoiceNumber}</div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold uppercase ${statusStyles}`}>
+                            {status}
+                          </span>
+                        </div>
                         <div className="text-sm text-gray-600">{invoice.clientName}</div>
                       </div>
                       <div className="text-sm text-gray-600">{formatDate(invoice.issueDate)}</div>
