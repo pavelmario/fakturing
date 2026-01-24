@@ -34,7 +34,7 @@ export function SettingsPage() {
   } | null>(null);
   const [showMnemonicInput, setShowMnemonicInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSyncError, setIsSyncError] = useState(false);
+  const [isRelayConnected, setIsRelayConnected] = useState<boolean | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<string>("");
   const [relayUrl, setRelayUrlState] = useState<string>("");
   const [connectedRelayUrl, setConnectedRelayUrl] = useState<string>("");
@@ -65,11 +65,48 @@ export function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    const updateError = () => setIsSyncError(!!evolu.getError());
-    updateError();
-    const unsubscribe = evolu.subscribeError(updateError);
-    return () => unsubscribe();
-  }, [evolu]);
+    if (!connectedRelayUrl) {
+      setIsRelayConnected(null);
+      return;
+    }
+
+    let ws: WebSocket | null = null;
+    let didSettle = false;
+
+    setIsRelayConnected(null);
+
+    try {
+      ws = new WebSocket(connectedRelayUrl);
+    } catch (error) {
+      console.error("Invalid relay URL:", error);
+      setIsRelayConnected(false);
+      return;
+    }
+
+    ws.onopen = () => {
+      didSettle = true;
+      setIsRelayConnected(true);
+    };
+
+    ws.onerror = () => {
+      didSettle = true;
+      setIsRelayConnected(false);
+    };
+
+    ws.onclose = () => {
+      if (!didSettle) {
+        setIsRelayConnected(false);
+      } else {
+        setIsRelayConnected(false);
+      }
+    };
+
+    return () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, [connectedRelayUrl]);
 
   useEffect(() => {
     if (!profile) {
@@ -251,13 +288,6 @@ export function SettingsPage() {
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Invoice Manager Settings</h1>
-            <div
-              className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-                isSyncError ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800"
-              }`}
-            >
-              {isSyncError ? "⚠ Sync issue" : "✓ Sync ready"}
-            </div>
           </div>
 
           {/* Relay Configuration Section */}
@@ -266,8 +296,6 @@ export function SettingsPage() {
             <p className="text-sm text-gray-600 mb-4">
               Configure the Evolu relay URL used for synchronization. Changing it will reconnect the app.
             </p>
-            
-            <div className="space-y-3">
               <div>
                 <label htmlFor="relayUrl" className="block text-sm font-medium text-gray-700 mb-2">
                   Relay Server URL
@@ -280,6 +308,22 @@ export function SettingsPage() {
                   placeholder="wss://your-relay-server.com"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
                 />
+                 <div className="space-y-3">
+              <div
+              className={`px-3 py-1 rounded-full text-sm font-medium transition ${
+                isRelayConnected === true
+                  ? "bg-green-100 text-green-800"
+                  : isRelayConnected === false
+                    ? "bg-red-100 text-red-800"
+                    : "bg-yellow-100 text-yellow-800"
+              }`}
+            >
+              {isRelayConnected === true
+                ? "✓ Relay connected"
+                : isRelayConnected === false
+                  ? "⚠ Relay disconnected"
+                  : "⟳ Connecting..."}
+            </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Current relay: {connectedRelayUrl || "Not connected"}
                 </p>
