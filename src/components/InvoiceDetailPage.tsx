@@ -206,6 +206,14 @@ const pdfStyles = StyleSheet.create({
     width: "50%",
     alignItems: "flex-end",
   },
+  btcNote: {
+    marginTop: 10,
+    alignItems: "flex-end",
+  },
+  btcNoteText: {
+    fontSize: 11,
+    color: "#6b7280",
+  },
   footerLine: {
     height: 2,
     backgroundColor: "#6b7280",
@@ -568,6 +576,12 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
             <View style={pdfStyles.totalRow}>
               <Text style={pdfStyles.totalValue}>{formatCurrency(invoiceTotal)}</Text>
             </View>
+            {invoice.btcInvoice === Evolu.sqliteTrue ? (
+              <View style={pdfStyles.btcNote}>
+                <Text style={pdfStyles.btcNoteText}>Platbu je možné provést v BTC na adresu</Text>
+                <Text style={pdfStyles.btcNoteText}>{invoice.btcAddress ?? ""}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
         <View style={pdfStyles.footer}>
