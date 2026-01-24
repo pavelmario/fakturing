@@ -211,6 +211,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const clientsQuery = useMemo(
@@ -286,6 +287,42 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
   const selectedClient =
     clients.find((client) => client.name === (invoice?.clientName ?? clientName)) ?? null;
+
+  const latestInvoiceQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("invoice")
+          .select(["invoiceNumber"])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue)
+          .orderBy("invoiceNumber", "desc")
+          .limit(1)
+      ),
+    [evolu, owner.id]
+  );
+
+  const latestInvoiceRows = useQuery(latestInvoiceQuery);
+  const latestInvoiceNumber = latestInvoiceRows[0]?.invoiceNumber ?? "";
+
+  const getNextInvoiceNumber = (latest: string) => {
+    if (!latest) {
+      const year = new Date().getFullYear();
+      return `${year}-0001`;
+    }
+
+    const parts = latest.split("-");
+    const lastPart = parts[parts.length - 1];
+    const parsed = Number.parseInt(lastPart, 10);
+    if (!Number.isNaN(parsed)) {
+      const prefix = parts.slice(0, -1).join("-");
+      const padded = String(parsed + 1).padStart(lastPart.length, "0");
+      return prefix ? `${prefix}-${padded}` : padded;
+    }
+
+    return `${latest}-1`;
+  };
 
   const normalizedItems = items
     .map((item) => ({
@@ -626,6 +663,50 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     }
   };
 
+  const handleDuplicate = async () => {
+    if (!invoice) return;
+
+    setIsDuplicating(true);
+    setSaveMessage(null);
+    try {
+      const nextInvoiceNumber = getNextInvoiceNumber(latestInvoiceNumber ?? "");
+
+      const payload = {
+        invoiceNumber: nextInvoiceNumber,
+        clientName: invoice.clientName,
+        issueDate: invoice.issueDate,
+        paymentDate: invoice.paymentDate,
+        paymentDays: invoice.paymentDays,
+        purchaseOrderNumber: invoice.purchaseOrderNumber,
+        btcInvoice: invoice.btcInvoice,
+        btcAddress: invoice.btcAddress,
+        items: invoice.items,
+        deleted: Evolu.sqliteFalse,
+      };
+
+      const validation = evolu.insert("invoice", payload, { onlyValidate: true });
+      if (!validation.ok) {
+        console.error("Validation error:", validation.error);
+        alert("Validation error while duplicating invoice");
+        return;
+      }
+
+      const result = evolu.insert("invoice", payload);
+      if (!result.ok) {
+        console.error("Insert error:", result.error);
+        alert("Error duplicating invoice");
+        return;
+      }
+
+      setSaveMessage("Invoice duplicated successfully!");
+    } catch (error) {
+      console.error("Error duplicating invoice:", error);
+      alert("Error duplicating invoice");
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
+
   if (!invoice) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -828,7 +909,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                           value={item.description}
                           onChange={(e) => updateItem(index, "description", e.target.value)}
                           disabled={!isEditing}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                          className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
                         />
                       </div>
                       <div>
@@ -841,7 +922,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                           value={item.unit}
                           onChange={(e) => updateItem(index, "unit", e.target.value)}
                           disabled={!isEditing}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                          className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
                         />
                       </div>
                     </div>
@@ -858,7 +939,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                           value={item.amount}
                           onChange={(e) => updateItem(index, "amount", e.target.value)}
                           disabled={!isEditing}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                          className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
                         />
                       </div>
                       <div>
@@ -876,7 +957,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                           value={item.unitPrice}
                           onChange={(e) => updateItem(index, "unitPrice", e.target.value)}
                           disabled={!isEditing}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                          className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
                         />
                       </div>
                     </div>
@@ -913,6 +994,17 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
             ) : null}
             {!isEditing ? (
               <>
+                <button
+                  onClick={handleDuplicate}
+                  disabled={isDuplicating}
+                  className={`w-full sm:w-auto px-6 py-3 rounded-lg font-semibold transition ${
+                    isDuplicating
+                      ? "bg-gray-300 text-gray-600"
+                      : "bg-emerald-600 text-white hover:bg-emerald-700"
+                  }`}
+                >
+                  {isDuplicating ? "Duplicating..." : "Duplicate"}
+                </button>
                 <button
                   onClick={() => setIsEditing(true)}
                   className="w-full sm:w-auto px-6 py-3 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700"
