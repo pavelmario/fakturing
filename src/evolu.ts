@@ -31,6 +31,7 @@ export const Schema = {
     addressLine2: Evolu.nullOr(Evolu.TrimmedString1000),
     companyIdentificationNumber: Evolu.nullOr(Evolu.TrimmedString100),
     vatNumber: Evolu.nullOr(Evolu.TrimmedString100),
+    vatPayer: Evolu.nullOr(Evolu.SqliteBoolean),
     bankAccount: Evolu.nullOr(Evolu.TrimmedString100),
     swift: Evolu.nullOr(Evolu.TrimmedString100),
     iban: Evolu.nullOr(Evolu.TrimmedString100),
@@ -53,6 +54,7 @@ export const Schema = {
     invoiceNumber: Evolu.NonEmptyTrimmedString100,
     clientName: Evolu.NonEmptyTrimmedString100,
     issueDate: Evolu.DateIso,
+    duzp: Evolu.nullOr(Evolu.DateIso),
     paymentDate: Evolu.nullOr(Evolu.DateIso),
     paymentDays: Evolu.NonNegativeNumber,
     purchaseOrderNumber: Evolu.nullOr(Evolu.TrimmedString100),
@@ -71,6 +73,7 @@ export type UserProfileInput = {
   addressLine2?: string;
   companyIdentificationNumber?: string;
   vatNumber?: string;
+  vatPayer?: 0 | 1 | null;
   bankAccount?: string;
   swift?: string;
   iban?: string;

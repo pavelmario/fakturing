@@ -17,6 +17,7 @@ export function SettingsPage() {
   const [addressLine2, setAddressLine2] = useState<string>("");
   const [companyIdentificationNumber, setCompanyIdentificationNumber] = useState<string>("");
   const [vatNumber, setVatNumber] = useState<string>("");
+  const [vatPayer, setVatPayer] = useState<boolean>(false);
   const [bankAccount, setBankAccount] = useState<string>("");
   const [swift, setSwift] = useState<string>("");
   const [iban, setIban] = useState<string>("");
@@ -29,6 +30,7 @@ export function SettingsPage() {
     addressLine2?: string;
     companyIdentificationNumber?: string;
     vatNumber?: string;
+    vatPayer?: boolean;
     bankAccount?: string;
     swift?: string;
     iban?: string;
@@ -176,6 +178,7 @@ export function SettingsPage() {
       addressLine2: profile.addressLine2 ?? undefined,
       companyIdentificationNumber: profile.companyIdentificationNumber ?? undefined,
       vatNumber: profile.vatNumber ?? undefined,
+      vatPayer: profile.vatPayer === Evolu.sqliteTrue,
       bankAccount: profile.bankAccount ?? undefined,
       swift: profile.swift ?? undefined,
       iban: profile.iban ?? undefined,
@@ -188,6 +191,7 @@ export function SettingsPage() {
     setAddressLine2(profile.addressLine2 ?? "");
     setCompanyIdentificationNumber(profile.companyIdentificationNumber ?? "");
     setVatNumber(profile.vatNumber ?? "");
+    setVatPayer(profile.vatPayer === Evolu.sqliteTrue);
     setBankAccount(profile.bankAccount ?? "");
     setSwift(profile.swift ?? "");
     setIban(profile.iban ?? "");
@@ -260,6 +264,7 @@ export function SettingsPage() {
         addressLine2: toNullable(addressLine2),
         companyIdentificationNumber: toNullable(companyIdentificationNumber),
         vatNumber: toNullable(vatNumber),
+        vatPayer: vatPayer ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         bankAccount: toNullable(bankAccount),
         swift: toNullable(swift),
         iban: toNullable(iban),
@@ -648,7 +653,18 @@ export function SettingsPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                  <div>
+                </div>
+                <label className="mt-3 flex items-center gap-3 text-sm font-medium text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={vatPayer}
+                    onChange={(e) => setVatPayer(e.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  VAT payer
+                </label>
+                {vatPayer && (
+                  <div className="mt-3">
                     <label htmlFor="vat" className="block text-sm font-medium text-gray-700 mb-2">
                       VAT Number
                     </label>
@@ -661,7 +677,7 @@ export function SettingsPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Banking Information */}

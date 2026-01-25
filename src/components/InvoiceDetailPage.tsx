@@ -42,6 +42,7 @@ type UserProfileRow = {
   addressLine2?: string | null;
   companyIdentificationNumber?: string | null;
   vatNumber?: string | null;
+  vatPayer?: number | null;
   bankAccount?: string | null;
   iban?: string | null;
   swift?: string | null;
@@ -245,6 +246,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [clientName, setClientName] = useState("");
   const [issueDate, setIssueDate] = useState("");
+  const [duzp, setDuzp] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentDays, setPaymentDays] = useState("14");
   const [purchaseOrderNumber, setPurchaseOrderNumber] = useState("");
@@ -414,6 +416,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
   const invoiceIssueDate = invoice?.issueDate
     ? new Date(invoice.issueDate).toLocaleDateString("cs-CZ").replace(/\s/g, "")
     : "";
+  const invoiceDuzpDate = invoice?.duzp
+    ? new Date(invoice.duzp).toLocaleDateString("cs-CZ").replace(/\s/g, "")
+    : "";
   const invoiceDueDate = (() => {
     if (!invoice?.issueDate) return "";
     const issue = new Date(invoice.issueDate);
@@ -558,6 +563,12 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                 <Text style={pdfStyles.textMuted}>Datum splatnosti</Text>
                 <Text>{invoiceDueDate}</Text>
               </View>
+              {invoiceDuzpDate ? (
+                <View style={pdfStyles.detailRow}>
+                  <Text style={pdfStyles.textMuted}>Datum zdan. plnění</Text>
+                  <Text>{invoiceDuzpDate}</Text>
+                </View>
+              ) : null}
             </View>
           </View>
         </View>
@@ -619,6 +630,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     setInvoiceNumber(source?.invoiceNumber ?? "");
     setClientName(source?.clientName ?? "");
     setIssueDate(toDateInputValue(source?.issueDate ?? ""));
+    setDuzp(toDateInputValue(source?.duzp ?? ""));
     setPaymentDate(toDateInputValue(source?.paymentDate ?? ""));
     setPaymentDays(source?.paymentDays != null ? String(source.paymentDays) : "14");
     setPurchaseOrderNumber(source?.purchaseOrderNumber ?? "");
@@ -677,6 +689,17 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
       return;
     }
 
+    let duzpValue: (typeof issueDateResult.value) | null = null;
+    if (duzp.trim()) {
+      const duzpResult = Evolu.dateToDateIso(new Date(duzp));
+      if (!duzpResult.ok) {
+        console.error("DUZP date error:", formatTypeError(duzpResult.error));
+        alert("Invalid DUZP date");
+        return;
+      }
+      duzpValue = duzpResult.value;
+    }
+
     let paymentDateValue: (typeof issueDateResult.value) | null = null;
     if (paymentDate.trim()) {
       const paymentDateResult = Evolu.dateToDateIso(new Date(paymentDate));
@@ -724,6 +747,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
         invoiceNumber: trimmedInvoiceNumber,
         clientName: clientName.trim(),
         issueDate: issueDateResult.value,
+        duzp: duzpValue,
         paymentDate: paymentDateValue,
         paymentDays: paymentDaysResult.value,
         purchaseOrderNumber: toNullable(purchaseOrderNumber),
@@ -823,6 +847,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
         invoiceNumber: nextInvoiceNumber,
         clientName: safeClientName,
         issueDate: invoice.issueDate,
+        duzp: invoice.duzp ?? null,
         paymentDate: invoice.paymentDate,
         paymentDays: invoice.paymentDays,
         purchaseOrderNumber: invoice.purchaseOrderNumber,
@@ -981,6 +1006,22 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
               />
             </div>
+
+            {profile?.vatPayer === Evolu.sqliteTrue ? (
+              <div>
+                <label htmlFor="duzp" className="block text-sm font-medium text-gray-700 mb-2">
+                  DUZP
+                </label>
+                <input
+                  id="duzp"
+                  type="date"
+                  value={duzp}
+                  onChange={(e) => setDuzp(e.target.value)}
+                  disabled={!isEditing}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                />
+              </div>
+            ) : null}
 
             <div>
               <label htmlFor="purchaseOrderNumber" className="block text-sm font-medium text-gray-700 mb-2">
