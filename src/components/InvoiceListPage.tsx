@@ -1,4 +1,4 @@
-import { use, useMemo } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { useEvolu } from "../evolu";
@@ -84,6 +84,10 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
 
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [statusFilters, setStatusFilters] = useState({ unpaid: true, overdue: true, paid: true });
+  const [typeFilters, setTypeFilters] = useState({ bitcoin: true, nonBitcoin: true });
+
   const handleMarkPayment = (invoiceId: string) => {
     const paymentDateResult = Evolu.dateToDateIso(new Date());
     if (!paymentDateResult.ok) {
@@ -127,6 +131,25 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
   );
 
   const invoices = useQuery(invoicesQuery) as readonly InvoiceRow[];
+
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    for (const invoice of invoices) {
+      const year = getYear(invoice.issueDate);
+      if (year) years.add(year);
+    }
+    return Array.from(years).sort((a, b) => b - a);
+  }, [invoices]);
+
+  useEffect(() => {
+    if (availableYears.length === 0) {
+      setSelectedYear(null);
+      return;
+    }
+    if (!selectedYear || !availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[0]);
+    }
+  }, [availableYears, selectedYear]);
 
   const profileQuery = useMemo(
     () =>
@@ -188,6 +211,26 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
     }
   );
 
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((invoice) => {
+      const status = getInvoiceStatus(invoice);
+      if (status === "paid" && !statusFilters.paid) return false;
+      if (status === "overdue" && !(statusFilters.overdue || statusFilters.unpaid)) return false;
+      if (status === "unpaid" && !statusFilters.unpaid) return false;
+
+      const isBtcInvoice = invoice.btcInvoice === Evolu.sqliteTrue;
+      if (isBtcInvoice && !typeFilters.bitcoin) return false;
+      if (!isBtcInvoice && !typeFilters.nonBitcoin) return false;
+
+      if (selectedYear) {
+        const year = getYear(invoice.issueDate);
+        if (year !== selectedYear) return false;
+      }
+
+      return true;
+    });
+  }, [invoices, selectedYear, statusFilters, typeFilters]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-4xl mx-auto px-4 py-12">
@@ -241,13 +284,87 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
             </div>
           </div>
 
-          {invoices.length === 0 ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <label className="flex flex-col gap-2 text-sm text-gray-700">
+                <span className="font-semibold text-gray-900">Year</span>
+                <select
+                  value={selectedYear ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSelectedYear(value ? Number(value) : null);
+                  }}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+                  disabled={availableYears.length === 0}
+                >
+                  {availableYears.length === 0 ? (
+                    <option value="">No years</option>
+                  ) : (
+                    availableYears.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </label>
+
+              <div className="flex flex-col gap-2 text-sm text-gray-700">
+                <span className="font-semibold text-gray-900">Status</span>
+                <div className="flex flex-wrap gap-3">
+                  {(["unpaid", "overdue", "paid"] as const).map((status) => (
+                    <label key={status} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={statusFilters[status]}
+                        onChange={(event) =>
+                          setStatusFilters((prev) => ({
+                            ...prev,
+                            [status]: event.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                      />
+                      <span className="capitalize">{status}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 text-sm text-gray-700">
+                <span className="font-semibold text-gray-900">Type</span>
+                <div className="flex flex-wrap gap-3">
+                  {([
+                    { key: "bitcoin", label: "Bitcoin" },
+                    { key: "nonBitcoin", label: "Non-bitcoin" },
+                  ] as const).map((type) => (
+                    <label key={type.key} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={typeFilters[type.key]}
+                        onChange={(event) =>
+                          setTypeFilters((prev) => ({
+                            ...prev,
+                            [type.key]: event.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                      />
+                      <span>{type.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {filteredInvoices.length === 0 ? (
             <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-6 text-center text-gray-600">
-              No invoices yet.
+              No invoices match the selected filters.
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {invoices.map((invoice) => {
+              {filteredInvoices.map((invoice) => {
                 const items = parseItems(invoice.items);
                 const firstDescription = items.find((item) => item.description?.trim())?.description ?? "—";
                 const total = items.reduce((sum, item) => {
