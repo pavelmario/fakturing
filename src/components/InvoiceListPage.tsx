@@ -335,8 +335,8 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                 <span className="font-semibold text-gray-900">Type</span>
                 <div className="flex flex-wrap gap-3">
                   {([
+                    { key: "nonBitcoin", label: "Fiat" },
                     { key: "bitcoin", label: "Bitcoin" },
-                    { key: "nonBitcoin", label: "Non-bitcoin" },
                   ] as const).map((type) => (
                     <label key={type.key} className="flex items-center gap-2">
                       <input
@@ -391,7 +391,8 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                             {invoice.invoiceNumber ?? "—"}&nbsp;
                           </div>
                           <span className={`px-2 py-1 rounded-full text-xs font-semibold uppercase ${statusStyles}`}>
-                            ({status}){isBtcInvoice ? " ₿" : ""}
+                            ({status})
+                            {isBtcInvoice && <span className="ml-1 text-[#f7931a]">₿</span>}
                           </span>
                         </div>
                         <div className="text-sm text-gray-600">{invoice.clientName ?? "—"}</div>

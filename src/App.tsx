@@ -33,17 +33,17 @@ function App() {
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-2">
           <button
             onClick={() => {
-              setPage("settings");
+              setPage("invoice-list");
               setSelectedClientId(null);
               setSelectedInvoiceId(null);
             }}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              page === "settings"
+              page === "invoice-list"
                 ? "bg-blue-600 text-white"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            Settings
+            Invoices
           </button>
           <button
             onClick={() => {
@@ -57,21 +57,21 @@ function App() {
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            Clients List
+            Clients
           </button>
           <button
             onClick={() => {
-              setPage("invoice-list");
+              setPage("settings");
               setSelectedClientId(null);
               setSelectedInvoiceId(null);
             }}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-              page === "invoice-list"
+              page === "settings"
                 ? "bg-blue-600 text-white"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            Invoices
+            Settings
           </button>
         </div>
       </div>

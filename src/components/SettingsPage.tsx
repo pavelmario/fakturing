@@ -315,7 +315,7 @@ export function SettingsPage() {
       <div className="max-w-2xl mx-auto px-4 py-12">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Invoice Manager Settings</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
           </div>
 
           {/* Relay Configuration Section */}
