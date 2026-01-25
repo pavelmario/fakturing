@@ -171,6 +171,12 @@ const pdfStyles = StyleSheet.create({
   colDesc: { width: "45%" },
   colUnitPrice: { width: "17%", textAlign: "right" },
   colTotal: { width: "18%", textAlign: "right" },
+  colDescVat: { width: "30%" },
+  colUnitPriceVat: { width: "12%", textAlign: "right" },
+  colTotalNoVat: { width: "12%", textAlign: "right" },
+  colVatPercent: { width: "8%", textAlign: "right" },
+  colVatAmount: { width: "10%", textAlign: "right" },
+  colTotalVat: { width: "8%", textAlign: "right" },
   totalRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
@@ -410,6 +416,15 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     0
   );
 
+  const invoiceTotalWithVat = normalizedItems.reduce((sum, item) => {
+    const amount = Number(item.amount) || 0;
+    const unitPrice = Number(item.unitPrice) || 0;
+    const vatPercent = Number(item.vat) || 0;
+    const lineTotal = amount * unitPrice;
+    const vatAmount = lineTotal * (vatPercent / 100);
+    return sum + lineTotal + vatAmount;
+  }, 0);
+
   const formatUiTotal = (value: number) =>
     new Intl.NumberFormat("cs-CZ", {
       style: "currency",
@@ -581,22 +596,56 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
         <View style={pdfStyles.tableHeader}>
           <Text style={[pdfStyles.colQty, pdfStyles.textMuted]}>Počet</Text>
           <Text style={[pdfStyles.colUnit, pdfStyles.textMuted]}>MJ</Text>
-          <Text style={[pdfStyles.colDesc, pdfStyles.textMuted]}>Popis</Text>
-          <Text style={[pdfStyles.colUnitPrice, pdfStyles.textMuted]}>Cena za MJ</Text>
-          <Text style={[pdfStyles.colTotal, pdfStyles.textMuted]}>Cena</Text>
+          <Text style={[showVat ? pdfStyles.colDescVat : pdfStyles.colDesc, pdfStyles.textMuted]}>
+            Popis
+          </Text>
+          <Text
+            style={[showVat ? pdfStyles.colUnitPriceVat : pdfStyles.colUnitPrice, pdfStyles.textMuted]}
+          >
+            Cena za MJ
+          </Text>
+          {showVat ? (
+            <>
+              <Text style={[pdfStyles.colTotalNoVat, pdfStyles.textMuted]}>Cena bez DPH</Text>
+              <Text style={[pdfStyles.colVatPercent, pdfStyles.textMuted]}>DPH (%)</Text>
+              <Text style={[pdfStyles.colVatAmount, pdfStyles.textMuted]}>DPH</Text>
+              <Text style={[pdfStyles.colTotalVat, pdfStyles.textMuted]}>Cena s DPH</Text>
+            </>
+          ) : (
+            <Text style={[pdfStyles.colTotal, pdfStyles.textMuted]}>Cena</Text>
+          )}
         </View>
 
         {normalizedItems.map((item, index) => {
-          const lineTotal = (Number(item.amount) || 0) * (Number(item.unitPrice) || 0);
+          const amount = Number(item.amount) || 0;
+          const unitPrice = Number(item.unitPrice) || 0;
+          const vatPercent = Number(item.vat) || 0;
+          const lineTotal = amount * unitPrice;
+          const vatAmount = lineTotal * (vatPercent / 100);
+          const lineTotalWithVat = lineTotal + vatAmount;
+
           return (
             <View style={pdfStyles.tableRow} key={`${item.description}-${index}`}>
               <Text style={pdfStyles.colQty}>
                 {item.amount ? formatNumber(Number(item.amount)) : ""}
               </Text>
               <Text style={pdfStyles.colUnit}>{item.unit}</Text>
-              <Text style={pdfStyles.colDesc}>{item.description}</Text>
-              <Text style={pdfStyles.colUnitPrice}>{formatCurrency(item.unitPrice)}</Text>
-              <Text style={pdfStyles.colTotal}>{formatCurrency(lineTotal)}</Text>
+              <Text style={showVat ? pdfStyles.colDescVat : pdfStyles.colDesc}>{item.description}</Text>
+              <Text style={showVat ? pdfStyles.colUnitPriceVat : pdfStyles.colUnitPrice}>
+                {formatCurrency(unitPrice)}
+              </Text>
+              {showVat ? (
+                <>
+                  <Text style={pdfStyles.colTotalNoVat}>{formatCurrency(lineTotal)}</Text>
+                  <Text style={pdfStyles.colVatPercent}>
+                    {vatPercent ? formatNumber(vatPercent, 2) : ""}
+                  </Text>
+                  <Text style={pdfStyles.colVatAmount}>{formatCurrency(vatAmount)}</Text>
+                  <Text style={pdfStyles.colTotalVat}>{formatCurrency(lineTotalWithVat)}</Text>
+                </>
+              ) : (
+                <Text style={pdfStyles.colTotal}>{formatCurrency(lineTotal)}</Text>
+              )}
             </View>
           );
         })}
@@ -613,7 +662,20 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           <View style={pdfStyles.totalBlock}>
             <View style={pdfStyles.footerLine} />
             <View style={pdfStyles.totalRow}>
-              <Text style={pdfStyles.totalValue}>{formatCurrency(invoiceTotal)}</Text>
+              <View style={{ alignItems: "flex-end" }}>
+                {showVat ? (
+                  <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
+                    <Text style={pdfStyles.textMuted}>{formatCurrency(invoiceTotal)}</Text>
+                    <Text style={pdfStyles.textMuted}>bez DPH</Text>
+                  </View>
+                ) : null}
+                <Text style={pdfStyles.totalValue}>
+                  {formatCurrency(showVat ? invoiceTotalWithVat : invoiceTotal)}
+                </Text>
+                {showVat ? (
+                  <Text style={pdfStyles.textMuted}>s DPH</Text>
+                ) : null}
+              </View>
             </View>
             {invoice.btcInvoice === Evolu.sqliteTrue ? (
               <View style={pdfStyles.btcNote}>
@@ -1167,7 +1229,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                             htmlFor={`item-${index}-vat`}
                             className="block text-sm font-medium text-gray-700 mb-2"
                           >
-                            VAT
+                            VAT (%)
                           </label>
                           <input
                             id={`item-${index}-vat`}
