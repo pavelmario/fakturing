@@ -241,6 +241,14 @@ const pdfStyles = StyleSheet.create({
     justifyContent: "space-between",
     color: "#6b7280",
   },
+  footerLeft: {
+    width: "50%",
+    paddingRight: 8,
+  },
+  footerRight: {
+    width: "50%",
+    textAlign: "right",
+  },
 });
 
 export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps) {
@@ -688,8 +696,12 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           </View>
         </View>
         <View style={pdfStyles.footer}>
-          <Text>{profile?.invoiceFooterText ?? ""}</Text>
-          <Text>{[profile?.email, profile?.phone].filter(Boolean).join(" | ")}</Text>
+          <View style={pdfStyles.footerLeft}>
+            <Text>{profile?.invoiceFooterText ?? ""}</Text>
+          </View>
+          <Text style={pdfStyles.footerRight}>
+            {[profile?.email, profile?.phone].filter(Boolean).join(" | ")}
+          </Text>
         </View>
       </Page>
     </Document>
