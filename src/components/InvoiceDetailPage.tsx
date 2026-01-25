@@ -15,6 +15,7 @@ type InvoiceItemForm = {
   unit: string;
   description: string;
   unitPrice: string;
+  vat: string;
 };
 
 type InvoiceNumberRow = {
@@ -55,6 +56,7 @@ const emptyItem = (): InvoiceItemForm => ({
   unit: "",
   description: "",
   unitPrice: "",
+  vat: "",
 });
 
 const parseItems = (raw: unknown): InvoiceItemForm[] => {
@@ -77,6 +79,7 @@ const parseItems = (raw: unknown): InvoiceItemForm[] => {
     unit: item?.unit ?? "",
     description: item?.description ?? "",
     unitPrice: item?.unitPrice != null ? String(item.unitPrice) : "",
+    vat: item?.vat != null ? String(item.vat) : "",
   }));
 };
 
@@ -292,6 +295,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
   const profileRows = useQuery(profileQuery) as readonly UserProfileRow[];
   const profile = profileRows[0] ?? null;
+  const showVat = profile?.vatPayer === Evolu.sqliteTrue;
 
   const invoiceQuery = useMemo(
     () =>
@@ -383,6 +387,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
       unit: item.unit.trim(),
       description: item.description.trim(),
       unitPrice: Number.isFinite(Number(item.unitPrice)) ? Number(item.unitPrice) : 0,
+      vat: Number.isFinite(Number(item.vat)) ? Number(item.vat) : 0,
     }))
     .filter((item) => item.description || item.unit || item.amount || item.unitPrice);
 
@@ -732,6 +737,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           unit: item.unit.trim(),
           description: item.description.trim(),
           unitPrice: Number.isFinite(Number(item.unitPrice)) ? Number(item.unitPrice) : 0,
+          vat: Number.isFinite(Number(item.vat)) ? Number(item.vat) : 0,
         }))
         .filter((item) => item.description || item.unit || item.amount || item.unitPrice);
 
@@ -1118,7 +1124,11 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div
+                      className={`grid grid-cols-1 gap-3 ${
+                        showVat ? "md:grid-cols-3" : "md:grid-cols-2"
+                      }`}
+                    >
                       <div>
                         <label htmlFor={`item-${index}-amount`} className="block text-sm font-medium text-gray-700 mb-2">
                           Amount
@@ -1151,6 +1161,26 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                           className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
                         />
                       </div>
+                      {showVat ? (
+                        <div>
+                          <label
+                            htmlFor={`item-${index}-vat`}
+                            className="block text-sm font-medium text-gray-700 mb-2"
+                          >
+                            VAT
+                          </label>
+                          <input
+                            id={`item-${index}-vat`}
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={item.vat}
+                            onChange={(e) => updateItem(index, "vat", e.target.value)}
+                            disabled={!isEditing}
+                            className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                          />
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="flex justify-end">
