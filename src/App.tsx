@@ -29,21 +29,25 @@ function App() {
         </div>
       }
     >
-      <div className="px-4 sm:px-6">
+      <div className="px-4 sm:px-6" style={{ paddingBottom: "24px" }}>
         <div className="mx-auto mt-4 max-w-[600px]">
           <div className="bg-white border-b border-gray-200">
-            <div className="py-3 flex items-center justify-center gap-3">
+            <div
+              className="py-3 flex items-center justify-center gap-3"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px" }}
+            >
               <button
                 onClick={() => {
                   setPage("invoice-list");
                   setSelectedClientId(null);
                   setSelectedInvoiceId(null);
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                className={`my-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
                   page === "invoice-list"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
+                style={{ marginTop: "8px", marginBottom: "8px" }}
               >
                 Invoices
               </button>
@@ -53,11 +57,12 @@ function App() {
                   setSelectedClientId(null);
                   setSelectedInvoiceId(null);
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                className={`my-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
                   page === "clients-list" || page === "client-detail"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
+                style={{ marginTop: "8px", marginBottom: "8px" }}
               >
                 Clients
               </button>
@@ -67,11 +72,12 @@ function App() {
                   setSelectedClientId(null);
                   setSelectedInvoiceId(null);
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                className={`my-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
                   page === "settings"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
+                style={{ marginTop: "8px", marginBottom: "8px" }}
               >
                 Settings
               </button>
