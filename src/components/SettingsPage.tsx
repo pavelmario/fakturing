@@ -21,6 +21,7 @@ export function SettingsPage() {
   const [bankAccount, setBankAccount] = useState<string>("");
   const [swift, setSwift] = useState<string>("");
   const [iban, setIban] = useState<string>("");
+  const [invoiceFooterText, setInvoiceFooterText] = useState<string>("");
   const [discreteMode, setDiscreteMode] = useState<boolean>(false);
   const [savedData, setSavedData] = useState<{
     name: string;
@@ -34,6 +35,7 @@ export function SettingsPage() {
     bankAccount?: string;
     swift?: string;
     iban?: string;
+    invoiceFooterText?: string;
     discreteMode?: boolean;
   } | null>(null);
   const [showMnemonicInput, setShowMnemonicInput] = useState(false);
@@ -182,6 +184,7 @@ export function SettingsPage() {
       bankAccount: profile.bankAccount ?? undefined,
       swift: profile.swift ?? undefined,
       iban: profile.iban ?? undefined,
+      invoiceFooterText: profile.invoiceFooterText ?? undefined,
       discreteMode: profile.discreteMode === Evolu.sqliteTrue,
     });
     setName(profile.name ?? "");
@@ -195,6 +198,7 @@ export function SettingsPage() {
     setBankAccount(profile.bankAccount ?? "");
     setSwift(profile.swift ?? "");
     setIban(profile.iban ?? "");
+    setInvoiceFooterText(profile.invoiceFooterText ?? "");
     setDiscreteMode(profile.discreteMode === Evolu.sqliteTrue);
     setLastSyncTime(profile.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "");
   }, [profile]);
@@ -268,6 +272,7 @@ export function SettingsPage() {
         bankAccount: toNullable(bankAccount),
         swift: toNullable(swift),
         iban: toNullable(iban),
+        invoiceFooterText: toNullable(invoiceFooterText),
         discreteMode: discreteMode ? Evolu.sqliteTrue : Evolu.sqliteFalse,
       };
 
@@ -725,6 +730,41 @@ export function SettingsPage() {
                       />
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4 mt-4">
+                <h3 className="font-semibold text-gray-700 mb-3">Invoice Footer</h3>
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <label htmlFor="invoiceFooterText" className="block text-sm font-medium text-gray-700">
+                      Invoice footer text
+                    </label>
+                  </div>
+                  <textarea
+                    id="invoiceFooterText"
+                    value={invoiceFooterText}
+                    onChange={(e) => setInvoiceFooterText(e.target.value)}
+                    placeholder="Enter footer text for invoices"
+                    rows={3}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <details className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                    <summary className="cursor-pointer text-sm font-semibold text-gray-700">
+                      Example footer texts
+                    </summary>
+                    <div className="mt-2 text-sm text-gray-600 space-y-2">
+                      <p>
+                        <span className="font-semibold">non-VAT payer:</span> Fyzická osoba zapsaná v
+                        živnostenském rejstříku.
+                      </p>
+                      <p>
+                        <span className="font-semibold">VAT payer:</span> Společnost je zapsána v
+                        obchodním rejstříku vedeném Městským soudem v Praze oddíl B, vložka
+                        012345.
+                      </p>
+                    </div>
+                  </details>
                 </div>
               </div>
             </div>

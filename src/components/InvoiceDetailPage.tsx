@@ -47,6 +47,7 @@ type UserProfileRow = {
   bankAccount?: string | null;
   iban?: string | null;
   swift?: string | null;
+  invoiceFooterText?: string | null;
 };
 
 const InvoiceId = Evolu.id("Invoice");
@@ -475,7 +476,8 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
         return;
       }
 
-      const amount = Number.isFinite(invoiceTotal) ? invoiceTotal : 0;
+      const totalForQr = showVat ? invoiceTotalWithVat : invoiceTotal;
+      const amount = Number.isFinite(totalForQr) ? totalForQr : 0;
       if (!amount || amount <= 0) {
         setQrCodeDataUrl(null);
         return;
@@ -505,7 +507,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     };
 
     buildQr();
-  }, [invoice, invoiceTotal, invoiceDueDateQr, profile?.iban, profile?.bankAccount, profile?.swift]);
+  }, [invoice, invoiceTotal, invoiceTotalWithVat, invoiceDueDateQr, profile?.iban, profile?.bankAccount, profile?.swift, showVat]);
 
   const pdfDocument = invoice ? (
     <Document>
@@ -686,7 +688,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           </View>
         </View>
         <View style={pdfStyles.footer}>
-          <Text>Fyzická osoba zapsaná v živnostenském rejstříku.</Text>
+          <Text>{profile?.invoiceFooterText ?? ""}</Text>
           <Text>{[profile?.email, profile?.phone].filter(Boolean).join(" | ")}</Text>
         </View>
       </Page>

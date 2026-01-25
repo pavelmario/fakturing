@@ -35,6 +35,7 @@ export const Schema = {
     bankAccount: Evolu.nullOr(Evolu.TrimmedString100),
     swift: Evolu.nullOr(Evolu.TrimmedString100),
     iban: Evolu.nullOr(Evolu.TrimmedString100),
+    invoiceFooterText: Evolu.nullOr(Evolu.TrimmedString1000),
     discreteMode: Evolu.nullOr(Evolu.SqliteBoolean),
   },
   client: {
@@ -77,6 +78,7 @@ export type UserProfileInput = {
   bankAccount?: string;
   swift?: string;
   iban?: string;
+  invoiceFooterText?: string;
   discreteMode?: 0 | 1 | null;
 };
 
