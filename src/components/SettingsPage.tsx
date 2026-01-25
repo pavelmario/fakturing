@@ -372,7 +372,11 @@ export function SettingsPage() {
     }
   };
 
-  const downloadCsv = (filename: string, headers: string[], rows: Array<Record<string, unknown>>) => {
+  const downloadCsv = (
+    filename: string,
+    headers: string[],
+    rows: ReadonlyArray<Record<string, unknown>>
+  ) => {
     const escapeValue = (value: unknown) => {
       if (value === null || value === undefined) return "";
       const raw = typeof value === "string" ? value : JSON.stringify(value);
@@ -422,8 +426,8 @@ export function SettingsPage() {
       "items",
     ];
 
-    downloadCsv("clients.csv", clientHeaders, clients as Array<Record<string, unknown>>);
-    downloadCsv("invoices.csv", invoiceHeaders, invoices as Array<Record<string, unknown>>);
+    downloadCsv("clients.csv", clientHeaders, clients as ReadonlyArray<Record<string, unknown>>);
+    downloadCsv("invoices.csv", invoiceHeaders, invoices as ReadonlyArray<Record<string, unknown>>);
   };
 
   return (
