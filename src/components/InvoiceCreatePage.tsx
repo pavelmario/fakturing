@@ -22,18 +22,63 @@ const emptyItem = (): InvoiceItemForm => ({
   unitPrice: "",
 });
 
+const parseBooleanParam = (value: string | null): boolean | null => {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(normalized)) return true;
+  if (["0", "false", "no", "off"].includes(normalized)) return false;
+  return null;
+};
+
+const parseItemsParam = (value: string | null): InvoiceItemForm[] | null => {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return null;
+    const normalized = parsed
+      .filter((item) => item && typeof item === "object")
+      .map((item) => ({
+        amount: item.amount === 0 || item.amount ? String(item.amount) : "",
+        unit: typeof item.unit === "string" ? item.unit : "",
+        description: typeof item.description === "string" ? item.description : "",
+        unitPrice: item.unitPrice === 0 || item.unitPrice ? String(item.unitPrice) : "",
+      }))
+      .filter((item) => item.description || item.unit || item.amount || item.unitPrice);
+    return normalized.length > 0 ? normalized : null;
+  } catch {
+    return null;
+  }
+};
+
 export function InvoiceCreatePage() {
+  const searchParams =
+    typeof window === "undefined"
+      ? new URLSearchParams("")
+      : new URLSearchParams(window.location.search);
+  const getParam = (key: string) => searchParams.get(key);
+
+  const initialInvoiceNumber = getParam("invoiceNumber") ?? getParam("number") ?? "";
+  const initialClientName = getParam("clientName") ?? getParam("client") ?? "";
+  const initialIssueDate = getParam("issueDate") ?? getParam("date") ?? "";
+  const initialPaymentDays = getParam("paymentDays") ?? "";
+  const initialPurchaseOrderNumber =
+    getParam("purchaseOrderNumber") ?? getParam("po") ?? "";
+  const initialBtcInvoice =
+    parseBooleanParam(getParam("btcInvoice") ?? getParam("bitcoin")) ?? false;
+  const initialBtcAddress = getParam("btcAddress") ?? "";
+  const initialItems = parseItemsParam(getParam("items")) ?? [emptyItem()];
+
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
 
-  const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [clientName, setClientName] = useState("");
-  const [issueDate, setIssueDate] = useState("");
-  const [paymentDays, setPaymentDays] = useState("14");
-  const [purchaseOrderNumber, setPurchaseOrderNumber] = useState("");
-  const [btcInvoice, setBtcInvoice] = useState(false);
-  const [btcAddress, setBtcAddress] = useState("");
-  const [items, setItems] = useState<InvoiceItemForm[]>([emptyItem()]);
+  const [invoiceNumber, setInvoiceNumber] = useState(initialInvoiceNumber);
+  const [clientName, setClientName] = useState(initialClientName);
+  const [issueDate, setIssueDate] = useState(initialIssueDate);
+  const [paymentDays, setPaymentDays] = useState(initialPaymentDays || "14");
+  const [purchaseOrderNumber, setPurchaseOrderNumber] = useState(initialPurchaseOrderNumber);
+  const [btcInvoice, setBtcInvoice] = useState(initialBtcInvoice);
+  const [btcAddress, setBtcAddress] = useState(initialBtcAddress);
+  const [items, setItems] = useState<InvoiceItemForm[]>(initialItems);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
