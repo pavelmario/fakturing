@@ -60,6 +60,58 @@ export function SettingsPage() {
   const profileRows = useQuery(profileQuery);
   const profile = profileRows[0] ?? null;
 
+  const clientsQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("client")
+          .select([
+            "id",
+            "name",
+            "email",
+            "phone",
+            "addressLine1",
+            "addressLine2",
+            "companyIdentificationNumber",
+            "vatNumber",
+            "note",
+          ])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue)
+          .orderBy("name", "asc")
+      ),
+    [evolu, owner.id]
+  );
+
+  const invoicesQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("invoice")
+          .select([
+            "id",
+            "invoiceNumber",
+            "clientName",
+            "issueDate",
+            "paymentDate",
+            "paymentDays",
+            "purchaseOrderNumber",
+            "btcInvoice",
+            "btcAddress",
+            "items",
+          ])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue)
+          .orderBy("invoiceNumber", "asc")
+      ),
+    [evolu, owner.id]
+  );
+
+  const clients = useQuery(clientsQuery);
+  const invoices = useQuery(invoicesQuery);
+
   useEffect(() => {
     const currentUrl = getRelayUrl();
     setRelayUrlState(currentUrl);
@@ -308,6 +360,60 @@ export function SettingsPage() {
     } finally {
       setIsReconnecting(false);
     }
+  };
+
+  const downloadCsv = (filename: string, headers: string[], rows: Array<Record<string, unknown>>) => {
+    const escapeValue = (value: unknown) => {
+      if (value === null || value === undefined) return "";
+      const raw = typeof value === "string" ? value : JSON.stringify(value);
+      const escaped = raw.replace(/"/g, '""');
+      return /[",\n]/.test(escaped) ? `"${escaped}"` : escaped;
+    };
+
+    const lines = [headers.join(",")];
+    for (const row of rows) {
+      lines.push(headers.map((key) => escapeValue(row[key])).join(","));
+    }
+
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCsv = () => {
+    const clientHeaders = [
+      "id",
+      "name",
+      "email",
+      "phone",
+      "addressLine1",
+      "addressLine2",
+      "companyIdentificationNumber",
+      "vatNumber",
+      "note",
+    ];
+
+    const invoiceHeaders = [
+      "id",
+      "invoiceNumber",
+      "clientName",
+      "issueDate",
+      "paymentDate",
+      "paymentDays",
+      "purchaseOrderNumber",
+      "btcInvoice",
+      "btcAddress",
+      "items",
+    ];
+
+    downloadCsv("clients.csv", clientHeaders, clients as Array<Record<string, unknown>>);
+    downloadCsv("invoices.csv", invoiceHeaders, invoices as Array<Record<string, unknown>>);
   };
 
   return (
@@ -632,6 +738,13 @@ export function SettingsPage() {
             }`}
           >
             {isSaving ? "Saving..." : "Save Settings"}
+          </button>
+
+          <button
+            onClick={handleExportCsv}
+            className="w-full font-semibold py-3 px-4 rounded-lg transition mb-3 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Export invoices & clients (CSV)
           </button>
 
           {/* Clear Data Button */}
