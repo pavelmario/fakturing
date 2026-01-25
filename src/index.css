@@ -28,10 +28,13 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  padding: 0 16px;
+}
+
+#root {
+  width: 100%;
 }
 
 h1 {
