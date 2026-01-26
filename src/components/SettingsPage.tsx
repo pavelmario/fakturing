@@ -903,6 +903,9 @@ export function SettingsPage() {
           )}
         </div>
       </div>
+      <p className="text-center">
+        <small>v.0.2</small>
+      </p>
     </div>
   );
 }
