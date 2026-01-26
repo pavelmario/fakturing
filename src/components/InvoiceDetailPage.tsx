@@ -1,7 +1,16 @@
 import { use, useEffect, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
-import { Document, Font, Image, Page, PDFDownloadLink, StyleSheet, Text, View } from "@react-pdf/renderer";
+import {
+  Document,
+  Font,
+  Image,
+  Page,
+  PDFDownloadLink,
+  StyleSheet,
+  Text,
+  View,
+} from "@react-pdf/renderer";
 import QRCode from "qrcode";
 import { useEvolu } from "../evolu";
 
@@ -65,14 +74,14 @@ const parseItems = (raw: unknown): InvoiceItemForm[] => {
   const source = Array.isArray(raw)
     ? raw
     : typeof raw === "string"
-    ? (() => {
-        try {
-          return JSON.parse(raw);
-        } catch {
-          return [];
-        }
-      })()
-    : [];
+      ? (() => {
+          try {
+            return JSON.parse(raw);
+          } catch {
+            return [];
+          }
+        })()
+      : [];
 
   if (!Array.isArray(source) || source.length === 0) return [emptyItem()];
   return source.map((item) => ({
@@ -222,10 +231,20 @@ const pdfStyles = StyleSheet.create({
   btcNote: {
     marginTop: 10,
     alignItems: "flex-end",
+    width: "100%",
   },
   btcNoteText: {
     fontSize: 11,
     color: "#6b7280",
+    textAlign: "right",
+    width: "100%",
+  },
+  btcNoteAddress: {
+    fontSize: 11,
+    color: "#6b7280",
+    textAlign: "right",
+    width: "100%",
+    wordBreak: "break-all",
   },
   footerLine: {
     height: 2,
@@ -251,7 +270,10 @@ const pdfStyles = StyleSheet.create({
   },
 });
 
-export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps) {
+export function InvoiceDetailPage({
+  invoiceId,
+  onBack,
+}: InvoiceDetailPageProps) {
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
   const invoiceIdValue = useMemo(() => {
@@ -287,9 +309,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
-          .orderBy("name", "asc")
+          .orderBy("name", "asc"),
       ),
-    [evolu, owner.id]
+    [evolu, owner.id],
   );
 
   const clients = useQuery(clientsQuery) as readonly ClientRow[];
@@ -303,9 +325,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .orderBy("updatedAt", "desc")
-          .limit(1)
+          .limit(1),
       ),
-    [evolu, owner.id]
+    [evolu, owner.id],
   );
 
   const profileRows = useQuery(profileQuery) as readonly UserProfileRow[];
@@ -322,9 +344,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
-          .limit(1)
+          .limit(1),
       ),
-    [evolu, invoiceIdValue, owner.id]
+    [evolu, invoiceIdValue, owner.id],
   );
 
   const invoiceRows = useQuery(invoiceQuery);
@@ -341,21 +363,26 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           .select(["id", "invoiceNumber"])
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
-          .where("deleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue),
       ),
-    [evolu, owner.id]
+    [evolu, owner.id],
   );
 
-  const duplicateInvoices = useQuery(duplicateInvoiceQuery) as readonly InvoiceNumberRow[];
+  const duplicateInvoices = useQuery(
+    duplicateInvoiceQuery,
+  ) as readonly InvoiceNumberRow[];
   const hasDuplicateInvoiceNumber = Boolean(
     trimmedInvoiceNumber &&
-      duplicateInvoices.some((row) => row.id !== invoice?.id && row.invoiceNumber === trimmedInvoiceNumber)
+    duplicateInvoices.some(
+      (row) =>
+        row.id !== invoice?.id && row.invoiceNumber === trimmedInvoiceNumber,
+    ),
   );
 
   const selectedClient =
     clients.find(
       (client) =>
-        client.name && client.name === (invoice?.clientName ?? clientName)
+        client.name && client.name === (invoice?.clientName ?? clientName),
     ) ?? null;
   const displayClientName =
     (selectedClient?.name ?? invoice?.clientName ?? clientName) || "—";
@@ -370,9 +397,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
           .orderBy("invoiceNumber", "desc")
-          .limit(1)
+          .limit(1),
       ),
-    [evolu, owner.id]
+    [evolu, owner.id],
   );
 
   const latestInvoiceRows = useQuery(latestInvoiceQuery);
@@ -401,10 +428,14 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
       amount: Number.isFinite(Number(item.amount)) ? Number(item.amount) : 0,
       unit: item.unit.trim(),
       description: item.description.trim(),
-      unitPrice: Number.isFinite(Number(item.unitPrice)) ? Number(item.unitPrice) : 0,
+      unitPrice: Number.isFinite(Number(item.unitPrice))
+        ? Number(item.unitPrice)
+        : 0,
       vat: Number.isFinite(Number(item.vat)) ? Number(item.vat) : 0,
     }))
-    .filter((item) => item.description || item.unit || item.amount || item.unitPrice);
+    .filter(
+      (item) => item.description || item.unit || item.amount || item.unitPrice,
+    );
 
   const formatNumber = (value: number, maxFraction = 2) =>
     new Intl.NumberFormat("cs-CZ", {
@@ -421,8 +452,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     }).format(value);
 
   const invoiceTotal = normalizedItems.reduce(
-    (sum, item) => sum + (Number(item.amount) || 0) * (Number(item.unitPrice) || 0),
-    0
+    (sum, item) =>
+      sum + (Number(item.amount) || 0) * (Number(item.unitPrice) || 0),
+    0,
   );
 
   const invoiceTotalWithVat = normalizedItems.reduce((sum, item) => {
@@ -478,7 +510,11 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
         return;
       }
 
-      const ibanCandidate = (profile?.iban ?? profile?.bankAccount ?? "").replace(/\s/g, "");
+      const ibanCandidate = (
+        profile?.iban ??
+        profile?.bankAccount ??
+        ""
+      ).replace(/\s/g, "");
       if (!ibanCandidate) {
         setQrCodeDataUrl(null);
         return;
@@ -492,8 +528,12 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
       }
 
       const variableSymbol = sanitizedInvoiceNumber;
-      const formattedAmount = Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
-      const accountValue = profile?.swift ? `${ibanCandidate}+${profile.swift}` : ibanCandidate;
+      const formattedAmount = Number.isInteger(amount)
+        ? String(amount)
+        : amount.toFixed(2);
+      const accountValue = profile?.swift
+        ? `${ibanCandidate}+${profile.swift}`
+        : ibanCandidate;
       const parts = [
         "SPD*1.0",
         `ACC:${accountValue}`,
@@ -506,7 +546,10 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
       ].filter((value) => value !== undefined);
 
       try {
-        const dataUrl = await QRCode.toDataURL(parts.join("*"), { margin: 0, width: 256 });
+        const dataUrl = await QRCode.toDataURL(parts.join("*"), {
+          margin: 0,
+          width: 256,
+        });
         setQrCodeDataUrl(dataUrl);
       } catch (error) {
         console.error("Failed to generate QR code:", error);
@@ -515,14 +558,25 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     };
 
     buildQr();
-  }, [invoice, invoiceTotal, invoiceTotalWithVat, invoiceDueDateQr, profile?.iban, profile?.bankAccount, profile?.swift, showVat]);
+  }, [
+    invoice,
+    invoiceTotal,
+    invoiceTotalWithVat,
+    invoiceDueDateQr,
+    profile?.iban,
+    profile?.bankAccount,
+    profile?.swift,
+    showVat,
+  ]);
 
   const pdfDocument = invoice ? (
     <Document>
       <Page size="A4" style={pdfStyles.page}>
         <View style={pdfStyles.headerRow}>
           <Text />
-          <Text style={pdfStyles.headerTitle}>{`Faktura ${invoiceNumberValue || "—"}`}</Text>
+          <Text
+            style={pdfStyles.headerTitle}
+          >{`Faktura ${invoiceNumberValue || "—"}`}</Text>
         </View>
         <View style={pdfStyles.headerLine} />
 
@@ -530,8 +584,12 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           <View style={pdfStyles.column}>
             <Text style={pdfStyles.label}>Dodavatel</Text>
             <Text style={pdfStyles.textBold}>{profile?.name ?? ""}</Text>
-            <Text style={pdfStyles.textMuted}>{profile?.addressLine1 ?? ""}</Text>
-            <Text style={pdfStyles.textMuted}>{profile?.addressLine2 ?? ""}</Text>
+            <Text style={pdfStyles.textMuted}>
+              {profile?.addressLine1 ?? ""}
+            </Text>
+            <Text style={pdfStyles.textMuted}>
+              {profile?.addressLine2 ?? ""}
+            </Text>
             <View style={{ marginTop: 6 }}>
               <View style={pdfStyles.detailRow}>
                 <Text style={pdfStyles.textMuted}>IČO</Text>
@@ -549,8 +607,12 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           <View style={pdfStyles.column}>
             <Text style={pdfStyles.label}>Odběratel</Text>
             <Text style={pdfStyles.textBold}>{displayClientName}</Text>
-            <Text style={pdfStyles.textMuted}>{selectedClient?.addressLine1 ?? ""}</Text>
-            <Text style={pdfStyles.textMuted}>{selectedClient?.addressLine2 ?? ""}</Text>
+            <Text style={pdfStyles.textMuted}>
+              {selectedClient?.addressLine1 ?? ""}
+            </Text>
+            <Text style={pdfStyles.textMuted}>
+              {selectedClient?.addressLine2 ?? ""}
+            </Text>
             <View style={{ marginTop: 6 }}>
               {selectedClient?.companyIdentificationNumber ? (
                 <View style={pdfStyles.detailRow}>
@@ -571,7 +633,7 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
         <View style={{ marginTop: 18 }}>
           <View style={pdfStyles.columns}>
             <View style={pdfStyles.column}>
-               <View style={pdfStyles.detailRow}>
+              <View style={pdfStyles.detailRow}>
                 <Text style={pdfStyles.textMuted}>Bankovní účet</Text>
                 <Text>{profile?.bankAccount ?? ""}</Text>
               </View>
@@ -606,20 +668,36 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
         <View style={pdfStyles.tableHeader}>
           <Text style={[pdfStyles.colQty, pdfStyles.textMuted]}>Počet</Text>
           <Text style={[pdfStyles.colUnit, pdfStyles.textMuted]}>MJ</Text>
-          <Text style={[showVat ? pdfStyles.colDescVat : pdfStyles.colDesc, pdfStyles.textMuted]}>
+          <Text
+            style={[
+              showVat ? pdfStyles.colDescVat : pdfStyles.colDesc,
+              pdfStyles.textMuted,
+            ]}
+          >
             Popis
           </Text>
           <Text
-            style={[showVat ? pdfStyles.colUnitPriceVat : pdfStyles.colUnitPrice, pdfStyles.textMuted]}
+            style={[
+              showVat ? pdfStyles.colUnitPriceVat : pdfStyles.colUnitPrice,
+              pdfStyles.textMuted,
+            ]}
           >
             Cena za MJ
           </Text>
           {showVat ? (
             <>
-              <Text style={[pdfStyles.colTotalNoVat, pdfStyles.textMuted]}>Cena bez DPH</Text>
-              <Text style={[pdfStyles.colVatPercent, pdfStyles.textMuted]}>DPH (%)</Text>
-              <Text style={[pdfStyles.colVatAmount, pdfStyles.textMuted]}>DPH</Text>
-              <Text style={[pdfStyles.colTotalVat, pdfStyles.textMuted]}>Cena s DPH</Text>
+              <Text style={[pdfStyles.colTotalNoVat, pdfStyles.textMuted]}>
+                Cena bez DPH
+              </Text>
+              <Text style={[pdfStyles.colVatPercent, pdfStyles.textMuted]}>
+                DPH (%)
+              </Text>
+              <Text style={[pdfStyles.colVatAmount, pdfStyles.textMuted]}>
+                DPH
+              </Text>
+              <Text style={[pdfStyles.colTotalVat, pdfStyles.textMuted]}>
+                Cena s DPH
+              </Text>
             </>
           ) : (
             <Text style={[pdfStyles.colTotal, pdfStyles.textMuted]}>Cena</Text>
@@ -635,26 +713,43 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
           const lineTotalWithVat = lineTotal + vatAmount;
 
           return (
-            <View style={pdfStyles.tableRow} key={`${item.description}-${index}`}>
+            <View
+              style={pdfStyles.tableRow}
+              key={`${item.description}-${index}`}
+            >
               <Text style={pdfStyles.colQty}>
                 {item.amount ? formatNumber(Number(item.amount)) : ""}
               </Text>
               <Text style={pdfStyles.colUnit}>{item.unit}</Text>
-              <Text style={showVat ? pdfStyles.colDescVat : pdfStyles.colDesc}>{item.description}</Text>
-              <Text style={showVat ? pdfStyles.colUnitPriceVat : pdfStyles.colUnitPrice}>
+              <Text style={showVat ? pdfStyles.colDescVat : pdfStyles.colDesc}>
+                {item.description}
+              </Text>
+              <Text
+                style={
+                  showVat ? pdfStyles.colUnitPriceVat : pdfStyles.colUnitPrice
+                }
+              >
                 {formatCurrency(unitPrice)}
               </Text>
               {showVat ? (
                 <>
-                  <Text style={pdfStyles.colTotalNoVat}>{formatCurrency(lineTotal)}</Text>
+                  <Text style={pdfStyles.colTotalNoVat}>
+                    {formatCurrency(lineTotal)}
+                  </Text>
                   <Text style={pdfStyles.colVatPercent}>
                     {vatPercent ? formatNumber(vatPercent, 2) : ""}
                   </Text>
-                  <Text style={pdfStyles.colVatAmount}>{formatCurrency(vatAmount)}</Text>
-                  <Text style={pdfStyles.colTotalVat}>{formatCurrency(lineTotalWithVat)}</Text>
+                  <Text style={pdfStyles.colVatAmount}>
+                    {formatCurrency(vatAmount)}
+                  </Text>
+                  <Text style={pdfStyles.colTotalVat}>
+                    {formatCurrency(lineTotalWithVat)}
+                  </Text>
                 </>
               ) : (
-                <Text style={pdfStyles.colTotal}>{formatCurrency(lineTotal)}</Text>
+                <Text style={pdfStyles.colTotal}>
+                  {formatCurrency(lineTotal)}
+                </Text>
               )}
             </View>
           );
@@ -674,8 +769,17 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
             <View style={pdfStyles.totalRow}>
               <View style={{ alignItems: "flex-end" }}>
                 {showVat ? (
-                  <View style={{ flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
-                    <Text style={pdfStyles.textMuted}>{formatCurrency(invoiceTotal)}</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "baseline",
+                      gap: 6,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <Text style={pdfStyles.textMuted}>
+                      {formatCurrency(invoiceTotal)}
+                    </Text>
                     <Text style={pdfStyles.textMuted}>bez DPH</Text>
                   </View>
                 ) : null}
@@ -687,14 +791,21 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                 ) : null}
               </View>
             </View>
-            {invoice.btcInvoice === Evolu.sqliteTrue ? (
-              <View style={pdfStyles.btcNote}>
-                <Text style={pdfStyles.btcNoteText}>Platbu je možné provést v BTC na adresu</Text>
-                <Text style={pdfStyles.btcNoteText}>{invoice.btcAddress ?? ""}</Text>
-              </View>
-            ) : null}
           </View>
         </View>
+        {invoice.btcInvoice === Evolu.sqliteTrue ? (
+          <View style={pdfStyles.btcNote}>
+            <Text style={pdfStyles.btcNoteText}>
+              Platbu je možné provést v BTC na adresu
+            </Text>
+            <Text
+              style={pdfStyles.btcNoteAddress}
+              hyphenationCallback={(word) => [word]}
+            >
+              {invoice.btcAddress ?? ""}
+            </Text>
+          </View>
+        ) : null}
         <View style={pdfStyles.footer}>
           <View style={pdfStyles.footerLeft}>
             <Text>{profile?.invoiceFooterText ?? ""}</Text>
@@ -713,7 +824,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     setIssueDate(toDateInputValue(source?.issueDate ?? ""));
     setDuzp(toDateInputValue(source?.duzp ?? ""));
     setPaymentDate(toDateInputValue(source?.paymentDate ?? ""));
-    setPaymentDays(source?.paymentDays != null ? String(source.paymentDays) : "14");
+    setPaymentDays(
+      source?.paymentDays != null ? String(source.paymentDays) : "14",
+    );
     setPurchaseOrderNumber(source?.purchaseOrderNumber ?? "");
     setBtcInvoice(source?.btcInvoice === Evolu.sqliteTrue);
     setBtcAddress(source?.btcAddress ?? "");
@@ -731,14 +844,24 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     return trimmed ? trimmed : null;
   };
 
-  const updateItem = (index: number, field: keyof InvoiceItemForm, value: string) => {
-    setItems((prev) => prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item)));
+  const updateItem = (
+    index: number,
+    field: keyof InvoiceItemForm,
+    value: string,
+  ) => {
+    setItems((prev) =>
+      prev.map((item, idx) =>
+        idx === index ? { ...item, [field]: value } : item,
+      ),
+    );
   };
 
   const addItem = () => setItems((prev) => [...prev, emptyItem()]);
 
   const removeItem = (index: number) => {
-    setItems((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)));
+    setItems((prev) =>
+      prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index),
+    );
   };
 
   const handleSave = async () => {
@@ -765,12 +888,15 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     const formatTypeError = Evolu.createFormatTypeError();
     const issueDateResult = Evolu.dateToDateIso(new Date(issueDate));
     if (!issueDateResult.ok) {
-      console.error("Issue date error:", formatTypeError(issueDateResult.error));
+      console.error(
+        "Issue date error:",
+        formatTypeError(issueDateResult.error),
+      );
       alert("Invalid issue date");
       return;
     }
 
-    let duzpValue: (typeof issueDateResult.value) | null = null;
+    let duzpValue: typeof issueDateResult.value | null = null;
     if (duzp.trim()) {
       const duzpResult = Evolu.dateToDateIso(new Date(duzp));
       if (!duzpResult.ok) {
@@ -781,11 +907,14 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
       duzpValue = duzpResult.value;
     }
 
-    let paymentDateValue: (typeof issueDateResult.value) | null = null;
+    let paymentDateValue: typeof issueDateResult.value | null = null;
     if (paymentDate.trim()) {
       const paymentDateResult = Evolu.dateToDateIso(new Date(paymentDate));
       if (!paymentDateResult.ok) {
-        console.error("Payment date error:", formatTypeError(paymentDateResult.error));
+        console.error(
+          "Payment date error:",
+          formatTypeError(paymentDateResult.error),
+        );
         alert("Invalid payment date");
         return;
       }
@@ -794,13 +923,18 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
     const paymentDaysResult = Evolu.NonNegativeNumber.from(paymentDaysNumber);
     if (!paymentDaysResult.ok) {
-      console.error("Payment days error:", formatTypeError(paymentDaysResult.error));
+      console.error(
+        "Payment days error:",
+        formatTypeError(paymentDaysResult.error),
+      );
       alert("Payment days must be a non-negative number");
       return;
     }
 
     if (hasDuplicateInvoiceNumber) {
-      const confirmed = confirm("This invoice number already exists. Update anyway?");
+      const confirmed = confirm(
+        "This invoice number already exists. Update anyway?",
+      );
       if (!confirmed) return;
     }
 
@@ -809,13 +943,20 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
     try {
       const normalizedItems = items
         .map((item) => ({
-          amount: Number.isFinite(Number(item.amount)) ? Number(item.amount) : 0,
+          amount: Number.isFinite(Number(item.amount))
+            ? Number(item.amount)
+            : 0,
           unit: item.unit.trim(),
           description: item.description.trim(),
-          unitPrice: Number.isFinite(Number(item.unitPrice)) ? Number(item.unitPrice) : 0,
+          unitPrice: Number.isFinite(Number(item.unitPrice))
+            ? Number(item.unitPrice)
+            : 0,
           vat: Number.isFinite(Number(item.vat)) ? Number(item.vat) : 0,
         }))
-        .filter((item) => item.description || item.unit || item.amount || item.unitPrice);
+        .filter(
+          (item) =>
+            item.description || item.unit || item.amount || item.unitPrice,
+        );
 
       const itemsResult = Evolu.Json.from(JSON.stringify(normalizedItems));
       if (!itemsResult.ok) {
@@ -879,7 +1020,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
   const handleDelete = async () => {
     if (!invoice?.id) return;
-    const confirmed = confirm("Delete this invoice? This action cannot be undone.");
+    const confirmed = confirm(
+      "Delete this invoice? This action cannot be undone.",
+    );
     if (!confirmed) return;
 
     setIsDeleting(true);
@@ -939,7 +1082,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
         deleted: Evolu.sqliteFalse,
       };
 
-      const validation = evolu.insert("invoice", payload, { onlyValidate: true });
+      const validation = evolu.insert("invoice", payload, {
+        onlyValidate: true,
+      });
       if (!validation.ok) {
         console.error("Validation error:", validation.error);
         alert("Validation error while duplicating invoice");
@@ -968,7 +1113,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
         <div className="max-w-3xl mx-auto px-4 py-12">
           <div className="bg-white rounded-lg shadow-lg p-8">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-3xl font-bold text-gray-900">Invoice Details</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Invoice Details
+              </h1>
               <button
                 onClick={onBack}
                 className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -990,7 +1137,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
       <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Invoice Details</h1>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Invoice Details
+            </h1>
             <button
               onClick={onBack}
               className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200"
@@ -1007,7 +1156,10 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="invoiceNumber" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="invoiceNumber"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Invoice Number *
               </label>
               <input
@@ -1021,7 +1173,10 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
             </div>
 
             <div>
-              <label htmlFor="clientName" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="clientName"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Client *
               </label>
               <select
@@ -1033,7 +1188,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
               >
                 <option value="">Select a client</option>
                 {clients
-                  .filter((client): client is { id: string; name: string } => Boolean(client.name))
+                  .filter((client): client is { id: string; name: string } =>
+                    Boolean(client.name),
+                  )
                   .map((client) => (
                     <option key={client.id} value={client.name}>
                       {client.name}
@@ -1041,13 +1198,18 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                   ))}
               </select>
               {clients.length === 0 ? (
-                <p className="text-xs text-gray-500 mt-2">No active clients available.</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  No active clients available.
+                </p>
               ) : null}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="issueDate" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="issueDate"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Issue Date *
                 </label>
                 <input
@@ -1060,7 +1222,10 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                 />
               </div>
               <div>
-                <label htmlFor="paymentDays" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="paymentDays"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Payment Days *
                 </label>
                 <input
@@ -1076,7 +1241,10 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
             </div>
 
             <div>
-              <label htmlFor="paymentDate" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="paymentDate"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Paid on
               </label>
               <input
@@ -1091,7 +1259,10 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
             {profile?.vatPayer === Evolu.sqliteTrue ? (
               <div>
-                <label htmlFor="duzp" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="duzp"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   DUZP
                 </label>
                 <input
@@ -1106,7 +1277,10 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
             ) : null}
 
             <div>
-              <label htmlFor="purchaseOrderNumber" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="purchaseOrderNumber"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Purchase Order Number
               </label>
               <input
@@ -1128,14 +1302,20 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                 disabled={!isEditing}
                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:bg-gray-50"
               />
-              <label htmlFor="btcInvoice" className="text-sm font-medium text-gray-700">
+              <label
+                htmlFor="btcInvoice"
+                className="text-sm font-medium text-gray-700"
+              >
                 Bitcoin invoice
               </label>
             </div>
 
             {btcInvoice ? (
               <div>
-                <label htmlFor="btcAddress" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="btcAddress"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   BTC address
                 </label>
                 <input
@@ -1152,13 +1332,17 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-gray-900">Invoice Items</h2>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Invoice Items
+                </h2>
                 <button
                   type="button"
                   onClick={addItem}
                   disabled={!isEditing}
                   className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
-                    !isEditing ? "bg-gray-200 text-gray-500" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    !isEditing
+                      ? "bg-gray-200 text-gray-500"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   Add Item
@@ -1167,7 +1351,10 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
 
               <div className="space-y-4">
                 {items.map((item, index) => (
-                  <div key={index} className="rounded-lg border border-gray-200 p-4 space-y-3">
+                  <div
+                    key={index}
+                    className="rounded-lg border border-gray-200 p-4 space-y-3"
+                  >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label
@@ -1180,20 +1367,27 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                           id={`item-${index}-description`}
                           type="text"
                           value={item.description}
-                          onChange={(e) => updateItem(index, "description", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(index, "description", e.target.value)
+                          }
                           disabled={!isEditing}
                           className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
                         />
                       </div>
                       <div>
-                        <label htmlFor={`item-${index}-unit`} className="block text-sm font-medium text-gray-700 mb-2">
+                        <label
+                          htmlFor={`item-${index}-unit`}
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
                           Unit
                         </label>
                         <input
                           id={`item-${index}-unit`}
                           type="text"
                           value={item.unit}
-                          onChange={(e) => updateItem(index, "unit", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(index, "unit", e.target.value)
+                          }
                           disabled={!isEditing}
                           className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
                         />
@@ -1206,7 +1400,10 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                       }`}
                     >
                       <div>
-                        <label htmlFor={`item-${index}-amount`} className="block text-sm font-medium text-gray-700 mb-2">
+                        <label
+                          htmlFor={`item-${index}-amount`}
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
                           Amount
                         </label>
                         <input
@@ -1214,7 +1411,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                           type="number"
                           min={0}
                           value={item.amount}
-                          onChange={(e) => updateItem(index, "amount", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(index, "amount", e.target.value)
+                          }
                           disabled={!isEditing}
                           className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
                         />
@@ -1232,7 +1431,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                           min={0}
                           step="0.01"
                           value={item.unitPrice}
-                          onChange={(e) => updateItem(index, "unitPrice", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(index, "unitPrice", e.target.value)
+                          }
                           disabled={!isEditing}
                           className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
                         />
@@ -1251,7 +1452,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                             min={0}
                             step="0.01"
                             value={item.vat}
-                            onChange={(e) => updateItem(index, "vat", e.target.value)}
+                            onChange={(e) =>
+                              updateItem(index, "vat", e.target.value)
+                            }
                             disabled={!isEditing}
                             className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
                           />
@@ -1291,7 +1494,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                 fileName={`invoice-${invoiceNumberValue || invoice.id}.pdf`}
                 className="w-full sm:w-auto px-6 py-3 rounded-lg font-semibold bg-gray-900 text-white hover:bg-gray-800 text-center"
               >
-                {({ loading }) => (loading ? "Preparing PDF..." : "Export to PDF")}
+                {({ loading }) =>
+                  loading ? "Preparing PDF..." : "Export to PDF"
+                }
               </PDFDownloadLink>
             ) : null}
             {!isEditing ? (
@@ -1317,7 +1522,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                   onClick={handleDelete}
                   disabled={isDeleting}
                   className={`w-full sm:w-auto px-6 py-3 rounded-lg font-semibold transition ${
-                    isDeleting ? "bg-gray-300 text-gray-600" : "bg-red-600 text-white hover:bg-red-700"
+                    isDeleting
+                      ? "bg-gray-300 text-gray-600"
+                      : "bg-red-600 text-white hover:bg-red-700"
                   }`}
                 >
                   {isDeleting ? "Deleting..." : "Delete"}
@@ -1329,7 +1536,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                   onClick={handleSave}
                   disabled={isSaving || isDeleting}
                   className={`w-full sm:w-auto px-6 py-3 rounded-lg font-semibold transition ${
-                    isSaving ? "bg-gray-300 text-gray-600" : "bg-blue-600 text-white hover:bg-blue-700"
+                    isSaving
+                      ? "bg-gray-300 text-gray-600"
+                      : "bg-blue-600 text-white hover:bg-blue-700"
                   }`}
                 >
                   {isSaving ? "Saving..." : "Save"}
@@ -1352,7 +1561,9 @@ export function InvoiceDetailPage({ invoiceId, onBack }: InvoiceDetailPageProps)
                   onClick={handleDelete}
                   disabled={isSaving || isDeleting}
                   className={`w-full sm:w-auto px-6 py-3 rounded-lg font-semibold transition ${
-                    isDeleting ? "bg-gray-300 text-gray-600" : "bg-red-600 text-white hover:bg-red-700"
+                    isDeleting
+                      ? "bg-gray-300 text-gray-600"
+                      : "bg-red-600 text-white hover:bg-red-700"
                   }`}
                 >
                   {isDeleting ? "Deleting..." : "Delete"}
