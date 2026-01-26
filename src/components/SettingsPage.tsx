@@ -15,7 +15,8 @@ export function SettingsPage() {
   const [phone, setPhone] = useState<string>("");
   const [addressLine1, setAddressLine1] = useState<string>("");
   const [addressLine2, setAddressLine2] = useState<string>("");
-  const [companyIdentificationNumber, setCompanyIdentificationNumber] = useState<string>("");
+  const [companyIdentificationNumber, setCompanyIdentificationNumber] =
+    useState<string>("");
   const [vatNumber, setVatNumber] = useState<string>("");
   const [vatPayer, setVatPayer] = useState<boolean>(false);
   const [bankAccount, setBankAccount] = useState<string>("");
@@ -40,7 +41,9 @@ export function SettingsPage() {
   } | null>(null);
   const [showMnemonicInput, setShowMnemonicInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isRelayConnected, setIsRelayConnected] = useState<boolean | null>(null);
+  const [isRelayConnected, setIsRelayConnected] = useState<boolean | null>(
+    null,
+  );
   const [lastSyncTime, setLastSyncTime] = useState<string>("");
   const [relayUrl, setRelayUrlState] = useState<string>("");
   const [connectedRelayUrl, setConnectedRelayUrl] = useState<string>("");
@@ -56,9 +59,9 @@ export function SettingsPage() {
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .orderBy("updatedAt", "desc")
-          .limit(1)
+          .limit(1),
       ),
-    [evolu, owner.id]
+    [evolu, owner.id],
   );
 
   const profileRows = useQuery(profileQuery);
@@ -83,9 +86,9 @@ export function SettingsPage() {
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
-          .orderBy("name", "asc")
+          .orderBy("name", "asc"),
       ),
-    [evolu, owner.id]
+    [evolu, owner.id],
   );
 
   const invoicesQuery = useMemo(
@@ -108,9 +111,9 @@ export function SettingsPage() {
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
-          .orderBy("invoiceNumber", "asc")
+          .orderBy("invoiceNumber", "asc"),
       ),
-    [evolu, owner.id]
+    [evolu, owner.id],
   );
 
   const clients = useQuery(clientsQuery);
@@ -178,7 +181,8 @@ export function SettingsPage() {
       phone: profile.phone ?? undefined,
       addressLine1: profile.addressLine1 ?? undefined,
       addressLine2: profile.addressLine2 ?? undefined,
-      companyIdentificationNumber: profile.companyIdentificationNumber ?? undefined,
+      companyIdentificationNumber:
+        profile.companyIdentificationNumber ?? undefined,
       vatNumber: profile.vatNumber ?? undefined,
       vatPayer: profile.vatPayer === Evolu.sqliteTrue,
       bankAccount: profile.bankAccount ?? undefined,
@@ -200,11 +204,13 @@ export function SettingsPage() {
     setIban(profile.iban ?? "");
     setInvoiceFooterText(profile.invoiceFooterText ?? "");
     setDiscreteMode(profile.discreteMode === Evolu.sqliteTrue);
-    setLastSyncTime(profile.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "");
+    setLastSyncTime(
+      profile.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "",
+    );
   }, [profile]);
   const handleGenerateMnemonic = async () => {
     const confirmed = confirm(
-      "This will reset local data and generate a new backup phrase. Continue?"
+      "This will reset local data and generate a new backup phrase. Continue?",
     );
     if (!confirmed) return;
     await evolu.resetAppOwner();
@@ -277,7 +283,10 @@ export function SettingsPage() {
       };
 
       if (profile?.id) {
-        const result = evolu.update("userProfile", { id: profile.id, ...payload });
+        const result = evolu.update("userProfile", {
+          id: profile.id,
+          ...payload,
+        });
         if (!result.ok) {
           console.error("Validation error:", result.error);
           alert("Validation error while saving settings");
@@ -305,7 +314,7 @@ export function SettingsPage() {
   const handleClearData = async () => {
     if (
       !confirm(
-        "Are you sure you want to clear all local data? This will log you out and you'll need your backup phrase to restore your data."
+        "Are you sure you want to clear all local data? This will log you out and you'll need your backup phrase to restore your data.",
       )
     ) {
       return;
@@ -375,7 +384,7 @@ export function SettingsPage() {
   const downloadCsv = (
     filename: string,
     headers: string[],
-    rows: ReadonlyArray<Record<string, unknown>>
+    rows: ReadonlyArray<Record<string, unknown>>,
   ) => {
     const escapeValue = (value: unknown) => {
       if (value === null || value === undefined) return "";
@@ -389,7 +398,9 @@ export function SettingsPage() {
       lines.push(headers.map((key) => escapeValue(row[key])).join(","));
     }
 
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([lines.join("\n")], {
+      type: "text/csv;charset=utf-8;",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -426,8 +437,16 @@ export function SettingsPage() {
       "items",
     ];
 
-    downloadCsv("clients.csv", clientHeaders, clients as ReadonlyArray<Record<string, unknown>>);
-    downloadCsv("invoices.csv", invoiceHeaders, invoices as ReadonlyArray<Record<string, unknown>>);
+    downloadCsv(
+      "clients.csv",
+      clientHeaders,
+      clients as ReadonlyArray<Record<string, unknown>>,
+    );
+    downloadCsv(
+      "invoices.csv",
+      invoiceHeaders,
+      invoices as ReadonlyArray<Record<string, unknown>>,
+    );
   };
 
   return (
@@ -440,47 +459,55 @@ export function SettingsPage() {
 
           {/* Relay Configuration Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Relay Configuration</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              Relay Configuration
+            </h2>
             <p className="text-sm text-gray-600 mb-4">
-              Configure the Evolu relay URL used for synchronization. Changing it will reconnect the app.
+              Configure the Evolu relay URL used for synchronization. Changing
+              it will reconnect the app.
             </p>
-              <div>
-                <label htmlFor="relayUrl" className="block text-sm font-medium text-gray-700 mb-2">
-                  Relay Server URL
-                </label>
-                <input
-                  id="relayUrl"
-                  type="text"
-                  value={relayUrl}
-                  onChange={(e) => setRelayUrlState(e.target.value)}
-                  placeholder="wss://your-relay-server.com"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-                />
-                 <div className="space-y-3">
-              <div
-              className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-                isRelayConnected === true
-                  ? "bg-green-100 text-green-800"
-                  : isRelayConnected === false
-                    ? "bg-red-100 text-red-800"
-                    : "bg-yellow-100 text-yellow-800"
-              }`}
-            >
-              {isRelayConnected === true
-                ? "✓ Relay connected"
-                : isRelayConnected === false
-                  ? "⚠ Relay disconnected"
-                  : "⟳ Connecting..."}
-            </div>
+            <div>
+              <label
+                htmlFor="relayUrl"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Relay Server URL
+              </label>
+              <input
+                id="relayUrl"
+                type="text"
+                value={relayUrl}
+                onChange={(e) => setRelayUrlState(e.target.value)}
+                placeholder="wss://your-relay-server.com"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+              />
+              <div className="space-y-3">
+                <div
+                  className={`px-3 py-1 rounded-full text-sm font-medium transition ${
+                    isRelayConnected === true
+                      ? "bg-green-100 text-green-800"
+                      : isRelayConnected === false
+                        ? "bg-red-100 text-red-800"
+                        : "bg-yellow-100 text-yellow-800"
+                  }`}
+                >
+                  {isRelayConnected === true
+                    ? "✓ Relay connected"
+                    : isRelayConnected === false
+                      ? "⚠ Relay disconnected"
+                      : "⟳ Connecting..."}
+                </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Current relay: {connectedRelayUrl || "Not connected"}
                 </p>
                 <p className="text-xs text-gray-500">
                   Last sync: {lastSyncTime || "Not synced yet"}
                 </p>
-                <p className="text-xs text-gray-500">Default: wss://free.evoluhq.com</p>
+                <p className="text-xs text-gray-500">
+                  Default: wss://free.evoluhq.com
+                </p>
               </div>
-              
+
               <button
                 onClick={handleSaveRelayUrl}
                 disabled={isReconnecting || !relayUrl}
@@ -490,21 +517,28 @@ export function SettingsPage() {
                     : "bg-blue-600 hover:bg-blue-700 text-white"
                 }`}
               >
-                {isReconnecting ? "Reconnecting..." : "Save Relay URL & Reconnect"}
+                {isReconnecting
+                  ? "Reconnecting..."
+                  : "Save Relay URL & Reconnect"}
               </button>
             </div>
           </div>
 
           {/* Mnemonic Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Secure Backup Phrase</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              Secure Backup Phrase
+            </h2>
             <p className="text-sm text-gray-600 mb-4">
-              Your backup phrase allows you to recover your account. Keep it safe and never share it.
+              Your backup phrase allows you to recover your account. Keep it
+              safe and never share it.
             </p>
 
             {currentMnemonic ? (
               <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
-                <p className="text-sm text-amber-800 mb-2 font-semibold">Your backup phrase:</p>
+                <p className="text-sm text-amber-800 mb-2 font-semibold">
+                  Your backup phrase:
+                </p>
                 <p className="text-gray-700 font-mono text-sm break-words bg-white p-3 rounded border border-amber-200">
                   {currentMnemonic}
                 </p>
@@ -546,10 +580,16 @@ export function SettingsPage() {
                     rows={3}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
                   />
-                  {mnemonicError && <p className="text-red-600 text-sm mt-2">{mnemonicError}</p>}
-                  {!mnemonicError && mnemonicInput && !isValidMnemonic(mnemonicInput) && (
-                    <p className="text-red-600 text-sm mt-2">Invalid backup phrase format</p>
+                  {mnemonicError && (
+                    <p className="text-red-600 text-sm mt-2">{mnemonicError}</p>
                   )}
+                  {!mnemonicError &&
+                    mnemonicInput &&
+                    !isValidMnemonic(mnemonicInput) && (
+                      <p className="text-red-600 text-sm mt-2">
+                        Invalid backup phrase format
+                      </p>
+                    )}
                   <button
                     onClick={handleRestoreFromMnemonic}
                     className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg transition"
@@ -563,12 +603,17 @@ export function SettingsPage() {
 
           {/* Profile Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Profile Information</h2>
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              Profile Information
+            </h2>
 
             <div className="space-y-4">
               {/* Name */}
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Your Name *
                 </label>
                 <input
@@ -583,10 +628,15 @@ export function SettingsPage() {
 
               {/* Contact Information */}
               <div className="border-t pt-4 mt-4">
-                <h3 className="font-semibold text-gray-700 mb-3">Contact Information</h3>
+                <h3 className="font-semibold text-gray-700 mb-3">
+                  Contact Information
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
                       E-mail
                     </label>
                     <input
@@ -599,7 +649,10 @@ export function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label
+                      htmlFor="phone"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
                       Phone
                     </label>
                     <input
@@ -618,7 +671,10 @@ export function SettingsPage() {
               <div className="border-t pt-4 mt-4">
                 <h3 className="font-semibold text-gray-700 mb-3">Address</h3>
                 <div>
-                  <label htmlFor="addressLine1" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="addressLine1"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Address Line 1
                   </label>
                   <input
@@ -631,7 +687,10 @@ export function SettingsPage() {
                   />
                 </div>
                 <div className="mt-2">
-                  <label htmlFor="addressLine2" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="addressLine2"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     Address Line 2
                   </label>
                   <input
@@ -647,17 +706,24 @@ export function SettingsPage() {
 
               {/* Company Information */}
               <div className="border-t pt-4 mt-4">
-                <h3 className="font-semibold text-gray-700 mb-3">Company Information</h3>
+                <h3 className="font-semibold text-gray-700 mb-3">
+                  Company Information
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="companyId" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label
+                      htmlFor="companyId"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
                       Company Identification Number
                     </label>
                     <input
                       id="companyId"
                       type="text"
                       value={companyIdentificationNumber}
-                      onChange={(e) => setCompanyIdentificationNumber(e.target.value)}
+                      onChange={(e) =>
+                        setCompanyIdentificationNumber(e.target.value)
+                      }
                       placeholder="Company ID"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
@@ -674,7 +740,10 @@ export function SettingsPage() {
                 </label>
                 {vatPayer && (
                   <div className="mt-3">
-                    <label htmlFor="vat" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label
+                      htmlFor="vat"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
                       VAT Number
                     </label>
                     <input
@@ -691,10 +760,15 @@ export function SettingsPage() {
 
               {/* Banking Information */}
               <div className="border-t pt-4 mt-4">
-                <h3 className="font-semibold text-gray-700 mb-3">Banking Information</h3>
+                <h3 className="font-semibold text-gray-700 mb-3">
+                  Banking Information
+                </h3>
                 <div className="space-y-3">
                   <div>
-                    <label htmlFor="bankAccount" className="block text-sm font-medium text-gray-700 mb-2">
+                    <label
+                      htmlFor="bankAccount"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
                       Bank Account
                     </label>
                     <input
@@ -708,7 +782,10 @@ export function SettingsPage() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label htmlFor="swift" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label
+                        htmlFor="swift"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
                         SWIFT
                       </label>
                       <input
@@ -721,7 +798,10 @@ export function SettingsPage() {
                       />
                     </div>
                     <div>
-                      <label htmlFor="iban" className="block text-sm font-medium text-gray-700 mb-2">
+                      <label
+                        htmlFor="iban"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
                         IBAN
                       </label>
                       <input
@@ -738,10 +818,15 @@ export function SettingsPage() {
               </div>
 
               <div className="border-t pt-4 mt-4">
-                <h3 className="font-semibold text-gray-700 mb-3">Invoice Footer</h3>
+                <h3 className="font-semibold text-gray-700 mb-3">
+                  Invoice Footer
+                </h3>
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <label htmlFor="invoiceFooterText" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="invoiceFooterText"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       Invoice footer text
                     </label>
                   </div>
@@ -759,13 +844,13 @@ export function SettingsPage() {
                     </summary>
                     <div className="mt-2 text-sm text-gray-600 space-y-2">
                       <p>
-                        <span className="font-semibold">non-VAT payer:</span> Fyzická osoba zapsaná v
-                        živnostenském rejstříku.
+                        <span className="font-semibold">- non-VAT payer:</span>{" "}
+                        Fyzická osoba zapsaná v živnostenském rejstříku.
                       </p>
                       <p>
-                        <span className="font-semibold">VAT payer:</span> Společnost je zapsána v
-                        obchodním rejstříku vedeném Městským soudem v Praze oddíl B, vložka
-                        012345.
+                        <span className="font-semibold">- VAT payer:</span>{" "}
+                        Společnost je zapsána v obchodním rejstříku vedeném
+                        Městským soudem v Praze oddíl B, vložka 012345.
                       </p>
                     </div>
                   </details>
