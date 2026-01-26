@@ -467,6 +467,16 @@ export function InvoiceDetailPage({
     return sum + lineTotal + vatAmount;
   }, 0);
 
+  // Calculate total VAT amount for all items
+  const totalVatAmount = normalizedItems.reduce((sum, item) => {
+    const amount = Number(item.amount) || 0;
+    const unitPrice = Number(item.unitPrice) || 0;
+    const vatPercent = Number(item.vat) || 0;
+    const lineTotal = amount * unitPrice;
+    const vatAmount = lineTotal * (vatPercent / 100);
+    return sum + vatAmount;
+  }, 0);
+
   const formatUiTotal = (value: number) =>
     new Intl.NumberFormat("cs-CZ", {
       style: "currency",
@@ -762,30 +772,47 @@ export function InvoiceDetailPage({
             <View />
           )}
           <View style={pdfStyles.totalBlock}>
-            <View style={pdfStyles.footerLine} />
             <View style={pdfStyles.totalRow}>
               <View style={{ alignItems: "flex-end" }}>
                 {showVat ? (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "baseline",
-                      gap: 6,
-                      marginBottom: 6,
-                    }}
-                  >
-                    <Text style={pdfStyles.textMuted}>
-                      {formatCurrency(invoiceTotal)}
-                    </Text>
-                    <Text style={pdfStyles.textMuted}>bez DPH</Text>
-                  </View>
+                  <>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "baseline",
+                        gap: 6,
+                        marginBottom: 2,
+                      }}
+                    >
+                      <Text style={pdfStyles.textMuted}>Celkem bez DPH</Text>
+                      <Text style={pdfStyles.textMuted}>
+                        {formatCurrency(invoiceTotal)}
+                      </Text>
+                    </View>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "baseline",
+                        gap: 6,
+                        marginBottom: 6,
+                      }}
+                    >
+                      <Text style={pdfStyles.textMuted}>DPH</Text>
+                      <Text style={pdfStyles.textMuted}>
+                        {formatCurrency(totalVatAmount)}
+                      </Text>
+                    </View>
+                  </>
                 ) : null}
+              </View>
+            </View>
+            <View style={pdfStyles.footerLine} />
+            <View style={pdfStyles.totalRow}>
+              <View style={{ alignItems: "flex-end" }}>
                 <Text style={pdfStyles.totalValue}>
+                  Celkem{" "}
                   {formatCurrency(showVat ? invoiceTotalWithVat : invoiceTotal)}
                 </Text>
-                {showVat ? (
-                  <Text style={pdfStyles.textMuted}>s DPH</Text>
-                ) : null}
               </View>
             </View>
           </View>
