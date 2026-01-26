@@ -40,10 +40,15 @@ const parseItemsParam = (value: string | null): InvoiceItemForm[] | null => {
       .map((item) => ({
         amount: item.amount === 0 || item.amount ? String(item.amount) : "",
         unit: typeof item.unit === "string" ? item.unit : "",
-        description: typeof item.description === "string" ? item.description : "",
-        unitPrice: item.unitPrice === 0 || item.unitPrice ? String(item.unitPrice) : "",
+        description:
+          typeof item.description === "string" ? item.description : "",
+        unitPrice:
+          item.unitPrice === 0 || item.unitPrice ? String(item.unitPrice) : "",
       }))
-      .filter((item) => item.description || item.unit || item.amount || item.unitPrice);
+      .filter(
+        (item) =>
+          item.description || item.unit || item.amount || item.unitPrice,
+      );
     return normalized.length > 0 ? normalized : null;
   } catch {
     return null;
@@ -57,7 +62,8 @@ export function InvoiceCreatePage() {
       : new URLSearchParams(window.location.search);
   const getParam = (key: string) => searchParams.get(key);
 
-  const initialInvoiceNumber = getParam("invoiceNumber") ?? getParam("number") ?? "";
+  const initialInvoiceNumber =
+    getParam("invoiceNumber") ?? getParam("number") ?? "";
   const initialClientName = getParam("clientName") ?? getParam("client") ?? "";
   const initialIssueDate = getParam("issueDate") ?? getParam("date") ?? "";
   const initialPaymentDays = getParam("paymentDays") ?? "";
@@ -75,7 +81,9 @@ export function InvoiceCreatePage() {
   const [clientName, setClientName] = useState(initialClientName);
   const [issueDate, setIssueDate] = useState(initialIssueDate);
   const [paymentDays, setPaymentDays] = useState(initialPaymentDays || "14");
-  const [purchaseOrderNumber, setPurchaseOrderNumber] = useState(initialPurchaseOrderNumber);
+  const [purchaseOrderNumber, setPurchaseOrderNumber] = useState(
+    initialPurchaseOrderNumber,
+  );
   const [btcInvoice, setBtcInvoice] = useState(initialBtcInvoice);
   const [btcAddress, setBtcAddress] = useState(initialBtcAddress);
   const [items, setItems] = useState<InvoiceItemForm[]>(initialItems);
@@ -91,18 +99,36 @@ export function InvoiceCreatePage() {
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
-          .orderBy("name", "asc")
+          .orderBy("name", "asc"),
       ),
-    [evolu, owner.id]
+    [evolu, owner.id],
   );
 
   const clients = useQuery(clientsQuery);
+
+  const profileQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("userProfile")
+          .select(["vatPayer"])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .orderBy("updatedAt", "desc")
+          .limit(1),
+      ),
+    [evolu, owner.id],
+  );
+
+  const profileRows = useQuery(profileQuery);
+  const profile = profileRows[0];
+  const isVatPayer = profile?.vatPayer === Evolu.sqliteTrue;
 
   const currentYear = new Date().getFullYear();
   const yearPrefix = `${currentYear}-`;
   const yearPrefixPattern = useMemo(
     () => Evolu.NonEmptyTrimmedString100.orThrow(`${yearPrefix}%`),
-    [yearPrefix]
+    [yearPrefix],
   );
   const latestInvoiceQuery = useMemo(
     () =>
@@ -115,9 +141,9 @@ export function InvoiceCreatePage() {
           .where("deleted", "is not", Evolu.sqliteTrue)
           .where("invoiceNumber", "like", yearPrefixPattern)
           .orderBy("invoiceNumber", "desc")
-          .limit(1)
+          .limit(1),
       ),
-    [evolu, owner.id, yearPrefixPattern]
+    [evolu, owner.id, yearPrefixPattern],
   );
 
   const latestInvoiceRows = useQuery(latestInvoiceQuery);
@@ -126,7 +152,7 @@ export function InvoiceCreatePage() {
   const trimmedInvoiceNumber = invoiceNumber.trim();
   const invoiceNumberResult = useMemo(
     () => Evolu.NonEmptyTrimmedString100.from(trimmedInvoiceNumber),
-    [trimmedInvoiceNumber]
+    [trimmedInvoiceNumber],
   );
   const safeInvoiceNumber = invoiceNumberResult.ok
     ? invoiceNumberResult.value
@@ -141,14 +167,16 @@ export function InvoiceCreatePage() {
           .where("invoiceNumber", "=", safeInvoiceNumber)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
-          .limit(1)
+          .limit(1),
       ),
-    [evolu, owner.id, safeInvoiceNumber]
+    [evolu, owner.id, safeInvoiceNumber],
   );
 
-  const duplicateInvoices = useQuery(duplicateInvoiceQuery) as readonly InvoiceNumberRow[];
+  const duplicateInvoices = useQuery(
+    duplicateInvoiceQuery,
+  ) as readonly InvoiceNumberRow[];
   const hasDuplicateInvoiceNumber = Boolean(
-    invoiceNumberResult.ok && duplicateInvoices.length > 0
+    invoiceNumberResult.ok && duplicateInvoices.length > 0,
   );
 
   useEffect(() => {
@@ -179,16 +207,24 @@ export function InvoiceCreatePage() {
     return trimmed ? trimmed : null;
   };
 
-  const updateItem = (index: number, field: keyof InvoiceItemForm, value: string) => {
+  const updateItem = (
+    index: number,
+    field: keyof InvoiceItemForm,
+    value: string,
+  ) => {
     setItems((prev) =>
-      prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
+      prev.map((item, idx) =>
+        idx === index ? { ...item, [field]: value } : item,
+      ),
     );
   };
 
   const addItem = () => setItems((prev) => [...prev, emptyItem()]);
 
   const removeItem = (index: number) => {
-    setItems((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index)));
+    setItems((prev) =>
+      prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index),
+    );
   };
 
   const handleSave = async () => {
@@ -216,20 +252,28 @@ export function InvoiceCreatePage() {
     const formatTypeError = Evolu.createFormatTypeError();
     const issueDateResult = Evolu.dateToDateIso(new Date(issueDate));
     if (!issueDateResult.ok) {
-      console.error("Issue date error:", formatTypeError(issueDateResult.error));
+      console.error(
+        "Issue date error:",
+        formatTypeError(issueDateResult.error),
+      );
       alert("Invalid issue date");
       return;
     }
 
     const paymentDaysResult = Evolu.NonNegativeNumber.from(paymentDaysNumber);
     if (!paymentDaysResult.ok) {
-      console.error("Payment days error:", formatTypeError(paymentDaysResult.error));
+      console.error(
+        "Payment days error:",
+        formatTypeError(paymentDaysResult.error),
+      );
       alert("Payment days must be a non-negative number");
       return;
     }
 
     if (hasDuplicateInvoiceNumber) {
-      const confirmed = confirm("This invoice number already exists. Save anyway?");
+      const confirmed = confirm(
+        "This invoice number already exists. Save anyway?",
+      );
       if (!confirmed) return;
     }
 
@@ -237,12 +281,19 @@ export function InvoiceCreatePage() {
     try {
       const normalizedItems = items
         .map((item) => ({
-          amount: Number.isFinite(Number(item.amount)) ? Number(item.amount) : 0,
+          amount: Number.isFinite(Number(item.amount))
+            ? Number(item.amount)
+            : 0,
           unit: item.unit.trim(),
           description: item.description.trim(),
-          unitPrice: Number.isFinite(Number(item.unitPrice)) ? Number(item.unitPrice) : 0,
+          unitPrice: Number.isFinite(Number(item.unitPrice))
+            ? Number(item.unitPrice)
+            : 0,
         }))
-        .filter((item) => item.description || item.unit || item.amount || item.unitPrice);
+        .filter(
+          (item) =>
+            item.description || item.unit || item.amount || item.unitPrice,
+        );
 
       const itemsResult = Evolu.Json.from(JSON.stringify(normalizedItems));
       if (!itemsResult.ok) {
@@ -255,6 +306,7 @@ export function InvoiceCreatePage() {
         invoiceNumber: trimmedInvoiceNumber,
         clientName: clientName.trim(),
         issueDate: issueDateResult.value,
+        duzp: isVatPayer ? issueDateResult.value : null,
         paymentDays: paymentDaysResult.value,
         purchaseOrderNumber: toNullable(purchaseOrderNumber),
         btcInvoice: btcInvoice ? Evolu.sqliteTrue : Evolu.sqliteFalse,
@@ -263,7 +315,9 @@ export function InvoiceCreatePage() {
         deleted: Evolu.sqliteFalse,
       };
 
-      const validation = evolu.insert("invoice", payload, { onlyValidate: true });
+      const validation = evolu.insert("invoice", payload, {
+        onlyValidate: true,
+      });
       if (!validation.ok) {
         console.error("Validation error:", formatTypeError(validation.error));
         console.error("Invoice payload:", payload);
@@ -300,7 +354,9 @@ export function InvoiceCreatePage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-3xl mx-auto px-4 py-12">
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">Create Invoice</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-6">
+            Create Invoice
+          </h1>
 
           {saveMessage ? (
             <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800">
@@ -310,7 +366,10 @@ export function InvoiceCreatePage() {
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="invoiceNumber" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="invoiceNumber"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Invoice Number *
               </label>
               <input
@@ -324,7 +383,10 @@ export function InvoiceCreatePage() {
             </div>
 
             <div>
-              <label htmlFor="clientName" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="clientName"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Client *
               </label>
               <select
@@ -335,13 +397,19 @@ export function InvoiceCreatePage() {
               >
                 <option value="">Select a client</option>
                 {clients.map((client) => (
-                  <option key={client.id} value={client.name ?? ""} disabled={!client.name}>
+                  <option
+                    key={client.id}
+                    value={client.name ?? ""}
+                    disabled={!client.name}
+                  >
                     {client.name ?? "Unnamed client"}
                   </option>
                 ))}
               </select>
               {clients.length === 0 ? (
-                <p className="text-xs text-gray-500 mt-2">No active clients available.</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  No active clients available.
+                </p>
               ) : null}
             </div>
 
@@ -353,14 +421,20 @@ export function InvoiceCreatePage() {
                 onChange={(e) => setBtcInvoice(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <label htmlFor="btcInvoice" className="text-sm font-medium text-gray-700">
+              <label
+                htmlFor="btcInvoice"
+                className="text-sm font-medium text-gray-700"
+              >
                 Bitcoin invoice
               </label>
             </div>
 
             {btcInvoice ? (
               <div>
-                <label htmlFor="btcAddress" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="btcAddress"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   BTC address
                 </label>
                 <input
@@ -376,7 +450,10 @@ export function InvoiceCreatePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="issueDate" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="issueDate"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Issue Date *
                 </label>
                 <input
@@ -388,7 +465,10 @@ export function InvoiceCreatePage() {
                 />
               </div>
               <div>
-                <label htmlFor="paymentDays" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="paymentDays"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Payment Days *
                 </label>
                 <input
@@ -403,7 +483,10 @@ export function InvoiceCreatePage() {
             </div>
 
             <div>
-              <label htmlFor="purchaseOrderNumber" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="purchaseOrderNumber"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Purchase Order Number
               </label>
               <input
@@ -418,7 +501,9 @@ export function InvoiceCreatePage() {
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-gray-900">Invoice Items</h2>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Invoice Items
+                </h2>
                 <button
                   type="button"
                   onClick={addItem}
@@ -430,7 +515,10 @@ export function InvoiceCreatePage() {
 
               <div className="space-y-4">
                 {items.map((item, index) => (
-                  <div key={index} className="rounded-lg border border-gray-200 p-4 space-y-3">
+                  <div
+                    key={index}
+                    className="rounded-lg border border-gray-200 p-4 space-y-3"
+                  >
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label
@@ -443,20 +531,27 @@ export function InvoiceCreatePage() {
                           id={`item-${index}-description`}
                           type="text"
                           value={item.description}
-                          onChange={(e) => updateItem(index, "description", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(index, "description", e.target.value)
+                          }
                           placeholder="Service or product"
                           className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                       </div>
                       <div>
-                        <label htmlFor={`item-${index}-unit`} className="block text-sm font-medium text-gray-700 mb-2">
+                        <label
+                          htmlFor={`item-${index}-unit`}
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
                           Unit
                         </label>
                         <input
                           id={`item-${index}-unit`}
                           type="text"
                           value={item.unit}
-                          onChange={(e) => updateItem(index, "unit", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(index, "unit", e.target.value)
+                          }
                           placeholder="hours, pcs"
                           className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
@@ -465,7 +560,10 @@ export function InvoiceCreatePage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label htmlFor={`item-${index}-amount`} className="block text-sm font-medium text-gray-700 mb-2">
+                        <label
+                          htmlFor={`item-${index}-amount`}
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
                           Amount
                         </label>
                         <input
@@ -473,12 +571,17 @@ export function InvoiceCreatePage() {
                           type="number"
                           min={0}
                           value={item.amount}
-                          onChange={(e) => updateItem(index, "amount", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(index, "amount", e.target.value)
+                          }
                           className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                       </div>
                       <div>
-                        <label htmlFor={`item-${index}-unitPrice`} className="block text-sm font-medium text-gray-700 mb-2">
+                        <label
+                          htmlFor={`item-${index}-unitPrice`}
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
                           Unit Price
                         </label>
                         <input
@@ -487,7 +590,9 @@ export function InvoiceCreatePage() {
                           min={0}
                           step="0.01"
                           value={item.unitPrice}
-                          onChange={(e) => updateItem(index, "unitPrice", e.target.value)}
+                          onChange={(e) =>
+                            updateItem(index, "unitPrice", e.target.value)
+                          }
                           className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         />
                       </div>
