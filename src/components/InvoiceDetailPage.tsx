@@ -179,14 +179,15 @@ const pdfStyles = StyleSheet.create({
   colQty: { width: "10%" },
   colUnit: { width: "10%" },
   colDesc: { width: "45%" },
-  colUnitPrice: { width: "17%", textAlign: "right" },
+  colUnitPrice: { width: "17%", textAlign: "right", marginLeft: 127 },
   colTotal: { width: "18%", textAlign: "right" },
   colDescVat: { width: "30%" },
-  colUnitPriceVat: { width: "12%", textAlign: "right" },
-  colTotalNoVat: { width: "12%", textAlign: "right" },
-  colVatPercent: { width: "8%", textAlign: "right" },
-  colVatAmount: { width: "10%", textAlign: "right" },
-  colTotalVat: { width: "8%", textAlign: "right" },
+  // Adjusted widths for VAT payer columns ("Cena za MJ", "Cena bez DPH", "DPH (%)", "Cena s DPH")
+  colUnitPriceVat: { width: "25%", textAlign: "right", marginLeft: 127 },
+  colTotalNoVat: { width: "30%", textAlign: "right" },
+  colVatPercent: { width: "20%", textAlign: "right" },
+  // colVatAmount is hidden for VAT payer
+  colTotalVat: { width: "25%", textAlign: "right" },
   totalRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
@@ -692,9 +693,7 @@ export function InvoiceDetailPage({
               <Text style={[pdfStyles.colVatPercent, pdfStyles.textMuted]}>
                 DPH (%)
               </Text>
-              <Text style={[pdfStyles.colVatAmount, pdfStyles.textMuted]}>
-                DPH
-              </Text>
+              {/* DPH column hidden for VAT payer */}
               <Text style={[pdfStyles.colTotalVat, pdfStyles.textMuted]}>
                 Cena s DPH
               </Text>
@@ -739,9 +738,7 @@ export function InvoiceDetailPage({
                   <Text style={pdfStyles.colVatPercent}>
                     {vatPercent ? formatNumber(vatPercent, 2) : ""}
                   </Text>
-                  <Text style={pdfStyles.colVatAmount}>
-                    {formatCurrency(vatAmount)}
-                  </Text>
+                  {/* DPH column hidden for VAT payer */}
                   <Text style={pdfStyles.colTotalVat}>
                     {formatCurrency(lineTotalWithVat)}
                   </Text>
