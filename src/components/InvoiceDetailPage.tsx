@@ -335,6 +335,11 @@ export function InvoiceDetailPage({
   const profile = profileRows[0] ?? null;
   const showVat = profile?.vatPayer === Evolu.sqliteTrue;
   const isPoRequired = profile?.poRequired === Evolu.sqliteTrue;
+  const mempoolBaseUrl = (profile?.mempoolUrl ?? "").trim().replace(/\/+$/, "");
+  const mempoolAddressUrl =
+    mempoolBaseUrl && btcAddress.trim()
+      ? `${mempoolBaseUrl}/address/${btcAddress.trim()}`
+      : "";
 
   const invoiceQuery = useMemo(
     () =>
@@ -1346,6 +1351,16 @@ export function InvoiceDetailPage({
                   placeholder="bc1..."
                   className="form-input disabled:bg-slate-100"
                 />
+                {mempoolAddressUrl ? (
+                  <a
+                    href={mempoolAddressUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-secondary mt-3 inline-flex w-full sm:w-auto justify-center"
+                  >
+                    Zkontrolovat Mempool
+                  </a>
+                ) : null}
               </div>
             ) : null}
 
