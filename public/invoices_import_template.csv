@@ -1,0 +1,3 @@
+id,invoiceNumber,clientName,issueDate,duzp,paymentDate,paymentDays,paymentMethod,purchaseOrderNumber,btcInvoice,btcAddress,items
+SN6ly3-v5XJnQcRI698YOA,2026-0011,Klient 1,2026-01-18T00:00:00.000Z,,,1,,,1,bc1dalalalaaaaa,"[{""amount"":3,""unit"":""ks"",""description"":""Příliš žluťoučký kůň úpěl ďábelské ódy"",""unitPrice"":300,""vat"":0},{""amount"":4,""unit"":""hod"",""description"":""Další položka"",""unitPrice"":200,""vat"":0}]"
+yvHEU4Gksj4sog1X8Cduew,2026-0027,Klient 2,2026-01-27T00:00:00.000Z,2026-01-01T00:00:00.000Z,2026-02-01T00:00:00.000Z,14,cash,obj-123,1,bc1qr07rpjswk9mrncjqkrr6830v0lv3y32rwfaswu3y32r22a2222y32rwfas,"[{""amount"":2,""unit"":""ks"",""description"":""práce nad hlavu"",""unitPrice"":50,""vat"":0}]"

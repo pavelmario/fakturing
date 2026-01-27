@@ -56,6 +56,8 @@ export function SettingsPage() {
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [mnemonicError, setMnemonicError] = useState<string>("");
   const importSettingsInputRef = useRef<HTMLInputElement | null>(null);
+  const importClientsInputRef = useRef<HTMLInputElement | null>(null);
+  const importInvoicesInputRef = useRef<HTMLInputElement | null>(null);
 
   const profileQuery = useMemo(
     () =>
@@ -404,6 +406,216 @@ export function SettingsPage() {
       } finally {
         if (importSettingsInputRef.current) {
           importSettingsInputRef.current.value = "";
+        }
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  const handleImportClientsCsv = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const text = String(reader.result ?? "");
+        const lines = text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (lines.length < 2) {
+          alert("CSV soubor neobsahuje žádná data.");
+          return;
+        }
+
+        const headers = parseCsvLine(lines[0]);
+        const dataRows = lines.slice(1).map((line) => parseCsvLine(line));
+
+        const toNullable = (value: string | undefined) => {
+          const trimmed = (value ?? "").trim();
+          return trimmed ? trimmed : null;
+        };
+
+        for (const values of dataRows) {
+          const row = headers.reduce<Record<string, string>>(
+            (acc, key, index) => {
+              acc[key] = values[index] ?? "";
+              return acc;
+            },
+            {},
+          );
+
+          const clientName = row.name?.trim();
+          if (!clientName) continue;
+
+          const payload = {
+            name: clientName,
+            email: toNullable(row.email),
+            phone: toNullable(row.phone),
+            addressLine1: toNullable(row.addressLine1),
+            addressLine2: toNullable(row.addressLine2),
+            companyIdentificationNumber: toNullable(
+              row.companyIdentificationNumber,
+            ),
+            vatNumber: toNullable(row.vatNumber),
+            note: toNullable(row.note),
+            deleted: Evolu.sqliteFalse,
+          };
+
+          const result = evolu.insert("client", payload);
+          if (!result.ok) {
+            console.error("Validation error:", result.error);
+            alert("Chyba validace při importu klientů");
+            return;
+          }
+        }
+
+        alert("Klienti byli importováni.");
+      } catch (error) {
+        console.error("CSV import error:", error);
+        alert("Nepodařilo se importovat klienty.");
+      } finally {
+        if (importClientsInputRef.current) {
+          importClientsInputRef.current.value = "";
+        }
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  const handleImportInvoicesCsv = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const text = String(reader.result ?? "");
+        const lines = text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (lines.length < 2) {
+          alert("CSV soubor neobsahuje žádná data.");
+          return;
+        }
+
+        const headers = parseCsvLine(lines[0]);
+        const dataRows = lines.slice(1).map((line) => parseCsvLine(line));
+        const formatTypeError = Evolu.createFormatTypeError();
+
+        const toNullable = (value: string | undefined) => {
+          const trimmed = (value ?? "").trim();
+          return trimmed ? trimmed : null;
+        };
+
+        for (const values of dataRows) {
+          const row = headers.reduce<Record<string, string>>(
+            (acc, key, index) => {
+              acc[key] = values[index] ?? "";
+              return acc;
+            },
+            {},
+          );
+
+          const invoiceNumber = row.invoiceNumber?.trim();
+          const clientName = row.clientName?.trim();
+          const issueDateRaw = row.issueDate?.trim();
+          if (!invoiceNumber || !clientName || !issueDateRaw) continue;
+
+          const issueDateResult = Evolu.dateToDateIso(new Date(issueDateRaw));
+          if (!issueDateResult.ok) {
+            console.error(
+              "Issue date error:",
+              formatTypeError(issueDateResult.error),
+            );
+            alert("Neplatné datum vystavení v CSV");
+            return;
+          }
+
+          const duzpValue = row.duzp?.trim();
+          const duzpResult = duzpValue
+            ? Evolu.dateToDateIso(new Date(duzpValue))
+            : null;
+          if (duzpValue && duzpResult && !duzpResult.ok) {
+            console.error("Duzp error:", formatTypeError(duzpResult.error));
+            alert("Neplatné DUZP v CSV");
+            return;
+          }
+
+          const paymentDateValue = row.paymentDate?.trim();
+          const paymentDateResult = paymentDateValue
+            ? Evolu.dateToDateIso(new Date(paymentDateValue))
+            : null;
+          if (paymentDateValue && paymentDateResult && !paymentDateResult.ok) {
+            console.error(
+              "Payment date error:",
+              formatTypeError(paymentDateResult.error),
+            );
+            alert("Neplatné datum úhrady v CSV");
+            return;
+          }
+
+          const paymentDaysNumber = Number(row.paymentDays ?? "");
+          const paymentDaysResult = Evolu.NonNegativeNumber.from(
+            Number.isFinite(paymentDaysNumber) ? paymentDaysNumber : 0,
+          );
+          if (!paymentDaysResult.ok) {
+            console.error(
+              "Payment days error:",
+              formatTypeError(paymentDaysResult.error),
+            );
+            alert("Neplatná splatnost v CSV");
+            return;
+          }
+
+          const itemsRaw = row.items?.trim() ?? "[]";
+          const itemsResult = Evolu.Json.from(itemsRaw);
+          if (!itemsResult.ok) {
+            console.error("Items error:", formatTypeError(itemsResult.error));
+            alert("Neplatné položky faktury v CSV");
+            return;
+          }
+
+          const payload = {
+            invoiceNumber,
+            clientName,
+            issueDate: issueDateResult.value,
+            duzp: duzpResult ? duzpResult.value : null,
+            paymentDate: paymentDateResult ? paymentDateResult.value : null,
+            paymentDays: paymentDaysResult.value,
+            paymentMethod: toNullable(row.paymentMethod),
+            purchaseOrderNumber: toNullable(row.purchaseOrderNumber),
+            btcInvoice: parseCsvBoolean(row.btcInvoice)
+              ? Evolu.sqliteTrue
+              : Evolu.sqliteFalse,
+            btcAddress: toNullable(row.btcAddress),
+            items: itemsResult.value,
+            deleted: Evolu.sqliteFalse,
+          };
+
+          const result = evolu.insert("invoice", payload);
+          if (!result.ok) {
+            console.error("Validation error:", result.error);
+            alert("Chyba validace při importu faktur");
+            return;
+          }
+        }
+
+        alert("Faktury byly importovány.");
+      } catch (error) {
+        console.error("CSV import error:", error);
+        alert("Nepodařilo se importovat faktury.");
+      } finally {
+        if (importInvoicesInputRef.current) {
+          importInvoicesInputRef.current.value = "";
         }
       }
     };
@@ -1050,7 +1262,7 @@ export function SettingsPage() {
                 </div>
                 <details className="panel-card mt-2">
                   <summary className="cursor-pointer text-sm font-semibold text-slate-700">
-                    Import dat
+                    Import dat (CSV)
                   </summary>
                   <div className="mt-3 flex flex-col sm:flex-row gap-2">
                     <input
@@ -1072,7 +1284,53 @@ export function SettingsPage() {
                       download
                       className="btn-ghost w-full sm:w-auto text-center"
                     >
-                      Šablona importu nastavení (CSV)
+                      Šablona importu nastavení
+                    </a>
+                  </div>
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                    <input
+                      ref={importClientsInputRef}
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={handleImportClientsCsv}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => importClientsInputRef.current?.click()}
+                      className="btn-secondary w-full sm:w-auto"
+                    >
+                      Importovat klienty
+                    </button>
+                    <a
+                      href="/clients_import_template.csv"
+                      download
+                      className="btn-ghost w-full sm:w-auto text-center"
+                    >
+                      Šablona importu klientů
+                    </a>
+                  </div>
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                    <input
+                      ref={importInvoicesInputRef}
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={handleImportInvoicesCsv}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => importInvoicesInputRef.current?.click()}
+                      className="btn-secondary w-full sm:w-auto"
+                    >
+                      Importovat faktury
+                    </button>
+                    <a
+                      href="/invoices_import_template.csv"
+                      download
+                      className="btn-ghost w-full sm:w-auto text-center"
+                    >
+                      Šablona importu faktur
                     </a>
                   </div>
                 </details>
