@@ -351,25 +351,19 @@ export function InvoiceCreatePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">
-            Create Invoice
-          </h1>
+    <div className="page-shell">
+      <div className="page-container-lg">
+        <div className="page-card-lg">
+          <div className="mb-6">
+            <p className="section-title">Create</p>
+            <h1 className="page-title">Invoice</h1>
+          </div>
 
-          {saveMessage ? (
-            <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800">
-              {saveMessage}
-            </div>
-          ) : null}
+          {saveMessage ? <div className="mb-6 alert-success">{saveMessage}</div> : null}
 
           <div className="space-y-4">
             <div>
-              <label
-                htmlFor="invoiceNumber"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label htmlFor="invoiceNumber" className="form-label">
                 Invoice Number *
               </label>
               <input
@@ -378,22 +372,19 @@ export function InvoiceCreatePage() {
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
                 placeholder="INV-2026-001"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="form-input"
               />
             </div>
 
             <div>
-              <label
-                htmlFor="clientName"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label htmlFor="clientName" className="form-label">
                 Client *
               </label>
               <select
                 id="clientName"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="form-select"
               >
                 <option value="">Select a client</option>
                 {clients.map((client) => (
@@ -407,7 +398,7 @@ export function InvoiceCreatePage() {
                 ))}
               </select>
               {clients.length === 0 ? (
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-slate-500 mt-2">
                   No active clients available.
                 </p>
               ) : null}
@@ -419,22 +410,16 @@ export function InvoiceCreatePage() {
                 type="checkbox"
                 checked={btcInvoice}
                 onChange={(e) => setBtcInvoice(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
-              <label
-                htmlFor="btcInvoice"
-                className="text-sm font-medium text-gray-700"
-              >
+              <label htmlFor="btcInvoice" className="text-sm font-medium text-slate-700">
                 Bitcoin invoice
               </label>
             </div>
 
             {btcInvoice ? (
               <div>
-                <label
-                  htmlFor="btcAddress"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
+                <label htmlFor="btcAddress" className="form-label">
                   BTC address
                 </label>
                 <input
@@ -443,17 +428,14 @@ export function InvoiceCreatePage() {
                   value={btcAddress}
                   onChange={(e) => setBtcAddress(e.target.value)}
                   placeholder="bc1..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-input"
                 />
               </div>
             ) : null}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label
-                  htmlFor="issueDate"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
+                <label htmlFor="issueDate" className="form-label">
                   Issue Date *
                 </label>
                 <input
@@ -461,14 +443,11 @@ export function InvoiceCreatePage() {
                   type="date"
                   value={issueDate}
                   onChange={(e) => setIssueDate(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-input"
                 />
               </div>
               <div>
-                <label
-                  htmlFor="paymentDays"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
+                <label htmlFor="paymentDays" className="form-label">
                   Payment Days *
                 </label>
                 <input
@@ -477,16 +456,13 @@ export function InvoiceCreatePage() {
                   min={0}
                   value={paymentDays}
                   onChange={(e) => setPaymentDays(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-input"
                 />
               </div>
             </div>
 
             <div>
-              <label
-                htmlFor="purchaseOrderNumber"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
+              <label htmlFor="purchaseOrderNumber" className="form-label">
                 Purchase Order Number
               </label>
               <input
@@ -495,35 +471,28 @@ export function InvoiceCreatePage() {
                 value={purchaseOrderNumber}
                 onChange={(e) => setPurchaseOrderNumber(e.target.value)}
                 placeholder="PO-12345"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="form-input"
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="text-lg font-semibold text-slate-900">
                   Invoice Items
                 </h2>
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200"
-                >
+                <button type="button" onClick={addItem} className="btn-secondary">
                   Add Item
                 </button>
               </div>
 
               <div className="space-y-4">
                 {items.map((item, index) => (
-                  <div
-                    key={index}
-                    className="rounded-lg border border-gray-200 p-4 space-y-3"
-                  >
+                  <div key={index} className="panel-card space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label
                           htmlFor={`item-${index}-description`}
-                          className="block text-sm font-medium text-gray-700 mb-2"
+                          className="form-label"
                         >
                           Description
                         </label>
@@ -535,13 +504,13 @@ export function InvoiceCreatePage() {
                             updateItem(index, "description", e.target.value)
                           }
                           placeholder="Service or product"
-                          className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="form-input"
                         />
                       </div>
                       <div>
                         <label
                           htmlFor={`item-${index}-unit`}
-                          className="block text-sm font-medium text-gray-700 mb-2"
+                          className="form-label"
                         >
                           Unit
                         </label>
@@ -553,7 +522,7 @@ export function InvoiceCreatePage() {
                             updateItem(index, "unit", e.target.value)
                           }
                           placeholder="hours, pcs"
-                          className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="form-input"
                         />
                       </div>
                     </div>
@@ -562,7 +531,7 @@ export function InvoiceCreatePage() {
                       <div>
                         <label
                           htmlFor={`item-${index}-amount`}
-                          className="block text-sm font-medium text-gray-700 mb-2"
+                          className="form-label"
                         >
                           Amount
                         </label>
@@ -574,13 +543,13 @@ export function InvoiceCreatePage() {
                           onChange={(e) =>
                             updateItem(index, "amount", e.target.value)
                           }
-                          className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="form-input"
                         />
                       </div>
                       <div>
                         <label
                           htmlFor={`item-${index}-unitPrice`}
-                          className="block text-sm font-medium text-gray-700 mb-2"
+                          className="form-label"
                         >
                           Unit Price
                         </label>
@@ -593,7 +562,7 @@ export function InvoiceCreatePage() {
                           onChange={(e) =>
                             updateItem(index, "unitPrice", e.target.value)
                           }
-                          className="w-[455px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="form-input"
                         />
                       </div>
                     </div>
@@ -603,11 +572,7 @@ export function InvoiceCreatePage() {
                         type="button"
                         onClick={() => removeItem(index)}
                         disabled={items.length === 1}
-                        className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
-                          items.length === 1
-                            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                            : "bg-red-600 text-white hover:bg-red-700"
-                        }`}
+                        className="btn-danger"
                       >
                         Remove
                       </button>
@@ -621,11 +586,7 @@ export function InvoiceCreatePage() {
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className={`mt-6 w-full font-semibold py-3 px-4 rounded-lg transition ${
-              isSaving
-                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700 text-white"
-            }`}
+            className="btn-primary mt-6 w-full"
           >
             {isSaving ? "Saving..." : "Save Invoice"}
           </button>

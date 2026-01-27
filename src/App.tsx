@@ -22,69 +22,52 @@ function App() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center text-gray-600">
-          Loading...
-        </div>
-      }
-    >
-      <div className="px-4 sm:px-6" style={{ paddingBottom: "24px" }}>
-        <div className="mx-auto mt-4 max-w-[600px]">
-          <div className="bg-white border-b border-gray-200">
-            <div
-              className="py-3 flex items-center justify-center gap-3"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "12px" }}
+    <Suspense fallback={<div className="app-loading">Loading...</div>}>
+      <div className="app-shell">
+        <div className="app-nav">
+          <div className="app-tabs">
+            <button
+              onClick={() => {
+                setPage("invoice-list");
+                setSelectedClientId(null);
+                setSelectedInvoiceId(null);
+              }}
+              className={`tab-button ${
+                page === "invoice-list" ? "tab-button-active" : "tab-button-inactive"
+              }`}
             >
-              <button
-                onClick={() => {
-                  setPage("invoice-list");
-                  setSelectedClientId(null);
-                  setSelectedInvoiceId(null);
-                }}
-                className={`my-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                  page === "invoice-list"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-                style={{ marginTop: "8px", marginBottom: "8px" }}
-              >
-                Invoices
-              </button>
-              <button
-                onClick={() => {
-                  setPage("clients-list");
-                  setSelectedClientId(null);
-                  setSelectedInvoiceId(null);
-                }}
-                className={`my-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                  page === "clients-list" || page === "client-detail"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-                style={{ marginTop: "8px", marginBottom: "8px" }}
-              >
-                Clients
-              </button>
-              <button
-                onClick={() => {
-                  setPage("settings");
-                  setSelectedClientId(null);
-                  setSelectedInvoiceId(null);
-                }}
-                className={`my-2 px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                  page === "settings"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-                style={{ marginTop: "8px", marginBottom: "8px" }}
-              >
-                Settings
-              </button>
-            </div>
+              Invoices
+            </button>
+            <button
+              onClick={() => {
+                setPage("clients-list");
+                setSelectedClientId(null);
+                setSelectedInvoiceId(null);
+              }}
+              className={`tab-button ${
+                page === "clients-list" || page === "client-detail"
+                  ? "tab-button-active"
+                  : "tab-button-inactive"
+              }`}
+            >
+              Clients
+            </button>
+            <button
+              onClick={() => {
+                setPage("settings");
+                setSelectedClientId(null);
+                setSelectedInvoiceId(null);
+              }}
+              className={`tab-button ${
+                page === "settings" ? "tab-button-active" : "tab-button-inactive"
+              }`}
+            >
+              Settings
+            </button>
           </div>
+        </div>
 
-          <div className="mt-6">
+        <div className="mt-6">
           {page === "settings" ? (
             <SettingsPage />
           ) : page === "clients" ? (
@@ -148,7 +131,6 @@ function App() {
               }}
             />
           )}
-          </div>
         </div>
       </div>
     </Suspense>

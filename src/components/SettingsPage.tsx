@@ -450,26 +450,27 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+    <div className="page-shell">
+      <div className="page-container">
+        <div className="page-card">
+          <div className="mb-8">
+            <p className="section-title">Preferences</p>
+            <h1 className="page-title">Settings</h1>
           </div>
 
           {/* Relay Configuration Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">
               Relay Configuration
             </h2>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-slate-600 mb-4">
               Configure the Evolu relay URL used for synchronization. Changing
               it will reconnect the app.
             </p>
             <div>
               <label
                 htmlFor="relayUrl"
-                className="block text-sm font-medium text-gray-700 mb-2"
+                className="form-label"
               >
                 Relay Server URL
               </label>
@@ -479,7 +480,7 @@ export function SettingsPage() {
                 value={relayUrl}
                 onChange={(e) => setRelayUrlState(e.target.value)}
                 placeholder="wss://your-relay-server.com"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                className="form-input font-mono text-sm"
               />
               <div className="space-y-3">
                 <div
@@ -497,13 +498,13 @@ export function SettingsPage() {
                       ? "⚠ Relay disconnected"
                       : "⟳ Connecting..."}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Current relay: {connectedRelayUrl || "Not connected"}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500">
                   Last sync: {lastSyncTime || "Not synced yet"}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500">
                   Default: wss://free.evoluhq.com
                 </p>
               </div>
@@ -511,11 +512,7 @@ export function SettingsPage() {
               <button
                 onClick={handleSaveRelayUrl}
                 disabled={isReconnecting || !relayUrl}
-                className={`w-full font-semibold py-2 px-4 rounded-lg transition ${
-                  isReconnecting || !relayUrl
-                    ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
-                }`}
+                className="btn-primary w-full"
               >
                 {isReconnecting
                   ? "Reconnecting..."
@@ -526,26 +523,23 @@ export function SettingsPage() {
 
           {/* Mnemonic Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">
               Secure Backup Phrase
             </h2>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-slate-600 mb-4">
               Your backup phrase allows you to recover your account. Keep it
               safe and never share it.
             </p>
 
             {currentMnemonic ? (
-              <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
-                <p className="text-sm text-amber-800 mb-2 font-semibold">
+              <div className="alert-warning mb-4">
+                <p className="text-sm font-semibold text-amber-900">
                   Your backup phrase:
                 </p>
-                <p className="text-gray-700 font-mono text-sm break-words bg-white p-3 rounded border border-amber-200">
+                <p className="mt-2 rounded-2xl border border-amber-200/70 bg-white/80 p-3 text-sm font-mono text-slate-700 break-words">
                   {currentMnemonic}
                 </p>
-                <button
-                  onClick={() => setShowMnemonicInput(true)}
-                  className="mt-3 text-sm text-amber-700 hover:text-amber-900 underline"
-                >
+                <button onClick={() => setShowMnemonicInput(true)} className="btn-ghost mt-3">
                   Use different phrase
                 </button>
               </div>
@@ -553,24 +547,21 @@ export function SettingsPage() {
 
             {!currentMnemonic || showMnemonicInput ? (
               <div className="space-y-4">
-                <button
-                  onClick={handleGenerateMnemonic}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition"
-                >
+                <button onClick={handleGenerateMnemonic} className="btn-primary w-full">
                   Generate New Backup Phrase
                 </button>
 
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300"></div>
+                    <div className="w-full border-t border-slate-200/70"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">or</span>
+                    <span className="px-3 py-1 rounded-full bg-white/80 text-slate-500">or</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="form-label">
                     Enter your existing backup phrase
                   </label>
                   <textarea
@@ -578,7 +569,7 @@ export function SettingsPage() {
                     onChange={handleMnemonicInput}
                     placeholder="Enter your 12 or 24 word backup phrase..."
                     rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                    className="form-textarea font-mono text-sm"
                   />
                   {mnemonicError && (
                     <p className="text-red-600 text-sm mt-2">{mnemonicError}</p>
@@ -590,10 +581,7 @@ export function SettingsPage() {
                         Invalid backup phrase format
                       </p>
                     )}
-                  <button
-                    onClick={handleRestoreFromMnemonic}
-                    className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg transition"
-                  >
+                  <button onClick={handleRestoreFromMnemonic} className="btn-success mt-3 w-full">
                     Restore from Backup Phrase
                   </button>
                 </div>
@@ -603,17 +591,14 @@ export function SettingsPage() {
 
           {/* Profile Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+            <h2 className="text-xl font-semibold text-slate-900 mb-4">
               Profile Information
             </h2>
 
             <div className="space-y-4">
               {/* Name */}
               <div>
-                <label
-                  htmlFor="name"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
+                <label htmlFor="name" className="form-label">
                   Your Name *
                 </label>
                 <input
@@ -622,21 +607,18 @@ export function SettingsPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Enter your name"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-input"
                 />
               </div>
 
               {/* Contact Information */}
-              <div className="border-t pt-4 mt-4">
-                <h3 className="font-semibold text-gray-700 mb-3">
+              <div className="border-t border-slate-200/70 pt-4 mt-4">
+                <h3 className="font-semibold text-slate-700 mb-3">
                   Contact Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label
-                      htmlFor="email"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
+                    <label htmlFor="email" className="form-label">
                       E-mail
                     </label>
                     <input
@@ -645,14 +627,11 @@ export function SettingsPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="your@email.com"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="form-input"
                     />
                   </div>
                   <div>
-                    <label
-                      htmlFor="phone"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
+                    <label htmlFor="phone" className="form-label">
                       Phone
                     </label>
                     <input
@@ -661,20 +640,17 @@ export function SettingsPage() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+1 (555) 000-0000"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="form-input"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Address */}
-              <div className="border-t pt-4 mt-4">
-                <h3 className="font-semibold text-gray-700 mb-3">Address</h3>
+              <div className="border-t border-slate-200/70 pt-4 mt-4">
+                <h3 className="font-semibold text-slate-700 mb-3">Address</h3>
                 <div>
-                  <label
-                    htmlFor="addressLine1"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
+                  <label htmlFor="addressLine1" className="form-label">
                     Address Line 1
                   </label>
                   <input
@@ -683,14 +659,11 @@ export function SettingsPage() {
                     value={addressLine1}
                     onChange={(e) => setAddressLine1(e.target.value)}
                     placeholder="Street address"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="form-input"
                   />
                 </div>
                 <div className="mt-2">
-                  <label
-                    htmlFor="addressLine2"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
+                  <label htmlFor="addressLine2" className="form-label">
                     Address Line 2
                   </label>
                   <input
@@ -699,22 +672,19 @@ export function SettingsPage() {
                     value={addressLine2}
                     onChange={(e) => setAddressLine2(e.target.value)}
                     placeholder="City, state, postal code"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="form-input"
                   />
                 </div>
               </div>
 
               {/* Company Information */}
-              <div className="border-t pt-4 mt-4">
-                <h3 className="font-semibold text-gray-700 mb-3">
+              <div className="border-t border-slate-200/70 pt-4 mt-4">
+                <h3 className="font-semibold text-slate-700 mb-3">
                   Company Information
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label
-                      htmlFor="companyId"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
+                    <label htmlFor="companyId" className="form-label">
                       Company Identification Number
                     </label>
                     <input
@@ -725,16 +695,16 @@ export function SettingsPage() {
                         setCompanyIdentificationNumber(e.target.value)
                       }
                       placeholder="Company ID"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="form-input"
                     />
                   </div>
                 </div>
-                <label className="mt-3 flex items-center gap-3 text-sm font-medium text-gray-700">
+                <label className="mt-3 flex items-center gap-3 text-sm font-medium text-slate-700">
                   <input
                     type="checkbox"
                     checked={vatPayer}
                     onChange={(e) => setVatPayer(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
                   VAT payer
                 </label>
@@ -742,7 +712,7 @@ export function SettingsPage() {
                   <div className="mt-3">
                     <label
                       htmlFor="vat"
-                      className="block text-sm font-medium text-gray-700 mb-2"
+                      className="form-label"
                     >
                       VAT Number
                     </label>
@@ -752,23 +722,20 @@ export function SettingsPage() {
                       value={vatNumber}
                       onChange={(e) => setVatNumber(e.target.value)}
                       placeholder="VAT Number"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="form-input"
                     />
                   </div>
                 )}
               </div>
 
               {/* Banking Information */}
-              <div className="border-t pt-4 mt-4">
-                <h3 className="font-semibold text-gray-700 mb-3">
+              <div className="border-t border-slate-200/70 pt-4 mt-4">
+                <h3 className="font-semibold text-slate-700 mb-3">
                   Banking Information
                 </h3>
                 <div className="space-y-3">
                   <div>
-                    <label
-                      htmlFor="bankAccount"
-                      className="block text-sm font-medium text-gray-700 mb-2"
-                    >
+                    <label htmlFor="bankAccount" className="form-label">
                       Bank Account
                     </label>
                     <input
@@ -777,15 +744,12 @@ export function SettingsPage() {
                       value={bankAccount}
                       onChange={(e) => setBankAccount(e.target.value)}
                       placeholder="Bank account number"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="form-input"
                     />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label
-                        htmlFor="swift"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
+                      <label htmlFor="swift" className="form-label">
                         SWIFT
                       </label>
                       <input
@@ -794,14 +758,11 @@ export function SettingsPage() {
                         value={swift}
                         onChange={(e) => setSwift(e.target.value)}
                         placeholder="SWIFT code"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="form-input"
                       />
                     </div>
                     <div>
-                      <label
-                        htmlFor="iban"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
+                      <label htmlFor="iban" className="form-label">
                         IBAN
                       </label>
                       <input
@@ -810,22 +771,22 @@ export function SettingsPage() {
                         value={iban}
                         onChange={(e) => setIban(e.target.value)}
                         placeholder="IBAN"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="form-input"
                       />
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t pt-4 mt-4">
-                <h3 className="font-semibold text-gray-700 mb-3">
+              <div className="border-t border-slate-200/70 pt-4 mt-4">
+                <h3 className="font-semibold text-slate-700 mb-3">
                   Invoice Footer
                 </h3>
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <label
                       htmlFor="invoiceFooterText"
-                      className="block text-sm font-medium text-gray-700"
+                      className="block text-sm font-medium text-slate-700"
                     >
                       Invoice footer text
                     </label>
@@ -836,13 +797,13 @@ export function SettingsPage() {
                     onChange={(e) => setInvoiceFooterText(e.target.value)}
                     placeholder="Enter footer text for invoices"
                     rows={3}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="form-textarea"
                   />
-                  <details className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-                    <summary className="cursor-pointer text-sm font-semibold text-gray-700">
+                  <details className="mt-3 panel-card">
+                    <summary className="cursor-pointer text-sm font-semibold text-slate-700">
                       Example footer texts
                     </summary>
-                    <div className="mt-2 text-sm text-gray-600 space-y-2">
+                    <div className="mt-2 text-sm text-slate-600 space-y-2">
                       <p>
                         <span className="font-semibold">- non-VAT payer:</span>{" "}
                         Fyzická osoba zapsaná v živnostenském rejstříku.
@@ -858,14 +819,14 @@ export function SettingsPage() {
               </div>
             </div>
 
-            <div className="border-t pt-4 mt-4">
-              <h3 className="font-semibold text-gray-700 mb-3">Preferences</h3>
-              <label className="flex items-center gap-3 text-sm font-medium text-gray-700">
+            <div className="border-t border-slate-200/70 pt-4 mt-4">
+              <h3 className="font-semibold text-slate-700 mb-3">Preferences</h3>
+              <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                 <input
                   type="checkbox"
                   checked={discreteMode}
                   onChange={(e) => setDiscreteMode(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
                 Discrete mode
               </label>
@@ -876,18 +837,14 @@ export function SettingsPage() {
           <button
             onClick={handleSave}
             disabled={isSaving || !name}
-            className={`w-full font-semibold py-3 px-4 rounded-lg transition mb-3 ${
-              isSaving || !name
-                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                : "bg-green-600 hover:bg-green-700 text-white"
-            }`}
+            className="btn-success w-full mb-3"
           >
             {isSaving ? "Saving..." : "Save Settings"}
           </button>
 
           <button
             onClick={handleExportCsv}
-            className="w-full font-semibold py-3 px-4 rounded-lg transition mb-3 bg-blue-600 hover:bg-blue-700 text-white"
+            className="btn-primary w-full mb-3"
           >
             Export invoices & clients (CSV)
           </button>
@@ -896,14 +853,14 @@ export function SettingsPage() {
           {savedData && (
             <button
               onClick={handleClearData}
-              className="w-full font-semibold py-3 px-4 rounded-lg transition bg-red-600 hover:bg-red-700 text-white"
+              className="btn-danger w-full"
             >
               Clear All Local Data
             </button>
           )}
         </div>
       </div>
-      <p className="text-center">
+      <p className="text-center text-slate-500">
         <small>v.0.3</small>
       </p>
     </div>
