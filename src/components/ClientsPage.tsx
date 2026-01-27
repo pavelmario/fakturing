@@ -67,20 +67,21 @@ export function ClientsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">Create Client</h1>
+    <div className="page-shell">
+      <div className="page-container">
+        <div className="page-card">
+          <div className="mb-6">
+            <p className="section-title">New entry</p>
+            <h1 className="page-title">Create Client</h1>
+          </div>
 
           {saveMessage ? (
-            <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800">
-              {saveMessage}
-            </div>
+            <div className="mb-6 alert-success">{saveMessage}</div>
           ) : null}
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="clientName" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="clientName" className="form-label">
                 Client Name *
               </label>
               <input
@@ -89,13 +90,13 @@ export function ClientsPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Client name"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="form-input"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="clientEmail" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="clientEmail" className="form-label">
                   Contact E-mail
                 </label>
                 <input
@@ -104,11 +105,11 @@ export function ClientsPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="client@email.com"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-input"
                 />
               </div>
               <div>
-                <label htmlFor="clientPhone" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="clientPhone" className="form-label">
                   Phone
                 </label>
                 <input
@@ -117,13 +118,13 @@ export function ClientsPage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+1 (555) 000-0000"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-input"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="clientAddress1" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="clientAddress1" className="form-label">
                 Address Line 1
               </label>
               <input
@@ -132,12 +133,12 @@ export function ClientsPage() {
                 value={addressLine1}
                 onChange={(e) => setAddressLine1(e.target.value)}
                 placeholder="Street address"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="form-input"
               />
             </div>
 
             <div>
-              <label htmlFor="clientAddress2" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="clientAddress2" className="form-label">
                 Address Line 2
               </label>
               <input
@@ -146,13 +147,13 @@ export function ClientsPage() {
                 value={addressLine2}
                 onChange={(e) => setAddressLine2(e.target.value)}
                 placeholder="City, state, postal code"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="form-input"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="clientCompanyId" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="clientCompanyId" className="form-label">
                   Company Identification Number
                 </label>
                 <input
@@ -161,11 +162,11 @@ export function ClientsPage() {
                   value={companyIdentificationNumber}
                   onChange={(e) => setCompanyIdentificationNumber(e.target.value)}
                   placeholder="Company ID"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-input"
                 />
               </div>
               <div>
-                <label htmlFor="clientVat" className="block text-sm font-medium text-gray-700 mb-2">
+                <label htmlFor="clientVat" className="form-label">
                   VAT Number
                 </label>
                 <input
@@ -174,13 +175,13 @@ export function ClientsPage() {
                   value={vatNumber}
                   onChange={(e) => setVatNumber(e.target.value)}
                   placeholder="VAT Number"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="form-input"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="clientNote" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="clientNote" className="form-label">
                 Note
               </label>
               <textarea
@@ -189,7 +190,7 @@ export function ClientsPage() {
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Additional details about the client"
                 rows={4}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="form-textarea"
               />
             </div>
           </div>
@@ -197,11 +198,7 @@ export function ClientsPage() {
           <button
             onClick={handleSave}
             disabled={isSaving || !name.trim()}
-            className={`mt-6 w-full font-semibold py-3 px-4 rounded-lg transition ${
-              isSaving || !name.trim()
-                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700 text-white"
-            }`}
+            className="btn-primary mt-6 w-full"
           >
             {isSaving ? "Saving..." : "Save Client"}
           </button>

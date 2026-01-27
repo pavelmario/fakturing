@@ -232,69 +232,69 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
   }, [invoices, selectedYear, statusFilters, typeFilters]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <div className="bg-white rounded-lg shadow-lg p-8">
+    <div className="page-shell">
+      <div className="page-container-lg">
+        <div className="page-card-lg">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">Invoices</h1>
-            <button
-              onClick={onCreateInvoice}
-              className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
-            >
+            <div>
+              <p className="section-title">Overview</p>
+              <h1 className="page-title">Invoices</h1>
+            </div>
+            <button onClick={onCreateInvoice} className="btn-primary w-full sm:w-auto">
               Create Invoice
             </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <div className="text-xs uppercase text-gray-500">Issued this year</div>
-              <div className="mt-2 text-lg font-semibold text-gray-900">
+            <div className="stat-card">
+              <div className="section-title">Issued this year</div>
+              <div className="mt-2 text-lg font-semibold text-slate-900">
                 {stats.year.count} invoices
               </div>
-              <div className="text-sm text-gray-700">
+              <div className="text-sm text-slate-700">
                 Total: {isDiscreteMode ? "#####" : formatTotal(stats.year.total)}
               </div>
             </div>
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <div className="text-xs uppercase text-gray-500">Unpaid</div>
-              <div className="mt-2 text-lg font-semibold text-gray-900">
+            <div className="stat-card">
+              <div className="section-title">Unpaid</div>
+              <div className="mt-2 text-lg font-semibold text-slate-900">
                 {stats.unpaid.count} invoices
               </div>
-              <div className="text-sm text-gray-700">
+              <div className="text-sm text-slate-700">
                 Total: {isDiscreteMode ? "#####" : formatTotal(stats.unpaid.total)}
               </div>
             </div>
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <div className="text-xs uppercase text-gray-500">Overdue</div>
-              <div className="mt-2 text-lg font-semibold text-gray-900">
+            <div className="stat-card">
+              <div className="section-title">Overdue</div>
+              <div className="mt-2 text-lg font-semibold text-slate-900">
                 {stats.overdue.count} invoices
               </div>
-              <div className="text-sm text-gray-700">
+              <div className="text-sm text-slate-700">
                 Total: {isDiscreteMode ? "#####" : formatTotal(stats.overdue.total)}
               </div>
             </div>
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <div className="text-xs uppercase text-gray-500">Paid this year</div>
-              <div className="mt-2 text-lg font-semibold text-gray-900">
+            <div className="stat-card">
+              <div className="section-title">Paid this year</div>
+              <div className="mt-2 text-lg font-semibold text-slate-900">
                 {stats.paidYear.count} invoices
               </div>
-              <div className="text-sm text-gray-700">
+              <div className="text-sm text-slate-700">
                 Total: {isDiscreteMode ? "#####" : formatTotal(stats.paidYear.total)}
               </div>
             </div>
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-4 mb-6">
+          <div className="panel-card mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label className="flex flex-col gap-2 text-sm text-gray-700">
-                <span className="font-semibold text-gray-900">Year</span>
+                <span className="font-semibold text-slate-900">Year</span>
                 <select
                   value={selectedYear ?? ""}
                   onChange={(event) => {
                     const value = event.target.value;
                     setSelectedYear(value ? Number(value) : null);
                   }}
-                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900"
+                  className="form-select"
                   disabled={availableYears.length === 0}
                 >
                   {availableYears.length === 0 ? (
@@ -309,8 +309,8 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                 </select>
               </label>
 
-              <div className="flex flex-col gap-2 text-sm text-gray-700">
-                <span className="font-semibold text-gray-900">Status</span>
+              <div className="flex flex-col gap-2 text-sm text-slate-700">
+                <span className="font-semibold text-slate-900">Status</span>
                 <div className="flex flex-wrap gap-3">
                   {(["unpaid", "overdue", "paid"] as const).map((status) => (
                     <label key={status} className="flex items-center gap-2">
@@ -323,7 +323,7 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                             [status]: event.target.checked,
                           }))
                         }
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600"
                       />
                       <span className="capitalize">{status}</span>
                     </label>
@@ -331,8 +331,8 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 text-sm text-gray-700">
-                <span className="font-semibold text-gray-900">Type</span>
+              <div className="flex flex-col gap-2 text-sm text-slate-700">
+                <span className="font-semibold text-slate-900">Type</span>
                 <div className="flex flex-wrap gap-3">
                   {([
                     { key: "nonBitcoin", label: "Fiat" },
@@ -348,7 +348,7 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                             [type.key]: event.target.checked,
                           }))
                         }
-                        className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                        className="h-4 w-4 rounded border-slate-300 text-blue-600"
                       />
                       <span>{type.label}</span>
                     </label>
@@ -359,11 +359,9 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
           </div>
 
           {filteredInvoices.length === 0 ? (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-6 text-center text-gray-600">
-              No invoices match the selected filters.
-            </div>
+            <div className="empty-state">No invoices match the selected filters.</div>
           ) : (
-            <div className="divide-y divide-gray-200">
+            <div className="space-y-3">
               {filteredInvoices.map((invoice) => {
                 const items = parseItems(invoice.items);
                 const firstDescription = items.find((item) => item.description?.trim())?.description ?? "—";
@@ -377,45 +375,45 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                 const isBtcInvoice = invoice.btcInvoice === Evolu.sqliteTrue;
                 const statusStyles =
                   status === "paid"
-                    ? "bg-emerald-100 text-emerald-800"
+                    ? "status-badge status-paid"
                     : status === "overdue"
-                    ? "bg-red-100 text-red-800"
-                    : "bg-amber-100 text-amber-800";
+                    ? "status-badge status-overdue"
+                    : "status-badge status-unpaid";
 
                 return (
-                  <div key={invoice.id} className="py-4 flex flex-col gap-2">
+                  <div key={invoice.id} className="list-card flex flex-col gap-3">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-lg font-semibold text-gray-900">
+                          <div className="text-lg font-semibold text-slate-900">
                             {invoice.invoiceNumber ?? "—"}&nbsp;
                           </div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold uppercase ${statusStyles}`}>
-                            ({status})
+                          <span className={statusStyles}>
+                            {status}
                             {isBtcInvoice && <span className="ml-1 text-[#f7931a]">₿</span>}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-600">{invoice.clientName ?? "—"}</div>
+                        <div className="text-sm text-slate-600">{invoice.clientName ?? "—"}</div>
                       </div>
-                      <div className="text-sm text-gray-600">{formatDate(invoice.issueDate)}</div>
+                      <div className="text-sm text-slate-600">{formatDate(invoice.issueDate)}</div>
                     </div>
-                    <div className="text-sm text-gray-700">{firstDescription}</div>
+                    <div className="text-sm text-slate-700">{firstDescription}</div>
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div className="text-sm font-semibold text-gray-900">
+                      <div className="text-sm font-semibold text-slate-900">
                         Total: {isDiscreteMode ? "#####" : formatTotal(total)}
                       </div>
                       <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                         {!invoice.paymentDate ? (
                           <button
                             onClick={() => handleMarkPayment(invoice.id)}
-                            className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold transition bg-emerald-600 text-white hover:bg-emerald-700"
+                            className="btn-success w-full sm:w-auto"
                           >
                             Mark Payment
                           </button>
                         ) : null}
                         <button
                           onClick={() => onViewDetails(invoice.id)}
-                          className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
+                          className="btn-secondary w-full sm:w-auto"
                         >
                           View Details
                         </button>

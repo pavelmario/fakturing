@@ -146,21 +146,16 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 
 	if (!client) {
 		return (
-			<div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-				<div className="max-w-2xl mx-auto px-4 py-12">
-					<div className="bg-white rounded-lg shadow-lg p-8">
+			<div className="page-shell">
+				<div className="page-container">
+					<div className="page-card">
 						<div className="flex items-center justify-between mb-6">
-							<h1 className="text-3xl font-bold text-gray-900">Client Details</h1>
-							<button
-								onClick={onBack}
-								className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200"
-							>
+							<h1 className="page-title">Client Details</h1>
+							<button onClick={onBack} className="btn-secondary">
 								Back to list
 							</button>
 						</div>
-						<div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-6 text-center text-gray-600">
-							Client not found.
-						</div>
+						<div className="empty-state">Client not found.</div>
 					</div>
 				</div>
 			</div>
@@ -168,28 +163,21 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 	}
 
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-			<div className="max-w-2xl mx-auto px-4 py-12">
-				<div className="bg-white rounded-lg shadow-lg p-8">
+		<div className="page-shell">
+			<div className="page-container">
+				<div className="page-card">
 					<div className="flex items-center justify-between mb-6">
-						<h1 className="text-3xl font-bold text-gray-900">Client Details</h1>
-						<button
-							onClick={onBack}
-							className="px-4 py-2 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200"
-						>
+						<h1 className="page-title">Client Details</h1>
+						<button onClick={onBack} className="btn-secondary">
 							Back to list
 						</button>
 					</div>
 
-					{saveMessage ? (
-						<div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800">
-							{saveMessage}
-						</div>
-					) : null}
+					{saveMessage ? <div className="mb-6 alert-success">{saveMessage}</div> : null}
 
 					<div className="space-y-4">
 						<div>
-							<label htmlFor="clientName" className="block text-sm font-medium text-gray-700 mb-2">
+							<label htmlFor="clientName" className="form-label">
 								Client Name *
 							</label>
 							<input
@@ -198,13 +186,13 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 								value={name}
 								onChange={(e) => setName(e.target.value)}
 								disabled={!isEditing}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+								className="form-input disabled:bg-slate-100"
 							/>
 						</div>
 
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<div>
-								<label htmlFor="clientEmail" className="block text-sm font-medium text-gray-700 mb-2">
+								<label htmlFor="clientEmail" className="form-label">
 									Contact E-mail
 								</label>
 								<input
@@ -213,11 +201,11 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 									value={email}
 									onChange={(e) => setEmail(e.target.value)}
 									disabled={!isEditing}
-									className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+									className="form-input disabled:bg-slate-100"
 								/>
 							</div>
 							<div>
-								<label htmlFor="clientPhone" className="block text-sm font-medium text-gray-700 mb-2">
+								<label htmlFor="clientPhone" className="form-label">
 									Phone
 								</label>
 								<input
@@ -226,13 +214,13 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 									value={phone}
 									onChange={(e) => setPhone(e.target.value)}
 									disabled={!isEditing}
-									className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+									className="form-input disabled:bg-slate-100"
 								/>
 							</div>
 						</div>
 
 						<div>
-							<label htmlFor="clientAddress1" className="block text-sm font-medium text-gray-700 mb-2">
+							<label htmlFor="clientAddress1" className="form-label">
 								Address Line 1
 							</label>
 							<input
@@ -241,12 +229,12 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 								value={addressLine1}
 								onChange={(e) => setAddressLine1(e.target.value)}
 								disabled={!isEditing}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+								className="form-input disabled:bg-slate-100"
 							/>
 						</div>
 
 						<div>
-							<label htmlFor="clientAddress2" className="block text-sm font-medium text-gray-700 mb-2">
+							<label htmlFor="clientAddress2" className="form-label">
 								Address Line 2
 							</label>
 							<input
@@ -255,13 +243,13 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 								value={addressLine2}
 								onChange={(e) => setAddressLine2(e.target.value)}
 								disabled={!isEditing}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+								className="form-input disabled:bg-slate-100"
 							/>
 						</div>
 
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<div>
-								<label htmlFor="clientCompanyId" className="block text-sm font-medium text-gray-700 mb-2">
+								<label htmlFor="clientCompanyId" className="form-label">
 									Company Identification Number
 								</label>
 								<input
@@ -270,11 +258,11 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 									value={companyIdentificationNumber}
 									onChange={(e) => setCompanyIdentificationNumber(e.target.value)}
 									disabled={!isEditing}
-									className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+									className="form-input disabled:bg-slate-100"
 								/>
 							</div>
 							<div>
-								<label htmlFor="clientVat" className="block text-sm font-medium text-gray-700 mb-2">
+								<label htmlFor="clientVat" className="form-label">
 									VAT Number
 								</label>
 								<input
@@ -283,13 +271,13 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 									value={vatNumber}
 									onChange={(e) => setVatNumber(e.target.value)}
 									disabled={!isEditing}
-									className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+									className="form-input disabled:bg-slate-100"
 								/>
 							</div>
 						</div>
 
 						<div>
-							<label htmlFor="clientNote" className="block text-sm font-medium text-gray-700 mb-2">
+							<label htmlFor="clientNote" className="form-label">
 								Note
 							</label>
 							<textarea
@@ -298,7 +286,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 								onChange={(e) => setNote(e.target.value)}
 								disabled={!isEditing}
 								rows={4}
-								className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+								className="form-textarea disabled:bg-slate-100"
 							/>
 						</div>
 					</div>
@@ -308,18 +296,14 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 							<>
 								<button
 									onClick={() => setIsEditing(true)}
-									className="w-full sm:w-auto px-6 py-3 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700"
+									className="btn-primary w-full sm:w-auto"
 								>
 									Edit
 								</button>
 								<button
 									onClick={handleDelete}
 									disabled={isDeleting}
-									className={`w-full sm:w-auto px-6 py-3 rounded-lg font-semibold transition ${
-										isDeleting
-											? "bg-gray-300 text-gray-600"
-											: "bg-red-600 text-white hover:bg-red-700"
-									}`}
+									className="btn-danger w-full sm:w-auto"
 								>
 									{isDeleting ? "Deleting..." : "Delete"}
 								</button>
@@ -329,27 +313,21 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 								<button
 									onClick={handleSave}
 									disabled={isSaving || isDeleting}
-									className={`w-full sm:w-auto px-6 py-3 rounded-lg font-semibold transition ${
-										isSaving ? "bg-gray-300 text-gray-600" : "bg-blue-600 text-white hover:bg-blue-700"
-									}`}
+									className="btn-primary w-full sm:w-auto"
 								>
 									{isSaving ? "Saving..." : "Save"}
 								</button>
 								<button
 									onClick={handleCancel}
 									disabled={isSaving || isDeleting}
-									className="w-full sm:w-auto px-6 py-3 rounded-lg font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200"
+									className="btn-secondary w-full sm:w-auto"
 								>
 									Cancel
 								</button>
 								<button
 									onClick={handleDelete}
 									disabled={isSaving || isDeleting}
-									className={`w-full sm:w-auto px-6 py-3 rounded-lg font-semibold transition ${
-										isDeleting
-											? "bg-gray-300 text-gray-600"
-											: "bg-red-600 text-white hover:bg-red-700"
-									}`}
+									className="btn-danger w-full sm:w-auto"
 								>
 									{isDeleting ? "Deleting..." : "Delete"}
 								</button>

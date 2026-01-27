@@ -1,75 +1,191 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+@reference "tailwindcss";
 
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  min-width: 320px;
-  min-height: 100vh;
-  padding: 0 16px;
-}
-
-#root {
-  width: 100%;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
+@layer base {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", sans-serif;
+    line-height: 1.6;
+    font-weight: 400;
+    color-scheme: light;
+    color: #0f172a;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  a:hover {
-    color: #747bff;
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background: radial-gradient(circle at top, #e0f2fe 0%, #eef2ff 40%, #f8fafc 100%);
+    background-attachment: fixed;
   }
-  button {
-    background-color: #f9f9f9;
+
+  #root {
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply min-h-screen px-4 pb-10;
+  }
+
+  .app-loading {
+    @apply min-h-screen flex items-center justify-center text-slate-500;
+  }
+
+  .app-nav {
+    @apply sticky top-4 z-10 mx-auto mt-4 max-w-4xl rounded-2xl border border-white/70 bg-white/70 backdrop-blur-xl shadow-xl shadow-slate-200/60;
+  }
+
+  .app-tabs {
+    @apply flex flex-wrap items-center justify-center gap-2 p-2;
+  }
+
+  .tab-button {
+    @apply px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200;
+  }
+
+  .tab-button-active {
+    @apply bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/30;
+  }
+
+  .tab-button-inactive {
+    @apply bg-white/80 text-slate-700 hover:bg-white;
+  }
+
+  .page-shell {
+    @apply min-h-screen px-4 py-10;
+  }
+
+  .page-container {
+    @apply mx-auto max-w-2xl;
+  }
+
+  .page-container-lg {
+    @apply mx-auto max-w-4xl;
+  }
+
+  .page-card {
+    @apply rounded-3xl border border-white/70 bg-white/80 backdrop-blur-xl p-8 shadow-2xl shadow-slate-200/50;
+  }
+
+  .page-card-lg {
+    @apply rounded-3xl border border-white/70 bg-white/80 backdrop-blur-xl p-8 shadow-2xl shadow-slate-200/50;
+  }
+
+  .page-title {
+    @apply text-3xl font-bold text-slate-900;
+  }
+
+  .section-title {
+    @apply text-sm font-semibold uppercase tracking-wider text-slate-500;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-slate-600 mb-2;
+  }
+
+  .form-input {
+    @apply w-full rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-2.5 text-slate-900 shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/40;
+  }
+
+  .form-textarea {
+    @apply w-full rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-2.5 text-slate-900 shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/40;
+  }
+
+  .form-select {
+    @apply w-full rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-2.5 text-slate-900 shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/40;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/30 transition hover:from-blue-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white/80 px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-rose-500 to-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-rose-500/30 transition hover:from-rose-400 hover:to-red-500 focus:outline-none focus:ring-2 focus:ring-rose-500/40 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-success {
+    @apply inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30 transition hover:from-emerald-400 hover:to-teal-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-2xl px-5 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100/70 focus:outline-none focus:ring-2 focus:ring-slate-300/40;
+  }
+
+  .stat-card {
+    @apply rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm;
+  }
+
+  .panel-card {
+    @apply rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm;
+  }
+
+  .list-card {
+    @apply rounded-2xl border border-white/70 bg-white/70 p-4 shadow-sm transition hover:shadow-lg;
+  }
+
+  .alert-success {
+    @apply rounded-2xl border border-emerald-200/70 bg-emerald-50/80 px-4 py-3 text-emerald-800;
+  }
+
+  .alert-warning {
+    @apply rounded-2xl border border-amber-200/70 bg-amber-50/80 px-4 py-3 text-amber-800;
+  }
+
+  .empty-state {
+    @apply rounded-2xl border border-white/70 bg-white/70 px-4 py-6 text-center text-slate-600;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide;
+  }
+
+  .status-paid {
+    @apply bg-emerald-100 text-emerald-800;
+  }
+
+  .status-overdue {
+    @apply bg-rose-100 text-rose-800;
+  }
+
+  .status-unpaid {
+    @apply bg-amber-100 text-amber-800;
+  }
+}
+
+@media (min-width: 640px) {
+  .app-shell {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .page-shell {
+    padding-top: 3.5rem;
+    padding-bottom: 3.5rem;
+  }
+
+  .page-card-lg {
+    padding: 2.5rem;
+  }
+
+  .page-title {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
   }
 }
