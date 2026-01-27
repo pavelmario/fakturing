@@ -437,6 +437,25 @@ export function SettingsPage() {
       "vatNumber",
       "note",
     ];
+    const settingsHeaders = [
+      "id",
+      "name",
+      "email",
+      "phone",
+      "addressLine1",
+      "addressLine2",
+      "companyIdentificationNumber",
+      "vatNumber",
+      "vatPayer",
+      "bankAccount",
+      "swift",
+      "iban",
+      "invoiceFooterText",
+      "discreteMode",
+      "poRequired",
+      "mempoolUrl",
+      "updatedAt",
+    ];
 
     const invoiceHeaders = [
       "id",
@@ -453,6 +472,11 @@ export function SettingsPage() {
       "items",
     ];
 
+    downloadCsv(
+      "settings.csv",
+      settingsHeaders,
+      profileRows as ReadonlyArray<Record<string, unknown>>,
+    );
     downloadCsv(
       "clients.csv",
       clientHeaders,
@@ -891,7 +915,7 @@ export function SettingsPage() {
           </button>
 
           <button onClick={handleExportCsv} className="btn-primary w-full mb-3">
-            Exportovat faktury a klienty (CSV)
+            Exportovat data (CSV)
           </button>
 
           {/* Clear Data Button */}
