@@ -1360,7 +1360,7 @@ export function SettingsPage() {
         </div>
       </div>
       <p className="text-center text-slate-500">
-        <small>v.0.4</small>
+        <small>v.0.5</small>
       </p>
     </div>
   );
