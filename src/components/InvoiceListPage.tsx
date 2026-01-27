@@ -363,22 +363,21 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
           ) : (
             <div className="space-y-3">
               {filteredInvoices.map((invoice) => {
-                const items = parseItems(invoice.items);
-                const firstDescription = items.find((item) => item.description?.trim())?.description ?? "—";
-                const total = items.reduce((sum, item) => {
-                  const amount = Number(item.amount ?? 0);
-                  const unitPrice = Number(item.unitPrice ?? 0);
-                  if (!Number.isFinite(amount) || !Number.isFinite(unitPrice)) return sum;
-                  return sum + amount * unitPrice;
-                }, 0);
-                const status = getInvoiceStatus(invoice);
-                const isBtcInvoice = invoice.btcInvoice === Evolu.sqliteTrue;
-                const statusStyles =
-                  status === "paid"
-                    ? "status-badge status-paid"
-                    : status === "overdue"
-                    ? "status-badge status-overdue"
-                    : "status-badge status-unpaid";
+				const items = parseItems(invoice.items);
+				const total = items.reduce((sum, item) => {
+				  const amount = Number(item.amount ?? 0);
+				  const unitPrice = Number(item.unitPrice ?? 0);
+				  if (!Number.isFinite(amount) || !Number.isFinite(unitPrice)) return sum;
+				  return sum + amount * unitPrice;
+				}, 0);
+				const status = getInvoiceStatus(invoice);
+				const isBtcInvoice = invoice.btcInvoice === Evolu.sqliteTrue;
+				const statusStyles =
+				  status === "paid"
+				    ? "status-badge status-paid"
+				    : status === "overdue"
+				    ? "status-badge status-overdue"
+				    : "status-badge status-unpaid";
 
                 return (
                   <div key={invoice.id} className="list-card flex flex-col gap-3">
@@ -397,7 +396,7 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                       </div>
                       <div className="text-sm text-slate-600">{formatDate(invoice.issueDate)}</div>
                     </div>
-                    <div className="text-sm text-slate-700">{firstDescription}</div>
+                    {/* Description removed as requested */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div className="text-sm font-semibold text-slate-900">
                         Total: {isDiscreteMode ? "#####" : formatTotal(total)}

@@ -818,6 +818,10 @@ export function SettingsPage() {
                         Společnost je zapsána v obchodním rejstříku vedeném
                         Městským soudem v Praze oddíl B, vložka 012345.
                       </p>
+                      <p>
+                        <span className="font-semibold">- All tax payers:</span>{" "}
+                        Daně jsou krádež.
+                      </p>
                     </div>
                   </details>
                 </div>
