@@ -38,6 +38,7 @@ export const Schema = {
     iban: Evolu.nullOr(Evolu.TrimmedString100),
     invoiceFooterText: Evolu.nullOr(Evolu.TrimmedString1000),
     discreteMode: Evolu.nullOr(Evolu.SqliteBoolean),
+    poRequired: Evolu.nullOr(Evolu.SqliteBoolean),
   },
   client: {
     id: Evolu.id("Client"),
@@ -82,6 +83,7 @@ export type UserProfileInput = {
   iban?: string;
   invoiceFooterText?: string;
   discreteMode?: 0 | 1 | null;
+  poRequired?: 0 | 1 | null;
 };
 
 const evolu = createEvolu(evoluReactWebDeps)(Schema, {

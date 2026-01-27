@@ -334,6 +334,7 @@ export function InvoiceDetailPage({
   const profileRows = useQuery(profileQuery) as readonly UserProfileRow[];
   const profile = profileRows[0] ?? null;
   const showVat = profile?.vatPayer === Evolu.sqliteTrue;
+  const isPoRequired = profile?.poRequired === Evolu.sqliteTrue;
 
   const invoiceQuery = useMemo(
     () =>
@@ -658,6 +659,12 @@ export function InvoiceDetailPage({
               </View>
             </View>
             <View style={pdfStyles.column}>
+              {invoice?.purchaseOrderNumber?.trim() ? (
+                <View style={pdfStyles.detailRow}>
+                  <Text style={pdfStyles.textMuted}>Číslo objednávky</Text>
+                  <Text>{invoice.purchaseOrderNumber}</Text>
+                </View>
+              ) : null}
               <View style={pdfStyles.detailRow}>
                 <Text style={pdfStyles.textMuted}>Datum vystavení</Text>
                 <Text>{invoiceIssueDate}</Text>
@@ -1291,19 +1298,22 @@ export function InvoiceDetailPage({
               </select>
             </div>
 
-            <div>
-              <label htmlFor="purchaseOrderNumber" className="form-label">
-                Číslo objednávky
-              </label>
-              <input
-                id="purchaseOrderNumber"
-                type="text"
-                value={purchaseOrderNumber}
-                onChange={(e) => setPurchaseOrderNumber(e.target.value)}
-                disabled={!isEditing}
-                className="form-input disabled:bg-slate-100"
-              />
-            </div>
+            {isPoRequired ? (
+              <div>
+                <label htmlFor="purchaseOrderNumber" className="form-label">
+                  Číslo objednávky
+                </label>
+                <input
+                  id="purchaseOrderNumber"
+                  type="text"
+                  value={purchaseOrderNumber}
+                  onChange={(e) => setPurchaseOrderNumber(e.target.value)}
+                  disabled={!isEditing}
+                  placeholder="Obj-12345"
+                  className="form-input disabled:bg-slate-100"
+                />
+              </div>
+            ) : null}
 
             <div className="flex items-center gap-3">
               <input

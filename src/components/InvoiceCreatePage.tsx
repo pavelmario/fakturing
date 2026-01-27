@@ -131,7 +131,7 @@ export function InvoiceCreatePage() {
       evolu.createQuery((db) =>
         db
           .selectFrom("userProfile")
-          .select(["vatPayer"])
+          .select(["vatPayer", "poRequired"])
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .orderBy("updatedAt", "desc")
@@ -143,6 +143,7 @@ export function InvoiceCreatePage() {
   const profileRows = useQuery(profileQuery);
   const profile = profileRows[0];
   const isVatPayer = profile?.vatPayer === Evolu.sqliteTrue;
+  const isPoRequired = profile?.poRequired === Evolu.sqliteTrue;
 
   const invoiceTotal = items.reduce((sum, item) => {
     const amount = Number(item.amount) || 0;
@@ -509,19 +510,21 @@ export function InvoiceCreatePage() {
                 <option value="cash">hotově</option>
               </select>
             </div>
-            <div>
-              <label htmlFor="purchaseOrderNumber" className="form-label">
-                Číslo objednávky
-              </label>
-              <input
-                id="purchaseOrderNumber"
-                type="text"
-                value={purchaseOrderNumber}
-                onChange={(e) => setPurchaseOrderNumber(e.target.value)}
-                placeholder="Obj-12345"
-                className="form-input"
-              />
-            </div>
+            {isPoRequired ? (
+              <div>
+                <label htmlFor="purchaseOrderNumber" className="form-label">
+                  Číslo objednávky
+                </label>
+                <input
+                  id="purchaseOrderNumber"
+                  type="text"
+                  value={purchaseOrderNumber}
+                  onChange={(e) => setPurchaseOrderNumber(e.target.value)}
+                  placeholder="Obj-12345"
+                  className="form-input"
+                />
+              </div>
+            ) : null}
 
             <div>
               <div className="flex items-center justify-between mb-3">

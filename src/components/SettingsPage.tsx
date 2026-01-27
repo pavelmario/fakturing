@@ -24,6 +24,7 @@ export function SettingsPage() {
   const [iban, setIban] = useState<string>("");
   const [invoiceFooterText, setInvoiceFooterText] = useState<string>("");
   const [discreteMode, setDiscreteMode] = useState<boolean>(false);
+  const [poRequired, setPoRequired] = useState<boolean>(false);
   const [savedData, setSavedData] = useState<{
     name: string;
     email?: string;
@@ -38,6 +39,7 @@ export function SettingsPage() {
     iban?: string;
     invoiceFooterText?: string;
     discreteMode?: boolean;
+    poRequired?: boolean;
   } | null>(null);
   const [showMnemonicInput, setShowMnemonicInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -190,6 +192,7 @@ export function SettingsPage() {
       iban: profile.iban ?? undefined,
       invoiceFooterText: profile.invoiceFooterText ?? undefined,
       discreteMode: profile.discreteMode === Evolu.sqliteTrue,
+      poRequired: profile.poRequired === Evolu.sqliteTrue,
     });
     setName(profile.name ?? "");
     setEmail(profile.email ?? "");
@@ -204,6 +207,7 @@ export function SettingsPage() {
     setIban(profile.iban ?? "");
     setInvoiceFooterText(profile.invoiceFooterText ?? "");
     setDiscreteMode(profile.discreteMode === Evolu.sqliteTrue);
+    setPoRequired(profile.poRequired === Evolu.sqliteTrue);
     setLastSyncTime(
       profile.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "",
     );
@@ -280,6 +284,7 @@ export function SettingsPage() {
         iban: toNullable(iban),
         invoiceFooterText: toNullable(invoiceFooterText),
         discreteMode: discreteMode ? Evolu.sqliteTrue : Evolu.sqliteFalse,
+        poRequired: poRequired ? Evolu.sqliteTrue : Evolu.sqliteFalse,
       };
 
       if (profile?.id) {
@@ -829,15 +834,26 @@ export function SettingsPage() {
               <h3 className="font-semibold text-slate-700 mb-3">
                 Další předvolby
               </h3>
-              <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={discreteMode}
-                  onChange={(e) => setDiscreteMode(e.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                />
-                Diskrétní režim
-              </label>
+              <div className="flex flex-col gap-2">
+                <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={discreteMode}
+                    onChange={(e) => setDiscreteMode(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Diskrétní režim
+                </label>
+                <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={poRequired}
+                    onChange={(e) => setPoRequired(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Číslo objednávky na faktuře
+                </label>
+              </div>
             </div>
           </div>
 
