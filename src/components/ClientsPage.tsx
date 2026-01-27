@@ -10,7 +10,8 @@ export function ClientsPage() {
   const [phone, setPhone] = useState("");
   const [addressLine1, setAddressLine1] = useState("");
   const [addressLine2, setAddressLine2] = useState("");
-  const [companyIdentificationNumber, setCompanyIdentificationNumber] = useState("");
+  const [companyIdentificationNumber, setCompanyIdentificationNumber] =
+    useState("");
   const [vatNumber, setVatNumber] = useState("");
   const [note, setNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -25,7 +26,7 @@ export function ClientsPage() {
     setSaveMessage(null);
 
     if (!name.trim()) {
-      alert("Please enter a client name");
+      alert("Vyplňte název klienta");
       return;
     }
 
@@ -45,11 +46,11 @@ export function ClientsPage() {
 
       if (!result.ok) {
         console.error("Validation error:", result.error);
-        alert("Validation error while saving client");
+        alert("Chyba validace při ukládání klienta");
         return;
       }
 
-      setSaveMessage("Client saved successfully!");
+      setSaveMessage("Klient byl úspěšně uložen!");
       setName("");
       setEmail("");
       setPhone("");
@@ -60,7 +61,7 @@ export function ClientsPage() {
       setNote("");
     } catch (error) {
       console.error("Error saving client:", error);
-      alert("Error saving client");
+      alert("Chyba při ukládání klienta");
     } finally {
       setIsSaving(false);
     }
@@ -71,8 +72,8 @@ export function ClientsPage() {
       <div className="page-container">
         <div className="page-card">
           <div className="mb-6">
-            <p className="section-title">New entry</p>
-            <h1 className="page-title">Create Client</h1>
+            <p className="section-title">Vytvořit záznam</p>
+            <h1 className="page-title">Klient</h1>
           </div>
 
           {saveMessage ? (
@@ -82,14 +83,14 @@ export function ClientsPage() {
           <div className="space-y-4">
             <div>
               <label htmlFor="clientName" className="form-label">
-                Client Name *
+                Název klienta *
               </label>
               <input
                 id="clientName"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Client name"
+                placeholder=""
                 className="form-input"
               />
             </div>
@@ -97,27 +98,27 @@ export function ClientsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="clientEmail" className="form-label">
-                  Contact E-mail
+                  Kontaktní e-mail
                 </label>
                 <input
                   id="clientEmail"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="client@email.com"
+                  placeholder=""
                   className="form-input"
                 />
               </div>
               <div>
                 <label htmlFor="clientPhone" className="form-label">
-                  Phone
+                  Telefon
                 </label>
                 <input
                   id="clientPhone"
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+1 (555) 000-0000"
+                  placeholder=""
                   className="form-input"
                 />
               </div>
@@ -125,28 +126,28 @@ export function ClientsPage() {
 
             <div>
               <label htmlFor="clientAddress1" className="form-label">
-                Address Line 1
+                Ulice, číslo popisné
               </label>
               <input
                 id="clientAddress1"
                 type="text"
                 value={addressLine1}
                 onChange={(e) => setAddressLine1(e.target.value)}
-                placeholder="Street address"
+                placeholder=""
                 className="form-input"
               />
             </div>
 
             <div>
               <label htmlFor="clientAddress2" className="form-label">
-                Address Line 2
+                PSČ, město
               </label>
               <input
                 id="clientAddress2"
                 type="text"
                 value={addressLine2}
                 onChange={(e) => setAddressLine2(e.target.value)}
-                placeholder="City, state, postal code"
+                placeholder=""
                 className="form-input"
               />
             </div>
@@ -154,27 +155,29 @@ export function ClientsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="clientCompanyId" className="form-label">
-                  Company Identification Number
+                  IČO
                 </label>
                 <input
                   id="clientCompanyId"
                   type="text"
                   value={companyIdentificationNumber}
-                  onChange={(e) => setCompanyIdentificationNumber(e.target.value)}
-                  placeholder="Company ID"
+                  onChange={(e) =>
+                    setCompanyIdentificationNumber(e.target.value)
+                  }
+                  placeholder=""
                   className="form-input"
                 />
               </div>
               <div>
                 <label htmlFor="clientVat" className="form-label">
-                  VAT Number
+                  DIČ
                 </label>
                 <input
                   id="clientVat"
                   type="text"
                   value={vatNumber}
                   onChange={(e) => setVatNumber(e.target.value)}
-                  placeholder="VAT Number"
+                  placeholder=""
                   className="form-input"
                 />
               </div>
@@ -182,13 +185,13 @@ export function ClientsPage() {
 
             <div>
               <label htmlFor="clientNote" className="form-label">
-                Note
+                Poznámka
               </label>
               <textarea
                 id="clientNote"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="Additional details about the client"
+                placeholder=""
                 rows={4}
                 className="form-textarea"
               />

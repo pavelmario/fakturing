@@ -56,7 +56,9 @@ const formatTotal = (value: number): string => {
   }).format(value);
 };
 
-const getInvoiceStatus = (invoice: InvoiceRow): "paid" | "overdue" | "unpaid" => {
+const getInvoiceStatus = (
+  invoice: InvoiceRow,
+): "paid" | "overdue" | "unpaid" => {
   if (invoice.paymentDate) return "paid";
   if (!invoice.issueDate) return "unpaid";
   const issueDate = new Date(invoice.issueDate);
@@ -80,13 +82,23 @@ const getYear = (iso: string | null): number | null => {
   return parsed.getFullYear();
 };
 
-export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListPageProps) {
+export function InvoiceListPage({
+  onCreateInvoice,
+  onViewDetails,
+}: InvoiceListPageProps) {
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
 
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [statusFilters, setStatusFilters] = useState({ unpaid: true, overdue: true, paid: true });
-  const [typeFilters, setTypeFilters] = useState({ bitcoin: true, nonBitcoin: true });
+  const [statusFilters, setStatusFilters] = useState({
+    unpaid: true,
+    overdue: true,
+    paid: true,
+  });
+  const [typeFilters, setTypeFilters] = useState({
+    bitcoin: true,
+    nonBitcoin: true,
+  });
 
   const handleMarkPayment = (invoiceId: string) => {
     const paymentDateResult = Evolu.dateToDateIso(new Date());
@@ -125,9 +137,9 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
-          .orderBy("invoiceNumber", "desc")
+          .orderBy("invoiceNumber", "desc"),
       ),
-    [evolu, owner.id]
+    [evolu, owner.id],
   );
 
   const invoices = useQuery(invoicesQuery) as readonly InvoiceRow[];
@@ -160,9 +172,9 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .orderBy("updatedAt", "desc")
-          .limit(1)
+          .limit(1),
       ),
-    [evolu, owner.id]
+    [evolu, owner.id],
   );
 
   const profileRows = useQuery(profileQuery);
@@ -208,14 +220,18 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
       unpaid: { count: 0, total: 0 },
       overdue: { count: 0, total: 0 },
       paidYear: { count: 0, total: 0 },
-    }
+    },
   );
 
   const filteredInvoices = useMemo(() => {
     return invoices.filter((invoice) => {
       const status = getInvoiceStatus(invoice);
       if (status === "paid" && !statusFilters.paid) return false;
-      if (status === "overdue" && !(statusFilters.overdue || statusFilters.unpaid)) return false;
+      if (
+        status === "overdue" &&
+        !(statusFilters.overdue || statusFilters.unpaid)
+      )
+        return false;
       if (status === "unpaid" && !statusFilters.unpaid) return false;
 
       const isBtcInvoice = invoice.btcInvoice === Evolu.sqliteTrue;
@@ -237,49 +253,53 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
         <div className="page-card-lg">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
-              <p className="section-title">Overview</p>
-              <h1 className="page-title">Invoices</h1>
+              <p className="section-title">Přehled</p>
+              <h1 className="page-title">Faktury</h1>
             </div>
-            <button onClick={onCreateInvoice} className="btn-primary w-full sm:w-auto">
-              Create Invoice
+            <button
+              onClick={onCreateInvoice}
+              className="btn-primary w-full sm:w-auto"
+            >
+              Vytvořit fakturu
             </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div className="stat-card">
-              <div className="section-title">Issued this year</div>
+              <div className="section-title">Faktury letos</div>
               <div className="mt-2 text-lg font-semibold text-slate-900">
-                {stats.year.count} invoices
+                {stats.year.count}
               </div>
               <div className="text-sm text-slate-700">
-                Total: {isDiscreteMode ? "#####" : formatTotal(stats.year.total)}
+                za {isDiscreteMode ? "#####" : formatTotal(stats.year.total)}
               </div>
             </div>
             <div className="stat-card">
-              <div className="section-title">Unpaid</div>
+              <div className="section-title">Neuhrazeno</div>
               <div className="mt-2 text-lg font-semibold text-slate-900">
-                {stats.unpaid.count} invoices
+                {stats.unpaid.count}
               </div>
               <div className="text-sm text-slate-700">
-                Total: {isDiscreteMode ? "#####" : formatTotal(stats.unpaid.total)}
+                za {isDiscreteMode ? "#####" : formatTotal(stats.unpaid.total)}
               </div>
             </div>
             <div className="stat-card">
-              <div className="section-title">Overdue</div>
+              <div className="section-title">Po splatnosti</div>
               <div className="mt-2 text-lg font-semibold text-slate-900">
-                {stats.overdue.count} invoices
+                {stats.overdue.count}
               </div>
               <div className="text-sm text-slate-700">
-                Total: {isDiscreteMode ? "#####" : formatTotal(stats.overdue.total)}
+                za {isDiscreteMode ? "#####" : formatTotal(stats.overdue.total)}
               </div>
             </div>
             <div className="stat-card">
-              <div className="section-title">Paid this year</div>
+              <div className="section-title">Letos uhrazeno</div>
               <div className="mt-2 text-lg font-semibold text-slate-900">
-                {stats.paidYear.count} invoices
+                {stats.paidYear.count}
               </div>
               <div className="text-sm text-slate-700">
-                Total: {isDiscreteMode ? "#####" : formatTotal(stats.paidYear.total)}
+                za{" "}
+                {isDiscreteMode ? "#####" : formatTotal(stats.paidYear.total)}
               </div>
             </div>
           </div>
@@ -287,7 +307,7 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
           <div className="panel-card mb-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <label className="flex flex-col gap-2 text-sm text-gray-700">
-                <span className="font-semibold text-slate-900">Year</span>
+                <span className="font-semibold text-slate-900">Rok</span>
                 <select
                   value={selectedYear ?? ""}
                   onChange={(event) => {
@@ -298,7 +318,7 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                   disabled={availableYears.length === 0}
                 >
                   {availableYears.length === 0 ? (
-                    <option value="">No years</option>
+                    <option value="">nic k zobrazení</option>
                   ) : (
                     availableYears.map((year) => (
                       <option key={year} value={year}>
@@ -310,7 +330,7 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
               </label>
 
               <div className="flex flex-col gap-2 text-sm text-slate-700">
-                <span className="font-semibold text-slate-900">Status</span>
+                <span className="font-semibold text-slate-900">Stav</span>
                 <div className="flex flex-wrap gap-3">
                   {(["unpaid", "overdue", "paid"] as const).map((status) => (
                     <label key={status} className="flex items-center gap-2">
@@ -325,19 +345,29 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                         }
                         className="h-4 w-4 rounded border-slate-300 text-blue-600"
                       />
-                      <span className="capitalize">{status}</span>
+                      <span className="">
+                        {status === "paid"
+                          ? "uhrazeno"
+                          : status === "overdue"
+                            ? "po splatnosti"
+                            : "neuhrazeno"}
+                      </span>
                     </label>
                   ))}
                 </div>
               </div>
 
               <div className="flex flex-col gap-2 text-sm text-slate-700">
-                <span className="font-semibold text-slate-900">Type</span>
+                <span className="font-semibold text-slate-900">
+                  Forma úhrady
+                </span>
                 <div className="flex flex-wrap gap-3">
-                  {([
-                    { key: "nonBitcoin", label: "Fiat" },
-                    { key: "bitcoin", label: "Bitcoin" },
-                  ] as const).map((type) => (
+                  {(
+                    [
+                      { key: "nonBitcoin", label: "fiat" },
+                      { key: "bitcoin", label: "bitcoin" },
+                    ] as const
+                  ).map((type) => (
                     <label key={type.key} className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -359,28 +389,34 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
           </div>
 
           {filteredInvoices.length === 0 ? (
-            <div className="empty-state">No invoices match the selected filters.</div>
+            <div className="empty-state">
+              Žádná faktura neodpovídá zadaným kritériím.
+            </div>
           ) : (
             <div className="space-y-3">
               {filteredInvoices.map((invoice) => {
-				const items = parseItems(invoice.items);
-				const total = items.reduce((sum, item) => {
-				  const amount = Number(item.amount ?? 0);
-				  const unitPrice = Number(item.unitPrice ?? 0);
-				  if (!Number.isFinite(amount) || !Number.isFinite(unitPrice)) return sum;
-				  return sum + amount * unitPrice;
-				}, 0);
-				const status = getInvoiceStatus(invoice);
-				const isBtcInvoice = invoice.btcInvoice === Evolu.sqliteTrue;
-				const statusStyles =
-				  status === "paid"
-				    ? "status-badge status-paid"
-				    : status === "overdue"
-				    ? "status-badge status-overdue"
-				    : "status-badge status-unpaid";
+                const items = parseItems(invoice.items);
+                const total = items.reduce((sum, item) => {
+                  const amount = Number(item.amount ?? 0);
+                  const unitPrice = Number(item.unitPrice ?? 0);
+                  if (!Number.isFinite(amount) || !Number.isFinite(unitPrice))
+                    return sum;
+                  return sum + amount * unitPrice;
+                }, 0);
+                const status = getInvoiceStatus(invoice);
+                const isBtcInvoice = invoice.btcInvoice === Evolu.sqliteTrue;
+                const statusStyles =
+                  status === "paid"
+                    ? "status-badge status-paid"
+                    : status === "overdue"
+                      ? "status-badge status-overdue"
+                      : "status-badge status-unpaid";
 
                 return (
-                  <div key={invoice.id} className="list-card flex flex-col gap-3">
+                  <div
+                    key={invoice.id}
+                    className="list-card flex flex-col gap-3"
+                  >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -388,18 +424,28 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                             {invoice.invoiceNumber ?? "—"}&nbsp;
                           </div>
                           <span className={statusStyles}>
-                            {status}
-                            {isBtcInvoice && <span className="ml-1 text-[#f7931a]">₿</span>}
+                            {status === "paid"
+                              ? "uhrazeno"
+                              : status === "overdue"
+                                ? "po splatnosti"
+                                : "neuhrazeno"}
+                            {isBtcInvoice && (
+                              <span className="ml-1 text-[#f7931a]">₿</span>
+                            )}
                           </span>
                         </div>
-                        <div className="text-sm text-slate-600">{invoice.clientName ?? "—"}</div>
+                        <div className="text-sm text-slate-600">
+                          {invoice.clientName ?? "—"}
+                        </div>
                       </div>
-                      <div className="text-sm text-slate-600">{formatDate(invoice.issueDate)}</div>
+                      <div className="text-sm text-slate-600">
+                        {formatDate(invoice.issueDate)}
+                      </div>
                     </div>
                     {/* Description removed as requested */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div className="text-sm font-semibold text-slate-900">
-                        Total: {isDiscreteMode ? "#####" : formatTotal(total)}
+                        {isDiscreteMode ? "#####" : formatTotal(total)}
                       </div>
                       <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                         {!invoice.paymentDate ? (
@@ -407,14 +453,14 @@ export function InvoiceListPage({ onCreateInvoice, onViewDetails }: InvoiceListP
                             onClick={() => handleMarkPayment(invoice.id)}
                             className="btn-success w-full sm:w-auto"
                           >
-                            Mark Payment
+                            Zaznamenat platbu
                           </button>
                         ) : null}
                         <button
                           onClick={() => onViewDetails(invoice.id)}
                           className="btn-secondary w-full sm:w-auto"
                         >
-                          View Details
+                          Detail faktury
                         </button>
                       </div>
                     </div>

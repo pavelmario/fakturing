@@ -8,7 +8,10 @@ type ClientsListPageProps = {
   onCreateClient: () => void;
 };
 
-export function ClientsListPage({ onViewDetails, onCreateClient }: ClientsListPageProps) {
+export function ClientsListPage({
+  onViewDetails,
+  onCreateClient,
+}: ClientsListPageProps) {
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
   const [search, setSearch] = useState("");
@@ -20,18 +23,18 @@ export function ClientsListPage({ onViewDetails, onCreateClient }: ClientsListPa
           .selectFrom("client")
           .select(["id", "name", "email", "phone"])
           .where("ownerId", "=", owner.id)
-            .where("isDeleted", "is not", Evolu.sqliteTrue)
-            .where("deleted", "is not", Evolu.sqliteTrue)
-          .orderBy("name", "asc")
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue)
+          .orderBy("name", "asc"),
       ),
-    [evolu, owner.id]
+    [evolu, owner.id],
   );
 
   const clients = useQuery(clientsQuery);
   const normalizedSearch = search.trim().toLowerCase();
   const filteredClients = normalizedSearch
     ? clients.filter((client) =>
-        (client.name ?? "").toLowerCase().includes(normalizedSearch)
+        (client.name ?? "").toLowerCase().includes(normalizedSearch),
       )
     : clients;
 
@@ -41,50 +44,58 @@ export function ClientsListPage({ onViewDetails, onCreateClient }: ClientsListPa
         <div className="page-card">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
-              <p className="section-title">Address book</p>
-              <h1 className="page-title">Clients</h1>
+              <p className="section-title">Adresář</p>
+              <h1 className="page-title">Klienti</h1>
             </div>
-            <button onClick={onCreateClient} className="btn-primary w-full sm:w-auto">
-              Create Client
+            <button
+              onClick={onCreateClient}
+              className="btn-primary w-full sm:w-auto"
+            >
+              Založit nového klienta
             </button>
           </div>
 
           <div className="mb-4">
             <label htmlFor="clientSearch" className="form-label">
-              Search clients
+              Hledání
             </label>
             <input
               id="clientSearch"
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by client name"
+              placeholder="Hledat podle názvu subjektu"
               className="form-input"
             />
           </div>
 
           {filteredClients.length === 0 ? (
             <div className="empty-state">
-              {clients.length === 0 ? "No clients yet." : "No clients match your search."}
+              {clients.length === 0
+                ? "Zatím nebyl založen ani jeden klient."
+                : "Žádný klient neodpovídá vašemu hledání."}
             </div>
           ) : (
             <div className="space-y-3">
               {filteredClients.map((client) => (
-                <div key={client.id} className="list-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div
+                  key={client.id}
+                  className="list-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                >
                   <div>
                     <div className="text-lg font-semibold text-slate-900">
-                      {client.name ?? "Unnamed client"}
+                      {client.name ?? "Nepojmenovaný klient"}
                     </div>
                     <div className="text-sm text-slate-600 space-y-1 mt-1">
-                      <div>{client.phone || "—"}</div>
-                      <div>{client.email || "—"}</div>
+                      <div>{client.phone || ""}</div>
+                      <div>{client.email || ""}</div>
                     </div>
                   </div>
                   <button
                     onClick={() => onViewDetails(client.id)}
                     className="btn-secondary w-full sm:w-auto"
                   >
-                    View Details
+                    Zobrazit detail
                   </button>
                 </div>
               ))}

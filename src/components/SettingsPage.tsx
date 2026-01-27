@@ -139,7 +139,7 @@ export function SettingsPage() {
     try {
       ws = new WebSocket(connectedRelayUrl);
     } catch (error) {
-      console.error("Invalid relay URL:", error);
+      console.error("Neplatná URL relay adresa:", error);
       setIsRelayConnected(false);
       return;
     }
@@ -210,7 +210,7 @@ export function SettingsPage() {
   }, [profile]);
   const handleGenerateMnemonic = async () => {
     const confirmed = confirm(
-      "This will reset local data and generate a new backup phrase. Continue?",
+      "Chystáte se resetovat lokální data a vygenerovat nový seed zálohy. Chcete pokračovat?",
     );
     if (!confirmed) return;
     await evolu.resetAppOwner();
@@ -232,15 +232,15 @@ export function SettingsPage() {
   const handleRestoreFromMnemonic = async () => {
     const trimmed = mnemonicInput.trim();
     if (!trimmed) {
-      setMnemonicError("Please enter a backup phrase");
+      setMnemonicError("Zadejte seed zálohy");
       return;
     }
     if (!isValidMnemonic(trimmed)) {
-      setMnemonicError("Invalid backup phrase format");
+      setMnemonicError("Neplatný formát seedu zálohy");
       return;
     }
     if (trimmed === currentMnemonic) {
-      setMnemonicError("This phrase is already active");
+      setMnemonicError("Tento seed zálohy je již aktivní");
       return;
     }
 
@@ -248,14 +248,14 @@ export function SettingsPage() {
       await evolu.restoreAppOwner(trimmed as Evolu.Mnemonic);
     } catch (error) {
       console.error("Failed to restore owner:", error);
-      setMnemonicError("Failed to restore from backup phrase");
+      setMnemonicError("Nepodařilo se obnovit data ze seedu zálohy");
     }
   };
 
   // Save data via Evolu (local-first + sync)
   const handleSave = async () => {
     if (!name.trim()) {
-      alert("Please enter your name");
+      alert("Zadejte jméno");
       return;
     }
 
@@ -289,22 +289,22 @@ export function SettingsPage() {
         });
         if (!result.ok) {
           console.error("Validation error:", result.error);
-          alert("Validation error while saving settings");
+          alert("Chyba validace při ukládání nastavení");
           return;
         }
       } else {
         const result = evolu.insert("userProfile", payload);
         if (!result.ok) {
           console.error("Validation error:", result.error);
-          alert("Validation error while saving settings");
+          alert("Chyba validace při ukládání nastavení");
           return;
         }
       }
 
-      alert("Settings saved successfully and synced via Evolu!");
+      alert("Nastavení bylo úspěšně uloženo a synchronizováno přes Evolu!");
     } catch (error) {
       console.error("Error saving settings:", error);
-      alert("Error saving settings");
+      alert("Chyba při ukládání nastavení");
     } finally {
       setIsSaving(false);
     }
@@ -314,7 +314,7 @@ export function SettingsPage() {
   const handleClearData = async () => {
     if (
       !confirm(
-        "Are you sure you want to clear all local data? This will log you out and you'll need your backup phrase to restore your data.",
+        "Opravdu chcete vymazat všechna lokální data? Tím se odhlásíte a k obnovení dat budete potřebovat seed zálohy.",
       )
     ) {
       return;
@@ -352,19 +352,19 @@ export function SettingsPage() {
     setIban("");
     setSavedData(null);
     setLastSyncTime("");
-    alert("All local data has been cleared.");
+    alert("Všechna lokální data byla smazána.");
   };
 
   // Save relay URL and reconnect
   const handleSaveRelayUrl = async () => {
     const trimmedUrl = relayUrl.trim();
     if (!trimmedUrl) {
-      alert("Please enter a relay URL");
+      alert("Zadejte URL relay serveru");
       return;
     }
 
     if (!trimmedUrl.startsWith("ws://") && !trimmedUrl.startsWith("wss://")) {
-      alert("Relay URL must start with ws:// or wss://");
+      alert("URL relay serveru musí začínat ws:// nebo wss://");
       return;
     }
 
@@ -375,7 +375,7 @@ export function SettingsPage() {
       evolu.reloadApp();
     } catch (error) {
       console.error("Error updating relay URL:", error);
-      alert("Error updating relay URL");
+      alert("Chyba při aktualizaci URL relay serveru");
     } finally {
       setIsReconnecting(false);
     }
@@ -454,22 +454,22 @@ export function SettingsPage() {
       <div className="page-container">
         <div className="page-card">
           <div className="mb-8">
-            <p className="section-title">Preferences</p>
-            <h1 className="page-title">Settings</h1>
+            <p className="section-title">Předvolby</p>
+            <h1 className="page-title">Nastavení</h1>
           </div>
 
           {/* Relay Configuration Section */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              Relay Configuration
+              Nastavení Relay serveru
             </h2>
             <p className="text-sm text-slate-600 mb-4">
-              Configure the Evolu relay URL used for synchronization. Changing
-              it will reconnect the app.
+              Nastavte URL adresu Evolu relay serveru pro synchronizaci dat.
+              Změna způsobí opětovné připojení aplikace.
             </p>
             <div>
               <label htmlFor="relayUrl" className="form-label">
-                Relay Server URL
+                URL adresa relay serveru
               </label>
               <input
                 id="relayUrl"
@@ -490,20 +490,21 @@ export function SettingsPage() {
                   }`}
                 >
                   {isRelayConnected === true
-                    ? "✓ Relay connected"
+                    ? "✓ Relay je připojen"
                     : isRelayConnected === false
-                      ? "⚠ Relay disconnected"
-                      : "⟳ Connecting..."}
+                      ? "⚠ Relay je odpojen"
+                      : "⟳ Připojování..."}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  Current relay: {connectedRelayUrl || "Not connected"}
+                  Aktuální relay: {connectedRelayUrl || "odpojen"}
                 </p>
                 <p className="text-xs text-slate-500">
-                  Last sync: {lastSyncTime || "Not synced yet"}
+                  Poslední synchronizace: {lastSyncTime || "zatím neproběhla"}
                 </p>
                 <p className="text-xs text-slate-500">
-                  Default: wss://free.evoluhq.com
+                  Výchozí: wss://free.evoluhq.com
                 </p>
+                <p></p>
               </div>
 
               <button
@@ -512,8 +513,8 @@ export function SettingsPage() {
                 className="btn-primary w-full"
               >
                 {isReconnecting
-                  ? "Reconnecting..."
-                  : "Save Relay URL & Reconnect"}
+                  ? "Připojování..."
+                  : "Uložit URL relay serveru & Znovu připojit"}
               </button>
             </div>
           </div>
@@ -521,17 +522,17 @@ export function SettingsPage() {
           {/* Mnemonic Section */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              Secure Backup Phrase
+              Seed zálohy
             </h2>
             <p className="text-sm text-slate-600 mb-4">
-              Your backup phrase allows you to recover your account. Keep it
-              safe and never share it.
+              Váš seed zálohy vám umožňuje obnovit vaše data. Uchovejte jej
+              bezpečně uložený a nikdy jej s nikým nesdílejte.
             </p>
 
             {currentMnemonic ? (
               <div className="alert-warning mb-4">
                 <p className="text-sm font-semibold text-amber-900">
-                  Your backup phrase:
+                  Váš seed zálohy:
                 </p>
                 <p className="mt-2 rounded-2xl border border-amber-200/70 bg-white/80 p-3 text-sm font-mono text-slate-700 break-words">
                   {currentMnemonic}
@@ -540,7 +541,7 @@ export function SettingsPage() {
                   onClick={() => setShowMnemonicInput(true)}
                   className="btn-ghost mt-3"
                 >
-                  Use different phrase
+                  Použít jiný seed zálohy
                 </button>
               </div>
             ) : null}
@@ -551,7 +552,7 @@ export function SettingsPage() {
                   onClick={handleGenerateMnemonic}
                   className="btn-primary w-full"
                 >
-                  Generate New Backup Phrase
+                  Vygenerovat nový seed zálohy
                 </button>
 
                 <div className="relative">
@@ -560,19 +561,19 @@ export function SettingsPage() {
                   </div>
                   <div className="relative flex justify-center text-sm">
                     <span className="px-3 py-1 rounded-full bg-white/80 text-slate-500">
-                      or
+                      nebo
                     </span>
                   </div>
                 </div>
 
                 <div>
                   <label className="form-label">
-                    Enter your existing backup phrase
+                    Zadejte existující seed zálohy
                   </label>
                   <textarea
                     value={mnemonicInput}
                     onChange={handleMnemonicInput}
-                    placeholder="Enter your 12 or 24 word backup phrase..."
+                    placeholder="Zadejte váš 12 nebo 24slovný seed zálohy..."
                     rows={3}
                     className="form-textarea font-mono text-sm"
                   />
@@ -583,14 +584,14 @@ export function SettingsPage() {
                     mnemonicInput &&
                     !isValidMnemonic(mnemonicInput) && (
                       <p className="text-red-600 text-sm mt-2">
-                        Invalid backup phrase format
+                        Neplatný formát seedu zálohy
                       </p>
                     )}
                   <button
                     onClick={handleRestoreFromMnemonic}
                     className="btn-success mt-3 w-full"
                   >
-                    Restore from Backup Phrase
+                    Obnovit data ze seedu zálohy
                   </button>
                 </div>
               </div>
@@ -600,21 +601,21 @@ export function SettingsPage() {
           {/* Profile Section */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              Profile Information
+              Vaše údaje
             </h2>
 
             <div className="space-y-4">
               {/* Name */}
               <div>
                 <label htmlFor="name" className="form-label">
-                  Your Name *
+                  Jméno a příjmení *
                 </label>
                 <input
                   id="name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your name"
+                  placeholder=""
                   className="form-input"
                 />
               </div>
@@ -622,7 +623,7 @@ export function SettingsPage() {
               {/* Contact Information */}
               <div className="border-t border-slate-200/70 pt-4 mt-4">
                 <h3 className="font-semibold text-slate-700 mb-3">
-                  Contact Information
+                  Kontaktní údaje
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -634,20 +635,20 @@ export function SettingsPage() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="your@email.com"
+                      placeholder=""
                       className="form-input"
                     />
                   </div>
                   <div>
                     <label htmlFor="phone" className="form-label">
-                      Phone
+                      Telefon
                     </label>
                     <input
                       id="phone"
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+1 (555) 000-0000"
+                      placeholder=""
                       className="form-input"
                     />
                   </div>
@@ -656,30 +657,30 @@ export function SettingsPage() {
 
               {/* Address */}
               <div className="border-t border-slate-200/70 pt-4 mt-4">
-                <h3 className="font-semibold text-slate-700 mb-3">Address</h3>
+                <h3 className="font-semibold text-slate-700 mb-3">Adresa</h3>
                 <div>
                   <label htmlFor="addressLine1" className="form-label">
-                    Address Line 1
+                    Ulice, číslo popisné
                   </label>
                   <input
                     id="addressLine1"
                     type="text"
                     value={addressLine1}
                     onChange={(e) => setAddressLine1(e.target.value)}
-                    placeholder="Street address"
+                    placeholder=""
                     className="form-input"
                   />
                 </div>
                 <div className="mt-2">
                   <label htmlFor="addressLine2" className="form-label">
-                    Address Line 2
+                    PSČ, město
                   </label>
                   <input
                     id="addressLine2"
                     type="text"
                     value={addressLine2}
                     onChange={(e) => setAddressLine2(e.target.value)}
-                    placeholder="City, state, postal code"
+                    placeholder=""
                     className="form-input"
                   />
                 </div>
@@ -688,12 +689,12 @@ export function SettingsPage() {
               {/* Company Information */}
               <div className="border-t border-slate-200/70 pt-4 mt-4">
                 <h3 className="font-semibold text-slate-700 mb-3">
-                  Company Information
+                  Fakturační údaje
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="companyId" className="form-label">
-                      Company Identification Number
+                      IČO
                     </label>
                     <input
                       id="companyId"
@@ -702,7 +703,7 @@ export function SettingsPage() {
                       onChange={(e) =>
                         setCompanyIdentificationNumber(e.target.value)
                       }
-                      placeholder="Company ID"
+                      placeholder=""
                       className="form-input"
                     />
                   </div>
@@ -714,19 +715,19 @@ export function SettingsPage() {
                     onChange={(e) => setVatPayer(e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                  VAT payer
+                  Jsem plátce DPH
                 </label>
                 {vatPayer && (
                   <div className="mt-3">
                     <label htmlFor="vat" className="form-label">
-                      VAT Number
+                      DIČ
                     </label>
                     <input
                       id="vat"
                       type="text"
                       value={vatNumber}
                       onChange={(e) => setVatNumber(e.target.value)}
-                      placeholder="VAT Number"
+                      placeholder=""
                       className="form-input"
                     />
                   </div>
@@ -736,19 +737,19 @@ export function SettingsPage() {
               {/* Banking Information */}
               <div className="border-t border-slate-200/70 pt-4 mt-4">
                 <h3 className="font-semibold text-slate-700 mb-3">
-                  Banking Information
+                  Bankovní spojení
                 </h3>
                 <div className="space-y-3">
                   <div>
                     <label htmlFor="bankAccount" className="form-label">
-                      Bank Account
+                      Bankovní účet
                     </label>
                     <input
                       id="bankAccount"
                       type="text"
                       value={bankAccount}
                       onChange={(e) => setBankAccount(e.target.value)}
-                      placeholder="Bank account number"
+                      placeholder=""
                       className="form-input"
                     />
                   </div>
@@ -762,7 +763,7 @@ export function SettingsPage() {
                         type="text"
                         value={swift}
                         onChange={(e) => setSwift(e.target.value)}
-                        placeholder="SWIFT code"
+                        placeholder=""
                         className="form-input"
                       />
                     </div>
@@ -775,7 +776,7 @@ export function SettingsPage() {
                         type="text"
                         value={iban}
                         onChange={(e) => setIban(e.target.value)}
-                        placeholder="IBAN"
+                        placeholder=""
                         className="form-input"
                       />
                     </div>
@@ -785,7 +786,7 @@ export function SettingsPage() {
 
               <div className="border-t border-slate-200/70 pt-4 mt-4">
                 <h3 className="font-semibold text-slate-700 mb-3">
-                  Invoice Footer
+                  Patička faktury
                 </h3>
                 <div>
                   <div className="flex items-center gap-2 mb-2">
@@ -793,34 +794,30 @@ export function SettingsPage() {
                       htmlFor="invoiceFooterText"
                       className="block text-sm font-medium text-slate-700"
                     >
-                      Invoice footer text
+                      Text patičky faktury
                     </label>
                   </div>
                   <textarea
                     id="invoiceFooterText"
                     value={invoiceFooterText}
                     onChange={(e) => setInvoiceFooterText(e.target.value)}
-                    placeholder="Enter footer text for invoices"
+                    placeholder="Daně jsou krádež."
                     rows={3}
                     className="form-textarea"
                   />
                   <details className="mt-3 panel-card">
                     <summary className="cursor-pointer text-sm font-semibold text-slate-700">
-                      Example footer texts
+                      Příklady textu patičky faktury
                     </summary>
                     <div className="mt-2 text-sm text-slate-600 space-y-2">
                       <p>
-                        <span className="font-semibold">- non-VAT payer:</span>{" "}
+                        <span className="font-semibold">- Neplátce DPH:</span>{" "}
                         Fyzická osoba zapsaná v živnostenském rejstříku.
                       </p>
                       <p>
-                        <span className="font-semibold">- VAT payer:</span>{" "}
+                        <span className="font-semibold">- Plátce DPH:</span>{" "}
                         Společnost je zapsána v obchodním rejstříku vedeném
                         Městským soudem v Praze oddíl B, vložka 012345.
-                      </p>
-                      <p>
-                        <span className="font-semibold">- All tax payers:</span>{" "}
-                        Daně jsou krádež.
                       </p>
                     </div>
                   </details>
@@ -829,7 +826,9 @@ export function SettingsPage() {
             </div>
 
             <div className="border-t border-slate-200/70 pt-4 mt-4">
-              <h3 className="font-semibold text-slate-700 mb-3">Preferences</h3>
+              <h3 className="font-semibold text-slate-700 mb-3">
+                Další předvolby
+              </h3>
               <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                 <input
                   type="checkbox"
@@ -837,7 +836,7 @@ export function SettingsPage() {
                   onChange={(e) => setDiscreteMode(e.target.checked)}
                   className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                 />
-                Discrete mode
+                Diskrétní režim
               </label>
             </div>
           </div>
@@ -848,17 +847,17 @@ export function SettingsPage() {
             disabled={isSaving || !name}
             className="btn-success w-full mb-3"
           >
-            {isSaving ? "Saving..." : "Save Settings"}
+            {isSaving ? "Ukládání..." : "Uložit nastavení"}
           </button>
 
           <button onClick={handleExportCsv} className="btn-primary w-full mb-3">
-            Export invoices & clients (CSV)
+            Exportovat faktury a klienty (CSV)
           </button>
 
           {/* Clear Data Button */}
           {savedData && (
             <button onClick={handleClearData} className="btn-danger w-full">
-              Clear All Local Data
+              Smazat všechna lokální data
             </button>
           )}
         </div>

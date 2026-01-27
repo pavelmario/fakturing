@@ -19,10 +19,12 @@ function App() {
     | "invoice-detail"
   >("settings");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(
+    null,
+  );
 
   return (
-    <Suspense fallback={<div className="app-loading">Loading...</div>}>
+    <Suspense fallback={<div className="app-loading">Načítání...</div>}>
       <div className="app-shell">
         <div className="app-nav">
           <div className="app-tabs">
@@ -33,10 +35,12 @@ function App() {
                 setSelectedInvoiceId(null);
               }}
               className={`tab-button ${
-                page === "invoice-list" ? "tab-button-active" : "tab-button-inactive"
+                page === "invoice-list"
+                  ? "tab-button-active"
+                  : "tab-button-inactive"
               }`}
             >
-              Invoices
+              Faktury
             </button>
             <button
               onClick={() => {
@@ -50,7 +54,7 @@ function App() {
                   : "tab-button-inactive"
               }`}
             >
-              Clients
+              Klienti
             </button>
             <button
               onClick={() => {
@@ -59,10 +63,12 @@ function App() {
                 setSelectedInvoiceId(null);
               }}
               className={`tab-button ${
-                page === "settings" ? "tab-button-active" : "tab-button-inactive"
+                page === "settings"
+                  ? "tab-button-active"
+                  : "tab-button-inactive"
               }`}
             >
-              Settings
+              Nastavení
             </button>
           </div>
         </div>

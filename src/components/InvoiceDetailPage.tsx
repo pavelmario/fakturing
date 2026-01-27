@@ -890,21 +890,21 @@ export function InvoiceDetailPage({
   const handleSave = async () => {
     if (!invoice?.id) return;
     if (!trimmedInvoiceNumber) {
-      alert("Please enter an invoice number");
+      alert("Zadejte číslo faktury");
       return;
     }
     if (!clientName.trim()) {
-      alert("Please select a client");
+      alert("Vyberte klienta");
       return;
     }
     if (!issueDate.trim()) {
-      alert("Please select an issue date");
+      alert("Zadejte datum vystavení");
       return;
     }
 
     const paymentDaysNumber = Number(paymentDays);
     if (Number.isNaN(paymentDaysNumber) || paymentDaysNumber < 0) {
-      alert("Payment days must be a non-negative number");
+      alert("Počet dní splatnosti musí být kladné číslo");
       return;
     }
 
@@ -915,7 +915,7 @@ export function InvoiceDetailPage({
         "Issue date error:",
         formatTypeError(issueDateResult.error),
       );
-      alert("Invalid issue date");
+      alert("Neplatné datum vystavení");
       return;
     }
 
@@ -924,7 +924,7 @@ export function InvoiceDetailPage({
       const duzpResult = Evolu.dateToDateIso(new Date(duzp));
       if (!duzpResult.ok) {
         console.error("DUZP date error:", formatTypeError(duzpResult.error));
-        alert("Invalid DUZP date");
+        alert("Neplatné DUZP");
         return;
       }
       duzpValue = duzpResult.value;
@@ -938,7 +938,7 @@ export function InvoiceDetailPage({
           "Payment date error:",
           formatTypeError(paymentDateResult.error),
         );
-        alert("Invalid payment date");
+        alert("Neplatné datum platby");
         return;
       }
       paymentDateValue = paymentDateResult.value;
@@ -950,13 +950,13 @@ export function InvoiceDetailPage({
         "Payment days error:",
         formatTypeError(paymentDaysResult.error),
       );
-      alert("Payment days must be a non-negative number");
+      alert("Počet dní splatnosti musí být kladné číslo");
       return;
     }
 
     if (hasDuplicateInvoiceNumber) {
       const confirmed = confirm(
-        "This invoice number already exists. Update anyway?",
+        "Toto číslo faktury již existuje. Přesto uložit?",
       );
       if (!confirmed) return;
     }
@@ -984,7 +984,7 @@ export function InvoiceDetailPage({
       const itemsResult = Evolu.Json.from(JSON.stringify(normalizedItems));
       if (!itemsResult.ok) {
         console.error("Items error:", formatTypeError(itemsResult.error));
-        alert("Invoice items are invalid");
+        alert("Položky faktury jsou neplatné");
         return;
       }
 
@@ -1004,15 +1004,15 @@ export function InvoiceDetailPage({
 
       if (!result.ok) {
         console.error("Validation error:", formatTypeError(result.error));
-        alert("Validation error while saving invoice");
+        alert("Chyba validace při ukládání faktury");
         return;
       }
 
-      setSaveMessage("Invoice updated successfully!");
+      setSaveMessage("Faktura byla úspěšně aktualizována!");
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating invoice:", error);
-      alert("Error updating invoice");
+      alert("Chyba při ukládání faktury");
     } finally {
       setIsSaving(false);
     }
@@ -1034,7 +1034,7 @@ export function InvoiceDetailPage({
 
     if (!result.ok) {
       console.error("Payment cancel error:", result.error);
-      alert("Error clearing payment date");
+      alert("Chyba při rušení platby");
       return;
     }
 
@@ -1044,7 +1044,7 @@ export function InvoiceDetailPage({
   const handleDelete = async () => {
     if (!invoice?.id) return;
     const confirmed = confirm(
-      "Delete this invoice? This action cannot be undone.",
+      "Smazat tuto fakturu? Tuto akci nelze vrátit zpět.",
     );
     if (!confirmed) return;
 
@@ -1058,13 +1058,13 @@ export function InvoiceDetailPage({
       });
       if (!result.ok) {
         console.error("Delete error:", result.error);
-        alert("Error deleting invoice");
+        alert("Chyba při mazání faktury");
         return;
       }
       onBack();
     } catch (error) {
       console.error("Error deleting invoice:", error);
-      alert("Error deleting invoice");
+      alert("Chyba při mazání faktury");
     } finally {
       setIsDeleting(false);
     }
@@ -1079,15 +1079,15 @@ export function InvoiceDetailPage({
       const nextInvoiceNumber = getNextInvoiceNumber(latestInvoiceNumber ?? "");
       const safeClientName = invoice.clientName ?? clientName.trim();
       if (!safeClientName) {
-        alert("Invoice is missing a client name");
+        alert("Faktura nemá vyplněného klienta");
         return;
       }
       if (!invoice.issueDate) {
-        alert("Invoice is missing an issue date");
+        alert("Faktura nemá vyplněné datum vystavení");
         return;
       }
       if (invoice.paymentDays == null) {
-        alert("Invoice is missing payment terms");
+        alert("Faktura nemá vyplněný počet dní splatnosti");
         return;
       }
 
@@ -1110,21 +1110,21 @@ export function InvoiceDetailPage({
       });
       if (!validation.ok) {
         console.error("Validation error:", validation.error);
-        alert("Validation error while duplicating invoice");
+        alert("Chyba validace při duplikaci faktury");
         return;
       }
 
       const result = evolu.insert("invoice", payload);
       if (!result.ok) {
         console.error("Insert error:", result.error);
-        alert("Error duplicating invoice");
+        alert("Chyba při duplikaci faktury");
         return;
       }
 
-      setSaveMessage("Invoice duplicated successfully!");
+      setSaveMessage("Faktura byla úspěšně duplikována!");
     } catch (error) {
       console.error("Error duplicating invoice:", error);
-      alert("Error duplicating invoice");
+      alert("Chyba při duplikaci faktury");
     } finally {
       setIsDuplicating(false);
     }
@@ -1136,12 +1136,12 @@ export function InvoiceDetailPage({
         <div className="page-container-lg">
           <div className="page-card-lg">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="page-title">Invoice Details</h1>
+              <h1 className="page-title">Detail faktury</h1>
               <button onClick={onBack} className="btn-secondary">
-                Back to list
+                Zpět na seznam
               </button>
             </div>
-            <div className="empty-state">Invoice not found.</div>
+            <div className="empty-state">Faktura nenalezena.</div>
           </div>
         </div>
       </div>
@@ -1153,18 +1153,20 @@ export function InvoiceDetailPage({
       <div className="page-container-lg">
         <div className="page-card-lg">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="page-title">Invoice Details</h1>
+            <h1 className="page-title">Detail faktury</h1>
             <button onClick={onBack} className="btn-secondary">
-              Back to list
+              Zpět na seznam
             </button>
           </div>
 
-          {saveMessage ? <div className="mb-6 alert-success">{saveMessage}</div> : null}
+          {saveMessage ? (
+            <div className="mb-6 alert-success">{saveMessage}</div>
+          ) : null}
 
           <div className="space-y-4">
             <div>
               <label htmlFor="invoiceNumber" className="form-label">
-                Invoice Number *
+                Číslo faktury *
               </label>
               <input
                 id="invoiceNumber"
@@ -1178,7 +1180,7 @@ export function InvoiceDetailPage({
 
             <div>
               <label htmlFor="clientName" className="form-label">
-                Client *
+                Klient *
               </label>
               <select
                 id="clientName"
@@ -1187,7 +1189,7 @@ export function InvoiceDetailPage({
                 disabled={!isEditing}
                 className="form-select disabled:bg-slate-100"
               >
-                <option value="">Select a client</option>
+                <option value="">Vyberte klienta</option>
                 {clients
                   .filter((client): client is { id: string; name: string } =>
                     Boolean(client.name),
@@ -1200,7 +1202,7 @@ export function InvoiceDetailPage({
               </select>
               {clients.length === 0 ? (
                 <p className="text-xs text-gray-500 mt-2">
-                  No active clients available.
+                  Žádní klienti nenalezeni.
                 </p>
               ) : null}
             </div>
@@ -1208,7 +1210,7 @@ export function InvoiceDetailPage({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="issueDate" className="form-label">
-                  Issue Date *
+                  Datum vystavení *
                 </label>
                 <input
                   id="issueDate"
@@ -1221,7 +1223,7 @@ export function InvoiceDetailPage({
               </div>
               <div>
                 <label htmlFor="paymentDays" className="form-label">
-                  Payment Days *
+                  Dní splatnosti *
                 </label>
                 <input
                   id="paymentDays"
@@ -1237,7 +1239,7 @@ export function InvoiceDetailPage({
 
             <div>
               <label htmlFor="paymentDate" className="form-label">
-                Paid on
+                Datum úhrady
               </label>
               <input
                 id="paymentDate"
@@ -1267,7 +1269,7 @@ export function InvoiceDetailPage({
 
             <div>
               <label htmlFor="purchaseOrderNumber" className="form-label">
-                Purchase Order Number
+                Číslo objednávky
               </label>
               <input
                 id="purchaseOrderNumber"
@@ -1288,15 +1290,18 @@ export function InvoiceDetailPage({
                 disabled={!isEditing}
                 className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
               />
-              <label htmlFor="btcInvoice" className="text-sm font-medium text-slate-700">
-                Bitcoin invoice
+              <label
+                htmlFor="btcInvoice"
+                className="text-sm font-medium text-slate-700"
+              >
+                Fakturuji v bitcoinu
               </label>
             </div>
 
             {btcInvoice ? (
               <div>
                 <label htmlFor="btcAddress" className="form-label">
-                  BTC address
+                  Adresa příjemce
                 </label>
                 <input
                   id="btcAddress"
@@ -1313,10 +1318,15 @@ export function InvoiceDetailPage({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg font-semibold text-slate-900">
-                  Invoice Items
+                  Položky faktury
                 </h2>
-                <button type="button" onClick={addItem} disabled={!isEditing} className="btn-secondary">
-                  Add Item
+                <button
+                  type="button"
+                  onClick={addItem}
+                  disabled={!isEditing}
+                  className="btn-secondary"
+                >
+                  Přidat položku
                 </button>
               </div>
 
@@ -1329,7 +1339,7 @@ export function InvoiceDetailPage({
                           htmlFor={`item-${index}-description`}
                           className="form-label"
                         >
-                          Description
+                          Popis
                         </label>
                         <input
                           id={`item-${index}-description`}
@@ -1347,7 +1357,7 @@ export function InvoiceDetailPage({
                           htmlFor={`item-${index}-unit`}
                           className="form-label"
                         >
-                          Unit
+                          Jednotka
                         </label>
                         <input
                           id={`item-${index}-unit`}
@@ -1372,7 +1382,7 @@ export function InvoiceDetailPage({
                           htmlFor={`item-${index}-amount`}
                           className="form-label"
                         >
-                          Amount
+                          Množství
                         </label>
                         <input
                           id={`item-${index}-amount`}
@@ -1391,7 +1401,7 @@ export function InvoiceDetailPage({
                           htmlFor={`item-${index}-unitPrice`}
                           className="form-label"
                         >
-                          Unit Price
+                          Cena za jednotku
                         </label>
                         <input
                           id={`item-${index}-unitPrice`}
@@ -1412,13 +1422,13 @@ export function InvoiceDetailPage({
                             htmlFor={`item-${index}-vat`}
                             className="form-label"
                           >
-                            VAT (%)
+                            DPH (%)
                           </label>
                           <input
                             id={`item-${index}-vat`}
                             type="number"
                             min={0}
-                            step="0.01"
+                            step="0.1"
                             value={item.vat}
                             onChange={(e) =>
                               updateItem(index, "vat", e.target.value)
@@ -1437,7 +1447,7 @@ export function InvoiceDetailPage({
                         disabled={!isEditing || items.length === 1}
                         className="btn-danger"
                       >
-                        Remove
+                        Odstranit položku
                       </button>
                     </div>
                   </div>
@@ -1446,7 +1456,7 @@ export function InvoiceDetailPage({
             </div>
 
             <div className="panel-card text-sm text-slate-700">
-              <span className="font-semibold text-slate-900">Total:</span>{" "}
+              <span className="font-semibold text-slate-900">Celkem:</span>{" "}
               {formatUiTotal(invoiceTotal)}
             </div>
           </div>
@@ -1459,7 +1469,7 @@ export function InvoiceDetailPage({
                 className="btn-secondary w-full sm:w-auto text-center"
               >
                 {({ loading }) =>
-                  loading ? "Preparing PDF..." : "Export to PDF"
+                  loading ? "Připravuji PDF..." : "Exportovat do PDF"
                 }
               </PDFDownloadLink>
             ) : null}
@@ -1470,20 +1480,20 @@ export function InvoiceDetailPage({
                   disabled={isDuplicating}
                   className="btn-success w-full sm:w-auto"
                 >
-                  {isDuplicating ? "Duplicating..." : "Duplicate"}
+                  {isDuplicating ? "Duplikuji..." : "Duplikovat"}
                 </button>
                 <button
                   onClick={() => setIsEditing(true)}
                   className="btn-primary w-full sm:w-auto"
                 >
-                  Edit
+                  Upravit
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={isDeleting}
                   className="btn-danger w-full sm:w-auto"
                 >
-                  {isDeleting ? "Deleting..." : "Delete"}
+                  {isDeleting ? "Mažu..." : "Smazat"}
                 </button>
               </>
             ) : (
