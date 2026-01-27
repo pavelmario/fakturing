@@ -1537,28 +1537,28 @@ export function InvoiceDetailPage({
                   disabled={isSaving || isDeleting}
                   className="btn-primary w-full sm:w-auto"
                 >
-                  {isSaving ? "Saving..." : "Save"}
+                  {isSaving ? "Ukládám..." : "Uložit"}
                 </button>
                 <button
                   onClick={handleCancelPayment}
                   disabled={isSaving || isDeleting}
                   className="btn-secondary w-full sm:w-auto"
                 >
-                  Cancel Payment
+                  Zrušit platbu
                 </button>
                 <button
                   onClick={handleCancel}
                   disabled={isSaving || isDeleting}
                   className="btn-secondary w-full sm:w-auto"
                 >
-                  Cancel
+                  Zrušit úpravy
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={isSaving || isDeleting}
                   className="btn-danger w-full sm:w-auto"
                 >
-                  {isDeleting ? "Deleting..." : "Delete"}
+                  {isDeleting ? "Mažu..." : "Smazat"}
                 </button>
               </>
             )}

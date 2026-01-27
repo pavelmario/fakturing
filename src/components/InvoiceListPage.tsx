@@ -304,8 +304,11 @@ export function InvoiceListPage({
             </div>
           </div>
 
-          <div className="panel-card mb-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <details className="panel-card mb-6">
+            <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+              Filtry
+            </summary>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               <label className="flex flex-col gap-2 text-sm text-gray-700">
                 <span className="font-semibold text-slate-900">Rok</span>
                 <select
@@ -345,7 +348,7 @@ export function InvoiceListPage({
                         }
                         className="h-4 w-4 rounded border-slate-300 text-blue-600"
                       />
-                      <span className="">
+                      <span>
                         {status === "paid"
                           ? "uhrazeno"
                           : status === "overdue"
@@ -386,11 +389,11 @@ export function InvoiceListPage({
                 </div>
               </div>
             </div>
-          </div>
+          </details>
 
           {filteredInvoices.length === 0 ? (
             <div className="empty-state">
-              Žádná faktura neodpovídá zadaným kritériím.
+              Zadaným kritériím neodpovídá žádná faktura.
             </div>
           ) : (
             <div className="space-y-3">
