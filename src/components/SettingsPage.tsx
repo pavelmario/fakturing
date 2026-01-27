@@ -468,10 +468,7 @@ export function SettingsPage() {
               it will reconnect the app.
             </p>
             <div>
-              <label
-                htmlFor="relayUrl"
-                className="form-label"
-              >
+              <label htmlFor="relayUrl" className="form-label">
                 Relay Server URL
               </label>
               <input
@@ -539,7 +536,10 @@ export function SettingsPage() {
                 <p className="mt-2 rounded-2xl border border-amber-200/70 bg-white/80 p-3 text-sm font-mono text-slate-700 break-words">
                   {currentMnemonic}
                 </p>
-                <button onClick={() => setShowMnemonicInput(true)} className="btn-ghost mt-3">
+                <button
+                  onClick={() => setShowMnemonicInput(true)}
+                  className="btn-ghost mt-3"
+                >
                   Use different phrase
                 </button>
               </div>
@@ -547,7 +547,10 @@ export function SettingsPage() {
 
             {!currentMnemonic || showMnemonicInput ? (
               <div className="space-y-4">
-                <button onClick={handleGenerateMnemonic} className="btn-primary w-full">
+                <button
+                  onClick={handleGenerateMnemonic}
+                  className="btn-primary w-full"
+                >
                   Generate New Backup Phrase
                 </button>
 
@@ -556,7 +559,9 @@ export function SettingsPage() {
                     <div className="w-full border-t border-slate-200/70"></div>
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="px-3 py-1 rounded-full bg-white/80 text-slate-500">or</span>
+                    <span className="px-3 py-1 rounded-full bg-white/80 text-slate-500">
+                      or
+                    </span>
                   </div>
                 </div>
 
@@ -581,7 +586,10 @@ export function SettingsPage() {
                         Invalid backup phrase format
                       </p>
                     )}
-                  <button onClick={handleRestoreFromMnemonic} className="btn-success mt-3 w-full">
+                  <button
+                    onClick={handleRestoreFromMnemonic}
+                    className="btn-success mt-3 w-full"
+                  >
                     Restore from Backup Phrase
                   </button>
                 </div>
@@ -710,10 +718,7 @@ export function SettingsPage() {
                 </label>
                 {vatPayer && (
                   <div className="mt-3">
-                    <label
-                      htmlFor="vat"
-                      className="form-label"
-                    >
+                    <label htmlFor="vat" className="form-label">
                       VAT Number
                     </label>
                     <input
@@ -842,26 +847,20 @@ export function SettingsPage() {
             {isSaving ? "Saving..." : "Save Settings"}
           </button>
 
-          <button
-            onClick={handleExportCsv}
-            className="btn-primary w-full mb-3"
-          >
+          <button onClick={handleExportCsv} className="btn-primary w-full mb-3">
             Export invoices & clients (CSV)
           </button>
 
           {/* Clear Data Button */}
           {savedData && (
-            <button
-              onClick={handleClearData}
-              className="btn-danger w-full"
-            >
+            <button onClick={handleClearData} className="btn-danger w-full">
               Clear All Local Data
             </button>
           )}
         </div>
       </div>
       <p className="text-center text-slate-500">
-        <small>v.0.3</small>
+        <small>v.0.4</small>
       </p>
     </div>
   );
