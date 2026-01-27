@@ -154,9 +154,6 @@ export function InvoiceCreatePage() {
     () => Evolu.NonEmptyTrimmedString100.from(trimmedInvoiceNumber),
     [trimmedInvoiceNumber],
   );
-  const safeInvoiceNumber = invoiceNumberResult.ok
-    ? invoiceNumberResult.value
-    : Evolu.NonEmptyTrimmedString100.orThrow("__invalid__");
   const duplicateInvoiceQuery = useMemo(
     () =>
       evolu.createQuery((db) =>
@@ -164,19 +161,18 @@ export function InvoiceCreatePage() {
           .selectFrom("invoice")
           .select(["id", "invoiceNumber"])
           .where("ownerId", "=", owner.id)
-          .where("invoiceNumber", "=", safeInvoiceNumber)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
-          .where("deleted", "is not", Evolu.sqliteTrue)
-          .limit(1),
+          .where("deleted", "is not", Evolu.sqliteTrue),
       ),
-    [evolu, owner.id, safeInvoiceNumber],
+    [evolu, owner.id],
   );
 
   const duplicateInvoices = useQuery(
     duplicateInvoiceQuery,
   ) as readonly InvoiceNumberRow[];
   const hasDuplicateInvoiceNumber = Boolean(
-    invoiceNumberResult.ok && duplicateInvoices.length > 0,
+    invoiceNumberResult.ok &&
+      duplicateInvoices.some((row) => row.invoiceNumber === trimmedInvoiceNumber),
   );
 
   useEffect(() => {
