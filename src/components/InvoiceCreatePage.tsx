@@ -8,6 +8,7 @@ type InvoiceItemForm = {
   unit: string;
   description: string;
   unitPrice: string;
+  vat: string;
 };
 
 type InvoiceNumberRow = {
@@ -20,6 +21,7 @@ const emptyItem = (): InvoiceItemForm => ({
   unit: "",
   description: "",
   unitPrice: "",
+  vat: "",
 });
 
 const parseBooleanParam = (value: string | null): boolean | null => {
@@ -44,16 +46,25 @@ const parseItemsParam = (value: string | null): InvoiceItemForm[] | null => {
           typeof item.description === "string" ? item.description : "",
         unitPrice:
           item.unitPrice === 0 || item.unitPrice ? String(item.unitPrice) : "",
+        vat: item.vat === 0 || item.vat ? String(item.vat) : "",
       }))
       .filter(
         (item) =>
-          item.description || item.unit || item.amount || item.unitPrice,
+          item.description || item.unit || item.amount || item.unitPrice || item.vat,
       );
     return normalized.length > 0 ? normalized : null;
   } catch {
     return null;
   }
 };
+
+const formatUiTotal = (value: number) =>
+  new Intl.NumberFormat("cs-CZ", {
+    style: "currency",
+    currency: "CZK",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 
 export function InvoiceCreatePage() {
   const searchParams =
@@ -123,6 +134,12 @@ export function InvoiceCreatePage() {
   const profileRows = useQuery(profileQuery);
   const profile = profileRows[0];
   const isVatPayer = profile?.vatPayer === Evolu.sqliteTrue;
+
+  const invoiceTotal = items.reduce((sum, item) => {
+    const amount = Number(item.amount) || 0;
+    const unitPrice = Number(item.unitPrice) || 0;
+    return sum + amount * unitPrice;
+  }, 0);
 
   const currentYear = new Date().getFullYear();
   const yearPrefix = `${currentYear}-`;
@@ -285,10 +302,11 @@ export function InvoiceCreatePage() {
           unitPrice: Number.isFinite(Number(item.unitPrice))
             ? Number(item.unitPrice)
             : 0,
+          vat: Number.isFinite(Number(item.vat)) ? Number(item.vat) : 0,
         }))
         .filter(
           (item) =>
-            item.description || item.unit || item.amount || item.unitPrice,
+            item.description || item.unit || item.amount || item.unitPrice || item.vat,
         );
 
       const itemsResult = Evolu.Json.from(JSON.stringify(normalizedItems));
@@ -532,7 +550,11 @@ export function InvoiceCreatePage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div
+                      className={`grid grid-cols-1 ${
+                        isVatPayer ? "md:grid-cols-3" : "md:grid-cols-2"
+                      } gap-3`}
+                    >
                       <div>
                         <label
                           htmlFor={`item-${index}-amount`}
@@ -570,6 +592,27 @@ export function InvoiceCreatePage() {
                           className="form-input"
                         />
                       </div>
+                      {isVatPayer ? (
+                        <div>
+                          <label
+                            htmlFor={`item-${index}-vat`}
+                            className="form-label"
+                          >
+                            DPH (%)
+                          </label>
+                          <input
+                            id={`item-${index}-vat`}
+                            type="number"
+                            min={0}
+                            step="0.1"
+                            value={item.vat}
+                            onChange={(e) =>
+                              updateItem(index, "vat", e.target.value)
+                            }
+                            className="form-input"
+                          />
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="flex justify-end">
@@ -585,6 +628,11 @@ export function InvoiceCreatePage() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            <div className="panel-card text-sm text-slate-700">
+              <span className="font-semibold text-slate-900">Celkem:</span>{" "}
+              {formatUiTotal(invoiceTotal)}
             </div>
           </div>
 
