@@ -50,7 +50,11 @@ const parseItemsParam = (value: string | null): InvoiceItemForm[] | null => {
       }))
       .filter(
         (item) =>
-          item.description || item.unit || item.amount || item.unitPrice || item.vat,
+          item.description ||
+          item.unit ||
+          item.amount ||
+          item.unitPrice ||
+          item.vat,
       );
     return normalized.length > 0 ? normalized : null;
   } catch {
@@ -80,6 +84,10 @@ export function InvoiceCreatePage() {
   const initialPaymentDays = getParam("paymentDays") ?? "";
   const initialPurchaseOrderNumber =
     getParam("purchaseOrderNumber") ?? getParam("po") ?? "";
+  const initialPaymentMethod = (() => {
+    const value = getParam("paymentMethod") ?? getParam("payment") ?? "";
+    return value === "cash" || value === "bank" ? value : "bank";
+  })();
   const initialBtcInvoice =
     parseBooleanParam(getParam("btcInvoice") ?? getParam("bitcoin")) ?? false;
   const initialBtcAddress = getParam("btcAddress") ?? "";
@@ -92,6 +100,7 @@ export function InvoiceCreatePage() {
   const [clientName, setClientName] = useState(initialClientName);
   const [issueDate, setIssueDate] = useState(initialIssueDate);
   const [paymentDays, setPaymentDays] = useState(initialPaymentDays || "14");
+  const [paymentMethod, setPaymentMethod] = useState(initialPaymentMethod);
   const [purchaseOrderNumber, setPurchaseOrderNumber] = useState(
     initialPurchaseOrderNumber,
   );
@@ -306,7 +315,11 @@ export function InvoiceCreatePage() {
         }))
         .filter(
           (item) =>
-            item.description || item.unit || item.amount || item.unitPrice || item.vat,
+            item.description ||
+            item.unit ||
+            item.amount ||
+            item.unitPrice ||
+            item.vat,
         );
 
       const itemsResult = Evolu.Json.from(JSON.stringify(normalizedItems));
@@ -322,6 +335,7 @@ export function InvoiceCreatePage() {
         issueDate: issueDateResult.value,
         duzp: isVatPayer ? issueDateResult.value : null,
         paymentDays: paymentDaysResult.value,
+        paymentMethod,
         purchaseOrderNumber: toNullable(purchaseOrderNumber),
         btcInvoice: btcInvoice ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         btcAddress: toNullable(btcAddress),
@@ -352,6 +366,7 @@ export function InvoiceCreatePage() {
       setClientName("");
       setIssueDate("");
       setPaymentDays("14");
+      setPaymentMethod("bank");
       setPurchaseOrderNumber("");
       setBtcInvoice(false);
       setBtcAddress("");
@@ -480,6 +495,20 @@ export function InvoiceCreatePage() {
               </div>
             </div>
 
+            <div>
+              <label htmlFor="paymentMethod" className="form-label">
+                Způsob platby
+              </label>
+              <select
+                id="paymentMethod"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="form-select"
+              >
+                <option value="bank">převodem</option>
+                <option value="cash">hotově</option>
+              </select>
+            </div>
             <div>
               <label htmlFor="purchaseOrderNumber" className="form-label">
                 Číslo objednávky

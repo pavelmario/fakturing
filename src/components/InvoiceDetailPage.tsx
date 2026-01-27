@@ -289,6 +289,7 @@ export function InvoiceDetailPage({
   const [duzp, setDuzp] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentDays, setPaymentDays] = useState("14");
+  const [paymentMethod, setPaymentMethod] = useState("bank");
   const [purchaseOrderNumber, setPurchaseOrderNumber] = useState("");
   const [btcInvoice, setBtcInvoice] = useState(false);
   const [btcAddress, setBtcAddress] = useState("");
@@ -850,6 +851,11 @@ export function InvoiceDetailPage({
     setPaymentDays(
       source?.paymentDays != null ? String(source.paymentDays) : "14",
     );
+    setPaymentMethod(
+      source?.paymentMethod === "cash" || source?.paymentMethod === "bank"
+        ? source.paymentMethod
+        : "bank",
+    );
     setPurchaseOrderNumber(source?.purchaseOrderNumber ?? "");
     setBtcInvoice(source?.btcInvoice === Evolu.sqliteTrue);
     setBtcAddress(source?.btcAddress ?? "");
@@ -996,6 +1002,7 @@ export function InvoiceDetailPage({
         duzp: duzpValue,
         paymentDate: paymentDateValue,
         paymentDays: paymentDaysResult.value,
+        paymentMethod,
         purchaseOrderNumber: toNullable(purchaseOrderNumber),
         btcInvoice: btcInvoice ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         btcAddress: toNullable(btcAddress),
@@ -1098,6 +1105,7 @@ export function InvoiceDetailPage({
         duzp: invoice.duzp ?? null,
         paymentDate: invoice.paymentDate,
         paymentDays: invoice.paymentDays,
+        paymentMethod: invoice.paymentMethod ?? "bank",
         purchaseOrderNumber: invoice.purchaseOrderNumber,
         btcInvoice: invoice.btcInvoice ?? Evolu.sqliteFalse,
         btcAddress: invoice.btcAddress,
@@ -1266,6 +1274,22 @@ export function InvoiceDetailPage({
                 />
               </div>
             ) : null}
+
+            <div>
+              <label htmlFor="paymentMethod" className="form-label">
+                Způsob platby
+              </label>
+              <select
+                id="paymentMethod"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                disabled={!isEditing}
+                className="form-select disabled:bg-slate-100"
+              >
+                <option value="bank">převodem</option>
+                <option value="cash">hotově</option>
+              </select>
+            </div>
 
             <div>
               <label htmlFor="purchaseOrderNumber" className="form-label">

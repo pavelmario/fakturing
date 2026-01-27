@@ -10,7 +10,8 @@ export const getRelayUrl = (): string => {
   if (typeof window === "undefined") return DEFAULT_RELAY_URL;
   const stored = window.localStorage.getItem(RELAY_URL_KEY);
   if (!stored) return DEFAULT_RELAY_URL;
-  if (!stored.startsWith("ws://") && !stored.startsWith("wss://")) return DEFAULT_RELAY_URL;
+  if (!stored.startsWith("ws://") && !stored.startsWith("wss://"))
+    return DEFAULT_RELAY_URL;
   return stored;
 };
 
@@ -58,6 +59,7 @@ export const Schema = {
     duzp: Evolu.nullOr(Evolu.DateIso),
     paymentDate: Evolu.nullOr(Evolu.DateIso),
     paymentDays: Evolu.NonNegativeNumber,
+    paymentMethod: Evolu.nullOr(Evolu.TrimmedString100),
     purchaseOrderNumber: Evolu.nullOr(Evolu.TrimmedString100),
     btcInvoice: Evolu.SqliteBoolean,
     btcAddress: Evolu.nullOr(Evolu.TrimmedString100),
