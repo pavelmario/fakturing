@@ -25,6 +25,9 @@ export function SettingsPage() {
   const [invoiceFooterText, setInvoiceFooterText] = useState<string>("");
   const [discreteMode, setDiscreteMode] = useState<boolean>(false);
   const [poRequired, setPoRequired] = useState<boolean>(false);
+  const [mempoolUrl, setMempoolUrl] = useState<string>(
+    "https://mempool.space/",
+  );
   const [savedData, setSavedData] = useState<{
     name: string;
     email?: string;
@@ -40,6 +43,7 @@ export function SettingsPage() {
     invoiceFooterText?: string;
     discreteMode?: boolean;
     poRequired?: boolean;
+    mempoolUrl?: string;
   } | null>(null);
   const [showMnemonicInput, setShowMnemonicInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -193,6 +197,7 @@ export function SettingsPage() {
       invoiceFooterText: profile.invoiceFooterText ?? undefined,
       discreteMode: profile.discreteMode === Evolu.sqliteTrue,
       poRequired: profile.poRequired === Evolu.sqliteTrue,
+      mempoolUrl: profile.mempoolUrl ?? "https://mempool.space/",
     });
     setName(profile.name ?? "");
     setEmail(profile.email ?? "");
@@ -208,6 +213,7 @@ export function SettingsPage() {
     setInvoiceFooterText(profile.invoiceFooterText ?? "");
     setDiscreteMode(profile.discreteMode === Evolu.sqliteTrue);
     setPoRequired(profile.poRequired === Evolu.sqliteTrue);
+    setMempoolUrl(profile.mempoolUrl ?? "https://mempool.space/");
     setLastSyncTime(
       profile.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "",
     );
@@ -285,6 +291,7 @@ export function SettingsPage() {
         invoiceFooterText: toNullable(invoiceFooterText),
         discreteMode: discreteMode ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         poRequired: poRequired ? Evolu.sqliteTrue : Evolu.sqliteFalse,
+        mempoolUrl: toNullable(mempoolUrl),
       };
 
       if (profile?.id) {
@@ -853,6 +860,19 @@ export function SettingsPage() {
                   />
                   Číslo objednávky na faktuře
                 </label>
+                <div>
+                  <label htmlFor="mempoolUrl" className="form-label">
+                    Mempool URL
+                  </label>
+                  <input
+                    id="mempoolUrl"
+                    type="text"
+                    value={mempoolUrl}
+                    onChange={(e) => setMempoolUrl(e.target.value)}
+                    placeholder="https://mempool.space/"
+                    className="form-input"
+                  />
+                </div>
               </div>
             </div>
           </div>

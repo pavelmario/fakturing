@@ -39,6 +39,7 @@ export const Schema = {
     invoiceFooterText: Evolu.nullOr(Evolu.TrimmedString1000),
     discreteMode: Evolu.nullOr(Evolu.SqliteBoolean),
     poRequired: Evolu.nullOr(Evolu.SqliteBoolean),
+    mempoolUrl: Evolu.nullOr(Evolu.TrimmedString1000),
   },
   client: {
     id: Evolu.id("Client"),
@@ -84,6 +85,7 @@ export type UserProfileInput = {
   invoiceFooterText?: string;
   discreteMode?: 0 | 1 | null;
   poRequired?: 0 | 1 | null;
+  mempoolUrl?: string;
 };
 
 const evolu = createEvolu(evoluReactWebDeps)(Schema, {
