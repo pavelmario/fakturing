@@ -51,6 +51,8 @@ type UserProfileRow = {
   iban?: string | null;
   swift?: string | null;
   invoiceFooterText?: string | null;
+  poRequired?: number | null;
+  mempoolUrl?: string | null;
 };
 
 type InvoiceDetailPageProps = {
