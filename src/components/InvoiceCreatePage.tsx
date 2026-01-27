@@ -97,6 +97,9 @@ export function InvoiceCreatePage() {
   const owner = use(evolu.appOwner);
 
   const [invoiceNumber, setInvoiceNumber] = useState(initialInvoiceNumber);
+  const [invoiceNumberTouched, setInvoiceNumberTouched] = useState(
+    Boolean(initialInvoiceNumber),
+  );
   const [clientName, setClientName] = useState(initialClientName);
   const [issueDate, setIssueDate] = useState(initialIssueDate);
   const [paymentDays, setPaymentDays] = useState(initialPaymentDays || "14");
@@ -209,6 +212,7 @@ export function InvoiceCreatePage() {
   }, [issueDate]);
 
   useEffect(() => {
+    if (invoiceNumberTouched) return;
     if (invoiceNumber.trim()) return;
 
     let nextNumber = 1;
@@ -223,7 +227,13 @@ export function InvoiceCreatePage() {
 
     const padded = String(nextNumber).padStart(4, "0");
     setInvoiceNumber(`${currentYear}-${padded}`);
-  }, [currentYear, invoiceNumber, latestInvoiceNumber, yearPrefix]);
+  }, [
+    currentYear,
+    invoiceNumber,
+    invoiceNumberTouched,
+    latestInvoiceNumber,
+    yearPrefix,
+  ]);
 
   const toNullable = (value: string) => {
     const trimmed = value.trim();
@@ -402,8 +412,11 @@ export function InvoiceCreatePage() {
                 id="invoiceNumber"
                 type="text"
                 value={invoiceNumber}
-                onChange={(e) => setInvoiceNumber(e.target.value)}
-                placeholder="INV-2026-001"
+                onChange={(e) => {
+                  setInvoiceNumberTouched(true);
+                  setInvoiceNumber(e.target.value);
+                }}
+                placeholder="INV-2140-0021"
                 className="form-input"
               />
             </div>
