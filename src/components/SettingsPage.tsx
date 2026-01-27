@@ -1,4 +1,4 @@
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import * as bip39 from "bip39";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
@@ -55,6 +55,7 @@ export function SettingsPage() {
   const [connectedRelayUrl, setConnectedRelayUrl] = useState<string>("");
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [mnemonicError, setMnemonicError] = useState<string>("");
+  const importSettingsInputRef = useRef<HTMLInputElement | null>(null);
 
   const profileQuery = useMemo(
     () =>
@@ -262,6 +263,152 @@ export function SettingsPage() {
       console.error("Failed to restore owner:", error);
       setMnemonicError("Nepodařilo se obnovit data ze seedu zálohy");
     }
+  };
+
+  const parseCsvLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === "," && !inQuotes) {
+        result.push(current);
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    result.push(current);
+    return result;
+  };
+
+  const parseCsvBoolean = (value: string | undefined): boolean => {
+    if (!value) return false;
+    const normalized = value.trim().toLowerCase();
+    return normalized === "1" || normalized === "true" || normalized === "yes";
+  };
+
+  const handleImportSettingsCsv = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const text = String(reader.result ?? "");
+        const lines = text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (lines.length < 2) {
+          alert("CSV soubor neobsahuje žádná data.");
+          return;
+        }
+
+        const headers = parseCsvLine(lines[0]);
+        const values = parseCsvLine(lines[1]);
+        const row = headers.reduce<Record<string, string>>(
+          (acc, key, index) => {
+            acc[key] = values[index] ?? "";
+            return acc;
+          },
+          {},
+        );
+
+        const importedName = row.name?.trim() ?? "";
+        if (!importedName) {
+          alert("CSV soubor neobsahuje platné jméno.");
+          return;
+        }
+
+        const toNullable = (value: string | undefined) => {
+          const trimmed = (value ?? "").trim();
+          return trimmed ? trimmed : null;
+        };
+
+        const payload = {
+          name: importedName,
+          email: toNullable(row.email),
+          phone: toNullable(row.phone),
+          addressLine1: toNullable(row.addressLine1),
+          addressLine2: toNullable(row.addressLine2),
+          companyIdentificationNumber: toNullable(
+            row.companyIdentificationNumber,
+          ),
+          vatNumber: toNullable(row.vatNumber),
+          vatPayer: parseCsvBoolean(row.vatPayer)
+            ? Evolu.sqliteTrue
+            : Evolu.sqliteFalse,
+          bankAccount: toNullable(row.bankAccount),
+          swift: toNullable(row.swift),
+          iban: toNullable(row.iban),
+          invoiceFooterText: toNullable(row.invoiceFooterText),
+          discreteMode: parseCsvBoolean(row.discreteMode)
+            ? Evolu.sqliteTrue
+            : Evolu.sqliteFalse,
+          poRequired: parseCsvBoolean(row.poRequired)
+            ? Evolu.sqliteTrue
+            : Evolu.sqliteFalse,
+          mempoolUrl: toNullable(row.mempoolUrl) ?? "https://mempool.space/",
+        };
+
+        if (profile?.id) {
+          const result = evolu.update("userProfile", {
+            id: profile.id,
+            ...payload,
+          });
+          if (!result.ok) {
+            console.error("Validation error:", result.error);
+            alert("Chyba validace při importu nastavení");
+            return;
+          }
+        } else {
+          const result = evolu.insert("userProfile", payload);
+          if (!result.ok) {
+            console.error("Validation error:", result.error);
+            alert("Chyba validace při importu nastavení");
+            return;
+          }
+        }
+
+        setName(payload.name);
+        setEmail(row.email ?? "");
+        setPhone(row.phone ?? "");
+        setAddressLine1(row.addressLine1 ?? "");
+        setAddressLine2(row.addressLine2 ?? "");
+        setCompanyIdentificationNumber(row.companyIdentificationNumber ?? "");
+        setVatNumber(row.vatNumber ?? "");
+        setVatPayer(parseCsvBoolean(row.vatPayer));
+        setBankAccount(row.bankAccount ?? "");
+        setSwift(row.swift ?? "");
+        setIban(row.iban ?? "");
+        setInvoiceFooterText(row.invoiceFooterText ?? "");
+        setDiscreteMode(parseCsvBoolean(row.discreteMode));
+        setPoRequired(parseCsvBoolean(row.poRequired));
+        setMempoolUrl(row.mempoolUrl?.trim() || "https://mempool.space/");
+
+        alert("Nastavení bylo importováno.");
+      } catch (error) {
+        console.error("CSV import error:", error);
+        alert("Nepodařilo se importovat CSV.");
+      } finally {
+        if (importSettingsInputRef.current) {
+          importSettingsInputRef.current.value = "";
+        }
+      }
+    };
+
+    reader.readAsText(file);
   };
 
   // Save data via Evolu (local-first + sync)
@@ -901,6 +1048,34 @@ export function SettingsPage() {
                     className="form-input"
                   />
                 </div>
+                <details className="panel-card mt-2">
+                  <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+                    Import dat
+                  </summary>
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                    <input
+                      ref={importSettingsInputRef}
+                      type="file"
+                      accept=".csv,text/csv"
+                      onChange={handleImportSettingsCsv}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => importSettingsInputRef.current?.click()}
+                      className="btn-secondary w-full sm:w-auto"
+                    >
+                      Importovat nastavení
+                    </button>
+                    <a
+                      href="/settings_import_template.csv"
+                      download
+                      className="btn-ghost w-full sm:w-auto text-center"
+                    >
+                      Šablona importu nastavení (CSV)
+                    </a>
+                  </div>
+                </details>
               </div>
             </div>
           </div>
