@@ -53,6 +53,11 @@ type UserProfileRow = {
   invoiceFooterText?: string | null;
 };
 
+type InvoiceDetailPageProps = {
+  invoiceId: string;
+  onBack: () => void;
+};
+
 const InvoiceId = Evolu.id("Invoice");
 
 const emptyItem = (): InvoiceItemForm => ({
