@@ -1284,7 +1284,7 @@ export function SettingsPage() {
                       download
                       className="btn-ghost w-full sm:w-auto text-center"
                     >
-                      Šablona importu nastavení
+                      Šablona pro nastavení
                     </a>
                   </div>
                   <div className="mt-3 flex flex-col sm:flex-row gap-2">
@@ -1307,7 +1307,7 @@ export function SettingsPage() {
                       download
                       className="btn-ghost w-full sm:w-auto text-center"
                     >
-                      Šablona importu klientů
+                      Šablona pro klienty
                     </a>
                   </div>
                   <div className="mt-3 flex flex-col sm:flex-row gap-2">
@@ -1330,7 +1330,7 @@ export function SettingsPage() {
                       download
                       className="btn-ghost w-full sm:w-auto text-center"
                     >
-                      Šablona importu faktur
+                      Šablona pro faktury
                     </a>
                   </div>
                 </details>
