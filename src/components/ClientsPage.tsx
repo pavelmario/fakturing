@@ -2,6 +2,57 @@ import { useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useEvolu } from "../evolu";
 
+type AresSidlo = {
+  textovaAdresa?: string | null;
+  ulice?: string | null;
+  nazevUlice?: string | null;
+  cisloDomovni?: string | number | null;
+  cisloOrientacni?: string | number | null;
+  cisloOrientacniPismeno?: string | null;
+  nazevCastiObce?: string | null;
+  nazevObce?: string | null;
+  psc?: string | number | null;
+};
+
+type AresResponse = {
+  ico?: string | null;
+  dic?: string | null;
+  obchodniJmeno?: string | null;
+  sidlo?: AresSidlo | null;
+};
+
+const formatAresAddressLines = (sidlo?: AresSidlo | null) => {
+  const text = sidlo?.textovaAdresa?.trim();
+  if (text) {
+    const parts = text
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts.length >= 2) {
+      return {
+        line1: parts[0],
+        line2: parts.slice(1).join(", "),
+      };
+    }
+    return { line1: text, line2: "" };
+  }
+
+  const street = (sidlo?.ulice ?? sidlo?.nazevUlice)?.trim();
+  const cisloDomovni = sidlo?.cisloDomovni ?? "";
+  const cisloOrientacni = sidlo?.cisloOrientacni ?? "";
+  const orientacniPismeno = sidlo?.cisloOrientacniPismeno ?? "";
+  const houseNumber =
+    `${cisloDomovni}${cisloOrientacni ? `/${cisloOrientacni}` : ""}${orientacniPismeno ? orientacniPismeno : ""}`.trim();
+  const line1 = [street, houseNumber].filter(Boolean).join(" ");
+
+  const pscValue = sidlo?.psc ?? "";
+  const psc = pscValue ? String(pscValue).padStart(5, "0") : "";
+  const city = sidlo?.nazevObce?.trim() || sidlo?.nazevCastiObce?.trim() || "";
+  const line2 = [psc, city].filter(Boolean).join(" ");
+
+  return { line1, line2 };
+};
+
 export function ClientsPage() {
   const evolu = useEvolu();
 
@@ -15,6 +66,7 @@ export function ClientsPage() {
   const [vatNumber, setVatNumber] = useState("");
   const [note, setNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isAresLoading, setIsAresLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const toNullable = (value: string) => {
@@ -64,6 +116,53 @@ export function ClientsPage() {
       alert("Chyba při ukládání klienta");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleLoadFromAres = async () => {
+    const ico = companyIdentificationNumber.replace(/\s+/g, "").trim();
+    if (!ico) {
+      alert("Vyplňte IČO");
+      return;
+    }
+
+    setIsAresLoading(true);
+    try {
+      const response = await fetch(
+        `https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/${encodeURIComponent(ico)}`,
+        {
+          headers: { Accept: "application/json" },
+        },
+      );
+
+      if (!response.ok) {
+        alert("Nepodařilo se načíst data z ARES.");
+        return;
+      }
+
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        alert("ARES vrátil neočekávanou odpověď.");
+        return;
+      }
+
+      const data = (await response.json()) as AresResponse;
+      if (!data?.obchodniJmeno && !data?.sidlo) {
+        alert("ARES nevrátil žádná data pro zadané IČO.");
+        return;
+      }
+
+      if (data.obchodniJmeno) setName(data.obchodniJmeno);
+      if (data.dic) setVatNumber(data.dic);
+
+      const { line1, line2 } = formatAresAddressLines(data.sidlo);
+      if (line1) setAddressLine1(line1);
+      if (line2) setAddressLine2(line2);
+    } catch (error) {
+      console.error("Error loading ARES data:", error);
+      alert("Chyba při načítání dat z ARES.");
+    } finally {
+      setIsAresLoading(false);
     }
   };
 
@@ -167,6 +266,14 @@ export function ClientsPage() {
                   placeholder=""
                   className="form-input"
                 />
+                <button
+                  type="button"
+                  onClick={handleLoadFromAres}
+                  disabled={isAresLoading}
+                  className="btn-secondary mt-2 w-full"
+                >
+                  {isAresLoading ? "Načítám..." : "Načíst data z ARES"}
+                </button>
               </div>
               <div>
                 <label htmlFor="clientVat" className="form-label">
