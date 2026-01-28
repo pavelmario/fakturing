@@ -137,6 +137,14 @@ function App() {
               }}
             />
           )}
+          <p className="text-center text-slate-500">
+            Donate address<br></br>
+            <small>
+              poorjames425@walletofsatoshi.com
+              <br></br>
+              bc1q5jl6nyavkkl37gqkjuh307ckmlh3merh6lp4ua
+            </small>
+          </p>
         </div>
       </div>
     </Suspense>
