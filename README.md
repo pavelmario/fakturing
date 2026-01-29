@@ -1,25 +1,48 @@
 # Invoice Manager
 
-A React web-based invoice manager application with local-first storage synchronized to Evolu relay.
+A React web-based invoice manager with local-first storage and Evolu relay sync.
 
 ## Features
 
-- **Settings Page**: Configure your backup phrase and profile
-  - Generate a random 12 or 24-word backup phrase using BIP39
-  - Import your existing backup phrase
-  - Store your profile information (name)
-  - All data is saved locally and synced to the Evolu relay
+- **Settings & profile**
+  - BIP39 backup phrase generation and restore
+  - Company profile, banking details, invoice footer text
+  - VAT payer toggle, PO number requirement toggle
+  - Discrete mode for hiding totals in overview
+  - Relay URL configuration and connection status
+  - Bitcoin mempool explorer URL customization
 
-- **Local-First Architecture**: Data stored locally with automatic sync to relay
-- **Secure**: Uses industry-standard BIP39 mnemonics for backup phrases
-- **Real-time Sync**: Data automatically synces to `wss://free.evoluhq.com`
+- **Clients (adresář)**
+  - Create, search, view, edit, and delete clients
+  - ARES lookup by IČO to prefill company details
+
+- **Invoices**
+  - Create, edit, delete, and duplicate invoices
+  - Automatic invoice numbering per year with duplicate detection
+  - Line items with optional VAT columns
+  - Status tracking (paid/unpaid/overdue), mark as paid or undo payment
+  - Filters by year, status, and payment type; dashboard stats
+  - Bitcoin invoices with address and mempool link
+  - Czech QR payment generation for bank transfers
+  - PDF export (A4) with supplier/customer details and totals
+
+- **CSV import/export**
+  - Import settings, clients, and invoices from CSV
+  - Export all data to CSV
+  - Template files for imports in public/
+
+- **Local-first + sync**
+  - Data stored locally and synced via Evolu relay (`wss://free.evoluhq.com`)
+  - Works offline and syncs when online
 
 ## Tech Stack
 
 - **Frontend**: React 19 with TypeScript
 - **Build Tool**: Vite
 - **Styling**: Tailwind CSS
-- **Storage**: LocalStorage + Evolu relay sync
+- **Local-first data**: Evolu (`@evolu/common`, `@evolu/react`, `@evolu/react-web`)
+- **PDF export**: `@react-pdf/renderer`
+- **QR generation**: `qrcode`
 - **Cryptography**: BIP39 for mnemonic generation
 
 ## Getting Started
@@ -52,95 +75,31 @@ npm run build
 ```
 src/
 ├── components/
-│   └── SettingsPage.tsx    # Settings page with mnemonic and profile form
-├── db.ts                    # Local-first database and relay sync
-├── App.tsx                  # Main app component
-├── main.tsx                 # Entry point
-└── index.css               # Tailwind CSS styles
+│   ├── SettingsPage.tsx       # Settings, CSV import/export, relay config
+│   ├── ClientsListPage.tsx    # Clients overview + search
+│   ├── ClientsPage.tsx        # Create client (ARES lookup)
+│   ├── ClientDetailPage.tsx   # Edit/delete client
+│   ├── InvoiceListPage.tsx    # Invoice dashboard + filters
+│   ├── InvoiceCreatePage.tsx  # Create invoice
+│   └── InvoiceDetailPage.tsx  # Edit, duplicate, PDF export
+├── evolu.ts                   # Evolu schema + provider
+├── App.tsx                    # Main app shell/navigation
+├── main.tsx                   # Entry point
+└── index.css                  # Tailwind CSS styles
 ```
 
 ## How It Works
 
-1. **Backup Phrase Setup**: Users can either generate a random BIP39-compliant mnemonic or import their existing one
-2. **Profile Configuration**: Users enter their name
-3. **Local Storage**: All data is stored in browser's localStorage
-4. **Relay Sync**: Data is automatically synced to the Evolu relay at `wss://free.evoluhq.com`
-
-## Future Enhancements
-
-- [ ] Full Evolu integration with proper database schema
-- [ ] Invoice creation and management
-- [ ] Invoice templates
-- [ ] Export/print invoices
-- [ ] Client management
-- [ ] Multi-user support
-- [ ] Offline-first capabilities
+1. **Backup Phrase Setup**: Generate or restore a BIP39-compliant mnemonic
+2. **Profile Configuration**: Fill in supplier details, VAT status, bank account, and preferences
+3. **Local-first Storage**: Data is stored locally using Evolu
+4. **Relay Sync**: Changes sync to the Evolu relay at `wss://free.evoluhq.com`
+5. **Operational Flow**: Manage clients and invoices, export PDFs or CSV, and import data when needed
 
 ## License
 
 MIT
 
 The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from "eslint-plugin-react-x";
-import reactDom from "eslint-plugin-react-dom";
-
-export default defineConfig([
-  globalIgnores(["dist"]),
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs["recommended-typescript"],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
-```
 
 # fakturing
