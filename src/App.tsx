@@ -1,4 +1,4 @@
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { ClientDetailPage } from "./components/ClientDetailPage";
 import { ClientsListPage } from "./components/ClientsListPage";
 import { ClientsPage } from "./components/ClientsPage";
@@ -23,17 +23,73 @@ function App() {
     null,
   );
 
+  const navigate = (
+    newPage: typeof page,
+    clientId: string | null = null,
+    invoiceId: string | null = null,
+    replace = false,
+  ) => {
+    setPage(newPage);
+    setSelectedClientId(clientId);
+    setSelectedInvoiceId(invoiceId);
+    const state = {
+      page: newPage,
+      selectedClientId: clientId,
+      selectedInvoiceId: invoiceId,
+    };
+    try {
+      if (replace) window.history.replaceState(state, "");
+      else window.history.pushState(state, "");
+    } catch {
+      /* ignore (some environments may restrict history) */
+    }
+  };
+
+  // Restore state from history on mount and listen for back/forward
+  useEffect(() => {
+    const s = window.history.state as {
+      page?: typeof page;
+      selectedClientId?: string | null;
+      selectedInvoiceId?: string | null;
+    } | null;
+    if (s && s.page) {
+      setPage(s.page as any);
+      setSelectedClientId(s.selectedClientId ?? null);
+      setSelectedInvoiceId(s.selectedInvoiceId ?? null);
+    } else {
+      // ensure there's at least one history entry representing current app state
+      navigate(page, selectedClientId, selectedInvoiceId, true);
+    }
+
+    const onPop = (ev: PopStateEvent) => {
+      const state = ev.state as {
+        page?: typeof page;
+        selectedClientId?: string | null;
+        selectedInvoiceId?: string | null;
+      } | null;
+      if (state && state.page) {
+        setPage(state.page as any);
+        setSelectedClientId(state.selectedClientId ?? null);
+        setSelectedInvoiceId(state.selectedInvoiceId ?? null);
+      } else {
+        setPage("invoice-list");
+        setSelectedClientId(null);
+        setSelectedInvoiceId(null);
+      }
+    };
+
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <Suspense fallback={<div className="app-loading">Načítání...</div>}>
       <div className="app-shell">
         <div className="app-nav">
           <div className="app-tabs">
             <button
-              onClick={() => {
-                setPage("invoice-list");
-                setSelectedClientId(null);
-                setSelectedInvoiceId(null);
-              }}
+              onClick={() => navigate("invoice-list", null, null)}
               className={`tab-button ${
                 page === "invoice-list"
                   ? "tab-button-active"
@@ -43,11 +99,7 @@ function App() {
               Faktury
             </button>
             <button
-              onClick={() => {
-                setPage("clients-list");
-                setSelectedClientId(null);
-                setSelectedInvoiceId(null);
-              }}
+              onClick={() => navigate("clients-list", null, null)}
               className={`tab-button ${
                 page === "clients-list" || page === "client-detail"
                   ? "tab-button-active"
@@ -57,11 +109,7 @@ function App() {
               Klienti
             </button>
             <button
-              onClick={() => {
-                setPage("settings");
-                setSelectedClientId(null);
-                setSelectedInvoiceId(null);
-              }}
+              onClick={() => navigate("settings", null, null)}
               className={`tab-button ${
                 page === "settings"
                   ? "tab-button-active"
@@ -82,59 +130,34 @@ function App() {
             <InvoiceCreatePage />
           ) : page === "invoice-list" ? (
             <InvoiceListPage
-              onCreateInvoice={() => {
-                setPage("invoice-create");
-                setSelectedClientId(null);
-                setSelectedInvoiceId(null);
-              }}
-              onViewDetails={(invoiceId) => {
-                setSelectedInvoiceId(invoiceId);
-                setSelectedClientId(null);
-                setPage("invoice-detail");
-              }}
+              onCreateInvoice={() => navigate("invoice-create", null, null)}
+              onViewDetails={(invoiceId) =>
+                navigate("invoice-detail", null, invoiceId)
+              }
             />
           ) : page === "invoice-detail" && selectedInvoiceId ? (
             <InvoiceDetailPage
               invoiceId={selectedInvoiceId}
-              onBack={() => {
-                setPage("invoice-list");
-                setSelectedInvoiceId(null);
-              }}
+              onBack={() => navigate("invoice-list", null, null)}
             />
           ) : page === "clients-list" ? (
             <ClientsListPage
-              onViewDetails={(clientId) => {
-                setSelectedClientId(clientId);
-                setSelectedInvoiceId(null);
-                setPage("client-detail");
-              }}
-              onCreateClient={() => {
-                setSelectedClientId(null);
-                setSelectedInvoiceId(null);
-                setPage("clients");
-              }}
+              onViewDetails={(clientId) =>
+                navigate("client-detail", clientId, null)
+              }
+              onCreateClient={() => navigate("clients", null, null)}
             />
           ) : selectedClientId ? (
             <ClientDetailPage
               clientId={selectedClientId}
-              onBack={() => {
-                setPage("clients-list");
-                setSelectedClientId(null);
-                setSelectedInvoiceId(null);
-              }}
+              onBack={() => navigate("clients-list", null, null)}
             />
           ) : (
             <ClientsListPage
-              onViewDetails={(clientId) => {
-                setSelectedClientId(clientId);
-                setSelectedInvoiceId(null);
-                setPage("client-detail");
-              }}
-              onCreateClient={() => {
-                setSelectedClientId(null);
-                setSelectedInvoiceId(null);
-                setPage("clients");
-              }}
+              onViewDetails={(clientId) =>
+                navigate("client-detail", clientId, null)
+              }
+              onCreateClient={() => navigate("clients", null, null)}
             />
           )}
           <p className="text-center text-slate-500">
