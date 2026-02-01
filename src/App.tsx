@@ -17,7 +17,7 @@ function App() {
     | "invoice-create"
     | "invoice-list"
     | "invoice-detail"
-  >("settings");
+  >("invoice-list");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(
     null,
