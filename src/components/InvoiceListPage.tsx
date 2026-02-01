@@ -393,7 +393,9 @@ export function InvoiceListPage({
 
           {filteredInvoices.length === 0 ? (
             <div className="empty-state">
-              Zadaným kritériím neodpovídá žádná faktura.
+              {invoices.length === 0
+                ? "Zatím nebyla založena ani jedna faktura."
+                : "Zadaným kritériím neodpovídá žádná faktura."}
             </div>
           ) : (
             <div className="space-y-3">
