@@ -182,13 +182,13 @@ const pdfStyles = StyleSheet.create({
   colDesc: { width: "45%" },
   colUnitPrice: { width: "17%", textAlign: "right", marginLeft: 127 },
   colTotal: { width: "18%", textAlign: "right" },
-  colDescVat: { width: "30%" },
+  colDescVat: { width: "40%" },
   // Adjusted widths for VAT payer columns ("Cena za MJ", "Cena bez DPH", "DPH (%)", "Cena s DPH")
-  colUnitPriceVat: { width: "25%", textAlign: "right", marginLeft: 127 },
-  colTotalNoVat: { width: "30%", textAlign: "right" },
-  colVatPercent: { width: "20%", textAlign: "right" },
+  colUnitPriceVat: { width: "12%", textAlign: "right" },
+  colTotalNoVat: { width: "12%", textAlign: "right" },
+  colVatPercent: { width: "6%", textAlign: "right" },
   // colVatAmount is hidden for VAT payer
-  colTotalVat: { width: "25%", textAlign: "right" },
+  colTotalVat: { width: "10%", textAlign: "right" },
   totalRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
