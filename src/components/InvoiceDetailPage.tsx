@@ -1112,12 +1112,20 @@ export function InvoiceDetailPage({
         return;
       }
 
+      const todayResult = Evolu.dateToDateIso(new Date());
+      if (!todayResult.ok) {
+        console.error("Today date error:", todayResult.error);
+        alert("Chyba při získání dnešního data");
+        return;
+      }
+      const todayIso = todayResult.value;
+
       const payload = {
         invoiceNumber: nextInvoiceNumber,
         clientName: safeClientName,
-        issueDate: invoice.issueDate,
-        duzp: invoice.duzp ?? null,
-        paymentDate: invoice.paymentDate,
+        issueDate: todayIso,
+        duzp: todayIso,
+        paymentDate: null,
         paymentDays: invoice.paymentDays,
         paymentMethod: invoice.paymentMethod ?? "bank",
         purchaseOrderNumber: invoice.purchaseOrderNumber,
