@@ -85,13 +85,32 @@ export function InvoiceCreatePage() {
   const initialPurchaseOrderNumber =
     getParam("purchaseOrderNumber") ?? getParam("po") ?? "";
   const initialPaymentMethod = (() => {
-    const value = getParam("paymentMethod") ?? getParam("payment") ?? "";
+    const raw = getParam("paymentMethod") ?? getParam("payment") ?? "";
+    const value = raw ? raw.trim().toLowerCase() : "";
     return value === "cash" || value === "bank" ? value : "bank";
   })();
   const initialBtcInvoice =
     parseBooleanParam(getParam("btcInvoice") ?? getParam("bitcoin")) ?? false;
   const initialBtcAddress = getParam("btcAddress") ?? "";
-  const initialItems = parseItemsParam(getParam("items")) ?? [emptyItem()];
+  const initialVatParam = getParam("vat") ?? getParam("vatPercent") ?? "";
+  const initialUnitParam = getParam("unit") ?? getParam("itemUnit") ?? "";
+  const parsedItems = parseItemsParam(getParam("items"));
+  const initialItems = (() => {
+    if (parsedItems) {
+      return parsedItems.map((it) => ({
+        amount: it.amount ?? "",
+        unit: it.unit || initialUnitParam || "",
+        description: it.description ?? "",
+        unitPrice: it.unitPrice ?? "",
+        vat: it.vat || initialVatParam || "",
+      }));
+    }
+
+    const item = emptyItem();
+    if (initialVatParam) item.vat = initialVatParam;
+    if (initialUnitParam) item.unit = initialUnitParam;
+    return [item];
+  })();
 
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
