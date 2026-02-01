@@ -860,7 +860,7 @@ export function SettingsPage() {
           {/* Relay Configuration Section */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              Nastavení Relay serveru
+              ⚙️ Nastavení Relay serveru
             </h2>
             <p className="text-sm text-slate-600 mb-4">
               Nastavte URL adresu Evolu relay serveru pro synchronizaci dat.
@@ -868,7 +868,7 @@ export function SettingsPage() {
             </p>
             <div>
               <label htmlFor="relayUrl" className="form-label">
-                URL adresa relay serveru
+                🔗 URL adresa relay serveru
               </label>
               <input
                 id="relayUrl"
@@ -921,7 +921,7 @@ export function SettingsPage() {
           {/* Mnemonic Section */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              Seed zálohy
+              🌱 Seed zálohy
             </h2>
             <p className="text-sm text-slate-600 mb-4">
               Váš seed zálohy vám umožňuje obnovit vaše data. Uchovejte jej
@@ -1000,7 +1000,7 @@ export function SettingsPage() {
           {/* Profile Section */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              Vaše údaje
+              🧑 Vaše údaje
             </h2>
 
             <div className="space-y-4">
@@ -1226,7 +1226,7 @@ export function SettingsPage() {
 
             <div className="border-t border-slate-200/70 pt-4 mt-4">
               <h3 className="font-semibold text-slate-700 mb-3">
-                Další předvolby
+                🔩 Další předvolby
               </h3>
               <div className="flex flex-col gap-2">
                 <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
@@ -1249,7 +1249,7 @@ export function SettingsPage() {
                 </label>
                 <div>
                   <label htmlFor="mempoolUrl" className="form-label">
-                    Mempool URL
+                    🔗 Mempool URL
                   </label>
                   <input
                     id="mempoolUrl"
@@ -1284,7 +1284,7 @@ export function SettingsPage() {
                       download
                       className="btn-ghost w-full sm:w-auto text-center"
                     >
-                      Šablona pro nastavení
+                      Šablona pro nastavení ⬇️
                     </a>
                   </div>
                   <div className="mt-3 flex flex-col sm:flex-row gap-2">
@@ -1307,7 +1307,7 @@ export function SettingsPage() {
                       download
                       className="btn-ghost w-full sm:w-auto text-center"
                     >
-                      Šablona pro klienty
+                      Šablona pro klienty ⬇️
                     </a>
                   </div>
                   <div className="mt-3 flex flex-col sm:flex-row gap-2">
@@ -1330,7 +1330,7 @@ export function SettingsPage() {
                       download
                       className="btn-ghost w-full sm:w-auto text-center"
                     >
-                      Šablona pro faktury
+                      Šablona pro faktury ⬇️
                     </a>
                   </div>
                 </details>
