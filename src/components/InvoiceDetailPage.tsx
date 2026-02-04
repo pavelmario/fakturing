@@ -662,7 +662,9 @@ export function InvoiceDetailPage({
               </View>
               <View style={pdfStyles.detailRow}>
                 <Text style={pdfStyles.textMuted}>Způsob platby</Text>
-                <Text>Převodem</Text>
+                <Text>
+                  {invoice?.paymentMethod === "cash" ? "Hotově" : "Převodem"}
+                </Text>
               </View>
             </View>
             <View style={pdfStyles.column}>
