@@ -38,6 +38,7 @@ export const Schema = {
     iban: Evolu.nullOr(Evolu.TrimmedString100),
     invoiceFooterText: Evolu.nullOr(Evolu.TrimmedString1000),
     discreteMode: Evolu.nullOr(Evolu.SqliteBoolean),
+    language: Evolu.nullOr(Evolu.TrimmedString100),
     poRequired: Evolu.nullOr(Evolu.SqliteBoolean),
     mempoolUrl: Evolu.nullOr(Evolu.TrimmedString1000),
   },
@@ -84,6 +85,7 @@ export type UserProfileInput = {
   iban?: string;
   invoiceFooterText?: string;
   discreteMode?: 0 | 1 | null;
+  language?: string;
   poRequired?: 0 | 1 | null;
   mempoolUrl?: string;
 };
