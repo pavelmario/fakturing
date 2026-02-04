@@ -3,6 +3,7 @@ import * as bip39 from "bip39";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { getRelayUrl, setRelayUrl as saveRelayUrl, useEvolu } from "../evolu";
+import { useI18n } from "../i18n";
 
 export function SettingsPage() {
   const evolu = useEvolu();
@@ -25,6 +26,7 @@ export function SettingsPage() {
   const [invoiceFooterText, setInvoiceFooterText] = useState<string>("");
   const [discreteMode, setDiscreteMode] = useState<boolean>(false);
   const [language, setLanguage] = useState<"cz" | "en">("cz");
+  const { t, locale } = useI18n(language);
   const [poRequired, setPoRequired] = useState<boolean>(false);
   const [mempoolUrl, setMempoolUrl] = useState<string>(
     "https://mempool.space/",
@@ -185,7 +187,6 @@ export function SettingsPage() {
   useEffect(() => {
     if (!profile) {
       setSavedData(null);
-      setLastSyncTime("");
       return;
     }
     setSavedData({
@@ -207,7 +208,9 @@ export function SettingsPage() {
       mempoolUrl: profile.mempoolUrl ?? "https://mempool.space/",
       language: profile.language ?? "cz",
     });
-    setLanguage((profile.language as "cz" | "en") ?? "cz");
+    const normalizedLanguage =
+      profile.language?.toString().trim().toLowerCase() === "en" ? "en" : "cz";
+    setLanguage(normalizedLanguage);
     setName(profile.name ?? "");
     setEmail(profile.email ?? "");
     setPhone(profile.phone ?? "");
@@ -223,14 +226,17 @@ export function SettingsPage() {
     setDiscreteMode(profile.discreteMode === Evolu.sqliteTrue);
     setPoRequired(profile.poRequired === Evolu.sqliteTrue);
     setMempoolUrl(profile.mempoolUrl ?? "https://mempool.space/");
-    setLastSyncTime(
-      profile.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "",
-    );
   }, [profile]);
+
+  useEffect(() => {
+    if (!profile?.updatedAt) {
+      setLastSyncTime("");
+      return;
+    }
+    setLastSyncTime(new Date(profile.updatedAt).toLocaleString(locale));
+  }, [profile?.updatedAt, locale]);
   const handleGenerateMnemonic = async () => {
-    const confirmed = confirm(
-      "Chystáte se resetovat lokální data a vygenerovat nový seed zálohy. Chcete pokračovat?",
-    );
+    const confirmed = confirm(t("alerts.confirmResetSeed"));
     if (!confirmed) return;
     await evolu.resetAppOwner();
     setShowMnemonicInput(false);
@@ -251,15 +257,15 @@ export function SettingsPage() {
   const handleRestoreFromMnemonic = async () => {
     const trimmed = mnemonicInput.trim();
     if (!trimmed) {
-      setMnemonicError("Zadejte seed zálohy");
+      setMnemonicError(t("alerts.seedRequired"));
       return;
     }
     if (!isValidMnemonic(trimmed)) {
-      setMnemonicError("Neplatný formát seedu zálohy");
+      setMnemonicError(t("alerts.seedInvalid"));
       return;
     }
     if (trimmed === currentMnemonic) {
-      setMnemonicError("Tento seed zálohy je již aktivní");
+      setMnemonicError(t("alerts.seedAlreadyActive"));
       return;
     }
 
@@ -267,7 +273,7 @@ export function SettingsPage() {
       await evolu.restoreAppOwner(trimmed as Evolu.Mnemonic);
     } catch (error) {
       console.error("Failed to restore owner:", error);
-      setMnemonicError("Nepodařilo se obnovit data ze seedu zálohy");
+      setMnemonicError(t("alerts.seedRestoreFailed"));
     }
   };
 
@@ -317,7 +323,7 @@ export function SettingsPage() {
           .map((line) => line.trim())
           .filter(Boolean);
         if (lines.length < 2) {
-          alert("CSV soubor neobsahuje žádná data.");
+          alert(t("alerts.csvNoData"));
           return;
         }
 
@@ -333,7 +339,7 @@ export function SettingsPage() {
 
         const importedName = row.name?.trim() ?? "";
         if (!importedName) {
-          alert("CSV soubor neobsahuje platné jméno.");
+          alert(t("alerts.csvInvalidName"));
           return;
         }
 
@@ -376,14 +382,14 @@ export function SettingsPage() {
           });
           if (!result.ok) {
             console.error("Validation error:", result.error);
-            alert("Chyba validace při importu nastavení");
+            alert(t("alerts.settingsImportValidation"));
             return;
           }
         } else {
           const result = evolu.insert("userProfile", payload);
           if (!result.ok) {
             console.error("Validation error:", result.error);
-            alert("Chyba validace při importu nastavení");
+            alert(t("alerts.settingsImportValidation"));
             return;
           }
         }
@@ -405,10 +411,10 @@ export function SettingsPage() {
         setMempoolUrl(row.mempoolUrl?.trim() || "https://mempool.space/");
         setLanguage(row.language?.trim().toLowerCase() === "en" ? "en" : "cz");
 
-        alert("Nastavení bylo importováno.");
+        alert(t("alerts.settingsImported"));
       } catch (error) {
         console.error("CSV import error:", error);
-        alert("Nepodařilo se importovat CSV.");
+        alert(t("alerts.csvImportFailed"));
       } finally {
         if (importSettingsInputRef.current) {
           importSettingsInputRef.current.value = "";
@@ -434,7 +440,7 @@ export function SettingsPage() {
           .map((line) => line.trim())
           .filter(Boolean);
         if (lines.length < 2) {
-          alert("CSV soubor neobsahuje žádná data.");
+          alert(t("alerts.csvNoData"));
           return;
         }
 
@@ -475,15 +481,15 @@ export function SettingsPage() {
           const result = evolu.insert("client", payload);
           if (!result.ok) {
             console.error("Validation error:", result.error);
-            alert("Chyba validace při importu klientů");
+            alert(t("alerts.clientsImportValidation"));
             return;
           }
         }
 
-        alert("Klienti byli importováni.");
+        alert(t("alerts.clientsImported"));
       } catch (error) {
         console.error("CSV import error:", error);
-        alert("Nepodařilo se importovat klienty.");
+        alert(t("alerts.clientsImportFailed"));
       } finally {
         if (importClientsInputRef.current) {
           importClientsInputRef.current.value = "";
@@ -509,7 +515,7 @@ export function SettingsPage() {
           .map((line) => line.trim())
           .filter(Boolean);
         if (lines.length < 2) {
-          alert("CSV soubor neobsahuje žádná data.");
+          alert(t("alerts.csvNoData"));
           return;
         }
 
@@ -542,7 +548,7 @@ export function SettingsPage() {
               "Issue date error:",
               formatTypeError(issueDateResult.error),
             );
-            alert("Neplatné datum vystavení v CSV");
+            alert(t("alerts.invoicesImportInvalidIssueDate"));
             return;
           }
 
@@ -552,7 +558,7 @@ export function SettingsPage() {
             : null;
           if (duzpValue && duzpResult && !duzpResult.ok) {
             console.error("Duzp error:", formatTypeError(duzpResult.error));
-            alert("Neplatné DUZP v CSV");
+            alert(t("alerts.invoicesImportInvalidDuzp"));
             return;
           }
 
@@ -565,7 +571,7 @@ export function SettingsPage() {
               "Payment date error:",
               formatTypeError(paymentDateResult.error),
             );
-            alert("Neplatné datum úhrady v CSV");
+            alert(t("alerts.invoicesImportInvalidPaymentDate"));
             return;
           }
 
@@ -578,7 +584,7 @@ export function SettingsPage() {
               "Payment days error:",
               formatTypeError(paymentDaysResult.error),
             );
-            alert("Neplatná splatnost v CSV");
+            alert(t("alerts.invoicesImportInvalidPaymentDays"));
             return;
           }
 
@@ -586,7 +592,7 @@ export function SettingsPage() {
           const itemsResult = Evolu.Json.from(itemsRaw);
           if (!itemsResult.ok) {
             console.error("Items error:", formatTypeError(itemsResult.error));
-            alert("Neplatné položky faktury v CSV");
+            alert(t("alerts.invoicesImportInvalidItems"));
             return;
           }
 
@@ -610,15 +616,15 @@ export function SettingsPage() {
           const result = evolu.insert("invoice", payload);
           if (!result.ok) {
             console.error("Validation error:", result.error);
-            alert("Chyba validace při importu faktur");
+            alert(t("alerts.invoicesImportValidation"));
             return;
           }
         }
 
-        alert("Faktury byly importovány.");
+        alert(t("alerts.invoicesImported"));
       } catch (error) {
         console.error("CSV import error:", error);
-        alert("Nepodařilo se importovat faktury.");
+        alert(t("alerts.invoicesImportFailed"));
       } finally {
         if (importInvoicesInputRef.current) {
           importInvoicesInputRef.current.value = "";
@@ -632,7 +638,7 @@ export function SettingsPage() {
   // Save data via Evolu (local-first + sync)
   const handleSave = async () => {
     if (!name.trim()) {
-      alert("Zadejte jméno");
+      alert(t("alerts.nameRequired"));
       return;
     }
 
@@ -672,7 +678,7 @@ export function SettingsPage() {
           const formatted = formatTypeError(result.error);
           console.error("Validation error:", result.error);
           console.error("Validation details:", formatted);
-          alert(`Chyba validace při ukládání nastavení: ${formatted}`);
+          alert(t("alerts.settingsValidationError", { details: formatted }));
           return;
         }
       } else {
@@ -682,15 +688,15 @@ export function SettingsPage() {
           const formatted = formatTypeError(result.error);
           console.error("Validation error:", result.error);
           console.error("Validation details:", formatted);
-          alert(`Chyba validace při ukládání nastavení: ${formatted}`);
+          alert(t("alerts.settingsValidationError", { details: formatted }));
           return;
         }
       }
 
-      alert("Nastavení bylo úspěšně uloženo a synchronizováno přes Evolu!");
+      alert(t("alerts.settingsSaved"));
     } catch (error) {
       console.error("Error saving settings:", error);
-      alert("Chyba při ukládání nastavení");
+      alert(t("alerts.settingsSaveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -698,11 +704,7 @@ export function SettingsPage() {
 
   // Clear all local data
   const handleClearData = async () => {
-    if (
-      !confirm(
-        "Opravdu chcete vymazat všechna lokální data? Tím se odhlásíte a k obnovení dat budete potřebovat seed zálohy.",
-      )
-    ) {
+    if (!confirm(t("alerts.confirmClearData"))) {
       return;
     }
 
@@ -738,19 +740,19 @@ export function SettingsPage() {
     setIban("");
     setSavedData(null);
     setLastSyncTime("");
-    alert("Všechna lokální data byla smazána.");
+    alert(t("alerts.dataCleared"));
   };
 
   // Save relay URL and reconnect
   const handleSaveRelayUrl = async () => {
     const trimmedUrl = relayUrl.trim();
     if (!trimmedUrl) {
-      alert("Zadejte URL relay serveru");
+      alert(t("alerts.relayUrlRequired"));
       return;
     }
 
     if (!trimmedUrl.startsWith("ws://") && !trimmedUrl.startsWith("wss://")) {
-      alert("URL relay serveru musí začínat ws:// nebo wss://");
+      alert(t("alerts.relayUrlInvalid"));
       return;
     }
 
@@ -761,7 +763,7 @@ export function SettingsPage() {
       evolu.reloadApp();
     } catch (error) {
       console.error("Error updating relay URL:", error);
-      alert("Chyba při aktualizaci URL relay serveru");
+      alert(t("alerts.relayUrlUpdateFailed"));
     } finally {
       setIsReconnecting(false);
     }
@@ -867,29 +869,28 @@ export function SettingsPage() {
       <div className="page-container">
         <div className="page-card">
           <div className="mb-8">
-            <p className="section-title">Předvolby</p>
-            <h1 className="page-title">Nastavení</h1>
+            <p className="section-title">{t("settings.sectionTitle")}</p>
+            <h1 className="page-title">{t("settings.title")}</h1>
           </div>
 
           {/* Relay Configuration Section */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              ⚙️ Nastavení Relay serveru
+              {t("settings.relayTitle")}
             </h2>
             <p className="text-sm text-slate-600 mb-4">
-              Nastavte URL adresu Evolu relay serveru pro synchronizaci dat.
-              Změna způsobí opětovné připojení aplikace.
+              {t("settings.relayDescription")}
             </p>
             <div>
               <label htmlFor="relayUrl" className="form-label">
-                🔗 URL adresa relay serveru
+                {t("settings.relayUrlLabel")}
               </label>
               <input
                 id="relayUrl"
                 type="text"
                 value={relayUrl}
                 onChange={(e) => setRelayUrlState(e.target.value)}
-                placeholder="wss://your-relay-server.com"
+                placeholder={t("settings.relayUrlPlaceholder")}
                 className="form-input font-mono text-sm"
               />
               <div className="space-y-3">
@@ -903,19 +904,23 @@ export function SettingsPage() {
                   }`}
                 >
                   {isRelayConnected === true
-                    ? "✓ Relay je připojen"
+                    ? t("settings.relayConnected")
                     : isRelayConnected === false
-                      ? "⚠ Relay je odpojen"
-                      : "⟳ Připojování..."}
+                      ? t("settings.relayDisconnected")
+                      : t("settings.relayConnecting")}
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  Aktuální relay: {connectedRelayUrl || "odpojen"}
+                  {t("settings.relayCurrent", {
+                    url: connectedRelayUrl || t("settings.relayOfflineValue"),
+                  })}
                 </p>
                 <p className="text-xs text-slate-500">
-                  Poslední synchronizace: {lastSyncTime || "zatím neproběhla"}
+                  {t("settings.relayLastSync", {
+                    time: lastSyncTime || t("settings.relayNeverSynced"),
+                  })}
                 </p>
                 <p className="text-xs text-slate-500">
-                  Výchozí: wss://free.evoluhq.com
+                  {t("settings.relayDefault")}
                 </p>
                 <p></p>
               </div>
@@ -926,8 +931,8 @@ export function SettingsPage() {
                 className="btn-primary w-full"
               >
                 {isReconnecting
-                  ? "Připojování..."
-                  : "Uložit URL relay serveru & Znovu připojit"}
+                  ? t("settings.relaySaving")
+                  : t("settings.relaySave")}
               </button>
             </div>
           </div>
@@ -935,17 +940,16 @@ export function SettingsPage() {
           {/* Mnemonic Section */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              🌱 Seed zálohy
+              {t("settings.seedTitle")}
             </h2>
             <p className="text-sm text-slate-600 mb-4">
-              Váš seed zálohy vám umožňuje obnovit vaše data. Uchovejte jej
-              bezpečně uložený a nikdy jej s nikým nesdílejte.
+              {t("settings.seedDescription")}
             </p>
 
             {currentMnemonic ? (
               <div className="alert-warning mb-4">
                 <p className="text-sm font-semibold text-amber-900">
-                  Váš seed zálohy:
+                  {t("settings.seedCurrentLabel")}
                 </p>
                 <p className="mt-2 rounded-2xl border border-amber-200/70 bg-white/80 p-3 text-sm font-mono text-slate-700 break-words">
                   {currentMnemonic}
@@ -954,7 +958,7 @@ export function SettingsPage() {
                   onClick={() => setShowMnemonicInput(true)}
                   className="btn-ghost mt-3"
                 >
-                  Použít jiný seed zálohy
+                  {t("settings.seedUseDifferent")}
                 </button>
               </div>
             ) : null}
@@ -965,7 +969,7 @@ export function SettingsPage() {
                   onClick={handleGenerateMnemonic}
                   className="btn-primary w-full"
                 >
-                  Vygenerovat nový seed zálohy
+                  {t("settings.seedGenerate")}
                 </button>
 
                 <div className="relative">
@@ -974,19 +978,19 @@ export function SettingsPage() {
                   </div>
                   <div className="relative flex justify-center text-sm">
                     <span className="px-3 py-1 rounded-full bg-white/80 text-slate-500">
-                      nebo
+                      {t("settings.seedOr")}
                     </span>
                   </div>
                 </div>
 
                 <div>
                   <label className="form-label">
-                    Zadejte existující seed zálohy
+                    {t("settings.seedEnterLabel")}
                   </label>
                   <textarea
                     value={mnemonicInput}
                     onChange={handleMnemonicInput}
-                    placeholder="Zadejte váš 12 nebo 24slovný seed zálohy..."
+                    placeholder={t("settings.seedPlaceholder")}
                     rows={3}
                     className="form-textarea font-mono text-sm"
                   />
@@ -997,14 +1001,14 @@ export function SettingsPage() {
                     mnemonicInput &&
                     !isValidMnemonic(mnemonicInput) && (
                       <p className="text-red-600 text-sm mt-2">
-                        Neplatný formát seedu zálohy
+                        {t("settings.seedInvalid")}
                       </p>
                     )}
                   <button
                     onClick={handleRestoreFromMnemonic}
                     className="btn-success mt-3 w-full"
                   >
-                    Obnovit data ze seedu zálohy
+                    {t("settings.seedRestore")}
                   </button>
                 </div>
               </div>
@@ -1014,14 +1018,14 @@ export function SettingsPage() {
           {/* Profile Section */}
           <div className="mb-8">
             <h2 className="text-xl font-semibold text-slate-900 mb-4">
-              🧑 Vaše údaje
+              {t("settings.profileTitle")}
             </h2>
 
             <div className="space-y-4">
               {/* Name */}
               <div>
                 <label htmlFor="name" className="form-label">
-                  Jméno a příjmení *
+                  {t("settings.nameLabel")}
                 </label>
                 <input
                   id="name"
@@ -1036,12 +1040,12 @@ export function SettingsPage() {
               {/* Contact Information */}
               <div className="border-t border-slate-200/70 pt-4 mt-4">
                 <h3 className="font-semibold text-slate-700 mb-3">
-                  Kontaktní údaje
+                  {t("settings.contactTitle")}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="email" className="form-label">
-                      E-mail
+                      {t("settings.emailLabel")}
                     </label>
                     <input
                       id="email"
@@ -1054,7 +1058,7 @@ export function SettingsPage() {
                   </div>
                   <div>
                     <label htmlFor="phone" className="form-label">
-                      Telefon
+                      {t("settings.phoneLabel")}
                     </label>
                     <input
                       id="phone"
@@ -1070,10 +1074,12 @@ export function SettingsPage() {
 
               {/* Address */}
               <div className="border-t border-slate-200/70 pt-4 mt-4">
-                <h3 className="font-semibold text-slate-700 mb-3">Adresa</h3>
+                <h3 className="font-semibold text-slate-700 mb-3">
+                  {t("settings.addressTitle")}
+                </h3>
                 <div>
                   <label htmlFor="addressLine1" className="form-label">
-                    Ulice, číslo popisné
+                    {t("settings.addressLine1Label")}
                   </label>
                   <input
                     id="addressLine1"
@@ -1086,7 +1092,7 @@ export function SettingsPage() {
                 </div>
                 <div className="mt-2">
                   <label htmlFor="addressLine2" className="form-label">
-                    PSČ, město
+                    {t("settings.addressLine2Label")}
                   </label>
                   <input
                     id="addressLine2"
@@ -1102,12 +1108,12 @@ export function SettingsPage() {
               {/* Company Information */}
               <div className="border-t border-slate-200/70 pt-4 mt-4">
                 <h3 className="font-semibold text-slate-700 mb-3">
-                  Fakturační údaje
+                  {t("settings.companyTitle")}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="companyId" className="form-label">
-                      IČO
+                      {t("settings.companyIdLabel")}
                     </label>
                     <input
                       id="companyId"
@@ -1128,12 +1134,12 @@ export function SettingsPage() {
                     onChange={(e) => setVatPayer(e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                  Jsem plátce DPH
+                  {t("settings.vatPayerLabel")}
                 </label>
                 {vatPayer && (
                   <div className="mt-3">
                     <label htmlFor="vat" className="form-label">
-                      DIČ
+                      {t("settings.vatLabel")}
                     </label>
                     <input
                       id="vat"
@@ -1150,12 +1156,12 @@ export function SettingsPage() {
               {/* Banking Information */}
               <div className="border-t border-slate-200/70 pt-4 mt-4">
                 <h3 className="font-semibold text-slate-700 mb-3">
-                  Bankovní spojení
+                  {t("settings.bankTitle")}
                 </h3>
                 <div className="space-y-3">
                   <div>
                     <label htmlFor="bankAccount" className="form-label">
-                      Bankovní účet
+                      {t("settings.bankAccountLabel")}
                     </label>
                     <input
                       id="bankAccount"
@@ -1169,7 +1175,7 @@ export function SettingsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="swift" className="form-label">
-                        SWIFT
+                        {t("settings.swiftLabel")}
                       </label>
                       <input
                         id="swift"
@@ -1182,7 +1188,7 @@ export function SettingsPage() {
                     </div>
                     <div>
                       <label htmlFor="iban" className="form-label">
-                        IBAN
+                        {t("settings.ibanLabel")}
                       </label>
                       <input
                         id="iban"
@@ -1199,7 +1205,7 @@ export function SettingsPage() {
 
               <div className="border-t border-slate-200/70 pt-4 mt-4">
                 <h3 className="font-semibold text-slate-700 mb-3">
-                  Patička faktury
+                  {t("settings.footerTitle")}
                 </h3>
                 <div>
                   <div className="flex items-center gap-2 mb-2">
@@ -1207,30 +1213,33 @@ export function SettingsPage() {
                       htmlFor="invoiceFooterText"
                       className="block text-sm font-medium text-slate-700"
                     >
-                      Text patičky faktury
+                      {t("settings.footerLabel")}
                     </label>
                   </div>
                   <textarea
                     id="invoiceFooterText"
                     value={invoiceFooterText}
                     onChange={(e) => setInvoiceFooterText(e.target.value)}
-                    placeholder="Daně jsou krádež."
+                    placeholder={t("settings.footerPlaceholder")}
                     rows={3}
                     className="form-textarea"
                   />
                   <details className="mt-3 panel-card">
                     <summary className="cursor-pointer text-sm font-semibold text-slate-700">
-                      Příklady textu patičky faktury
+                      {t("settings.footerExamples")}
                     </summary>
                     <div className="mt-2 text-sm text-slate-600 space-y-2">
                       <p>
-                        <span className="font-semibold">- Neplátce DPH:</span>{" "}
-                        Fyzická osoba zapsaná v živnostenském rejstříku.
+                        <span className="font-semibold">
+                          {t("settings.footerExampleNonVat")}
+                        </span>{" "}
+                        {t("settings.footerExampleNonVatText")}
                       </p>
                       <p>
-                        <span className="font-semibold">- Plátce DPH:</span>{" "}
-                        Společnost je zapsána v obchodním rejstříku vedeném
-                        Městským soudem v Praze oddíl B, vložka 012345.
+                        <span className="font-semibold">
+                          {t("settings.footerExampleVat")}
+                        </span>{" "}
+                        {t("settings.footerExampleVatText")}
                       </p>
                     </div>
                   </details>
@@ -1240,12 +1249,12 @@ export function SettingsPage() {
 
             <div className="border-t border-slate-200/70 pt-4 mt-4">
               <h3 className="font-semibold text-slate-700 mb-3">
-                🔩 Další předvolby
+                {t("settings.otherTitle")}
               </h3>
               <div className="flex flex-col gap-2">
                 <div>
                   <label htmlFor="language" className="form-label">
-                    Jazyk aplikace
+                    {t("settings.languageLabel")}
                   </label>
                   <select
                     id="language"
@@ -1253,8 +1262,8 @@ export function SettingsPage() {
                     onChange={(e) => setLanguage(e.target.value as "cz" | "en")}
                     className="form-select"
                   >
-                    <option value="cz">Čeština</option>
-                    <option value="en">English</option>
+                    <option value="cz">{t("settings.languageCz")}</option>
+                    <option value="en">{t("settings.languageEn")}</option>
                   </select>
                 </div>
                 <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
@@ -1264,7 +1273,7 @@ export function SettingsPage() {
                     onChange={(e) => setDiscreteMode(e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                  Diskrétní režim
+                  {t("settings.discreteMode")}
                 </label>
                 <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                   <input
@@ -1273,24 +1282,24 @@ export function SettingsPage() {
                     onChange={(e) => setPoRequired(e.target.checked)}
                     className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
-                  Číslo objednávky na faktuře
+                  {t("settings.poRequired")}
                 </label>
                 <div>
                   <label htmlFor="mempoolUrl" className="form-label">
-                    🔗 Mempool URL
+                    {t("settings.mempoolLabel")}
                   </label>
                   <input
                     id="mempoolUrl"
                     type="text"
                     value={mempoolUrl}
                     onChange={(e) => setMempoolUrl(e.target.value)}
-                    placeholder="https://mempool.space/"
+                    placeholder={t("settings.mempoolPlaceholder")}
                     className="form-input"
                   />
                 </div>
                 <details className="panel-card mt-2">
                   <summary className="cursor-pointer text-sm font-semibold text-slate-700">
-                    Import dat (CSV)
+                    {t("settings.importTitle")}
                   </summary>
                   <div className="mt-3 flex flex-col sm:flex-row gap-2">
                     <input
@@ -1305,14 +1314,14 @@ export function SettingsPage() {
                       onClick={() => importSettingsInputRef.current?.click()}
                       className="btn-secondary w-full sm:w-auto"
                     >
-                      Importovat nastavení
+                      {t("settings.importSettings")}
                     </button>
                     <a
                       href="/settings_import_template.csv"
                       download
                       className="btn-ghost w-full sm:w-auto text-center"
                     >
-                      Šablona pro nastavení ⬇️
+                      {t("settings.importSettingsTemplate")}
                     </a>
                   </div>
                   <div className="mt-3 flex flex-col sm:flex-row gap-2">
@@ -1328,14 +1337,14 @@ export function SettingsPage() {
                       onClick={() => importClientsInputRef.current?.click()}
                       className="btn-secondary w-full sm:w-auto"
                     >
-                      Importovat klienty
+                      {t("settings.importClients")}
                     </button>
                     <a
                       href="/clients_import_template.csv"
                       download
                       className="btn-ghost w-full sm:w-auto text-center"
                     >
-                      Šablona pro klienty ⬇️
+                      {t("settings.importClientsTemplate")}
                     </a>
                   </div>
                   <div className="mt-3 flex flex-col sm:flex-row gap-2">
@@ -1351,14 +1360,14 @@ export function SettingsPage() {
                       onClick={() => importInvoicesInputRef.current?.click()}
                       className="btn-secondary w-full sm:w-auto"
                     >
-                      Importovat faktury
+                      {t("settings.importInvoices")}
                     </button>
                     <a
                       href="/invoices_import_template.csv"
                       download
                       className="btn-ghost w-full sm:w-auto text-center"
                     >
-                      Šablona pro faktury ⬇️
+                      {t("settings.importInvoicesTemplate")}
                     </a>
                   </div>
                 </details>
@@ -1372,17 +1381,17 @@ export function SettingsPage() {
             disabled={isSaving || !name}
             className="btn-success w-full mb-3"
           >
-            {isSaving ? "Ukládání..." : "Uložit nastavení"}
+            {isSaving ? t("settings.saving") : t("settings.save")}
           </button>
 
           <button onClick={handleExportCsv} className="btn-primary w-full mb-3">
-            Exportovat data (CSV)
+            {t("settings.exportCsv")}
           </button>
 
           {/* Clear Data Button */}
           {savedData && (
             <button onClick={handleClearData} className="btn-danger w-full">
-              Smazat všechna lokální data
+              {t("settings.clearData")}
             </button>
           )}
         </div>

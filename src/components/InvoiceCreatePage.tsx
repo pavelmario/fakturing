@@ -2,6 +2,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { useEvolu } from "../evolu";
+import { useI18n } from "../i18n";
 
 type InvoiceItemForm = {
   amount: string;
@@ -62,8 +63,8 @@ const parseItemsParam = (value: string | null): InvoiceItemForm[] | null => {
   }
 };
 
-const formatUiTotal = (value: number) =>
-  new Intl.NumberFormat("cs-CZ", {
+const formatUiTotal = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "CZK",
     minimumFractionDigits: 2,
@@ -71,6 +72,7 @@ const formatUiTotal = (value: number) =>
   }).format(value);
 
 export function InvoiceCreatePage() {
+  const { t, locale } = useI18n();
   const searchParams =
     typeof window === "undefined"
       ? new URLSearchParams("")
@@ -283,21 +285,21 @@ export function InvoiceCreatePage() {
     setSaveMessage(null);
 
     if (!trimmedInvoiceNumber) {
-      alert("Zadejte číslo faktury");
+      alert(t("alerts.invoiceNumberRequired"));
       return;
     }
     if (!clientName.trim()) {
-      alert("Vyberte klienta");
+      alert(t("alerts.invoiceClientRequired"));
       return;
     }
     if (!issueDate.trim()) {
-      alert("Zadejte datum vystavení");
+      alert(t("alerts.issueDateRequired"));
       return;
     }
 
     const paymentDaysNumber = Number(paymentDays);
     if (Number.isNaN(paymentDaysNumber) || paymentDaysNumber < 0) {
-      alert("Počet dní splatnosti musí být kladné číslo");
+      alert(t("alerts.paymentDaysInvalid"));
       return;
     }
 
@@ -308,7 +310,7 @@ export function InvoiceCreatePage() {
         "Issue date error:",
         formatTypeError(issueDateResult.error),
       );
-      alert("Neplatné datum vystavení");
+      alert(t("alerts.issueDateInvalid"));
       return;
     }
 
@@ -318,14 +320,12 @@ export function InvoiceCreatePage() {
         "Payment days error:",
         formatTypeError(paymentDaysResult.error),
       );
-      alert("Počet dní splatnosti musí být kladné číslo");
+      alert(t("alerts.paymentDaysInvalid"));
       return;
     }
 
     if (hasDuplicateInvoiceNumber) {
-      const confirmed = confirm(
-        "Toto číslo faktury již existuje. Přesto uložit?",
-      );
+      const confirmed = confirm(t("alerts.duplicateInvoiceConfirm"));
       if (!confirmed) return;
     }
 
@@ -355,7 +355,7 @@ export function InvoiceCreatePage() {
       const itemsResult = Evolu.Json.from(JSON.stringify(normalizedItems));
       if (!itemsResult.ok) {
         console.error("Items error:", formatTypeError(itemsResult.error));
-        alert("Položky faktury jsou neplatné");
+        alert(t("alerts.invoiceItemsInvalid"));
         return;
       }
 
@@ -379,7 +379,7 @@ export function InvoiceCreatePage() {
       if (!validation.ok) {
         console.error("Validation error:", formatTypeError(validation.error));
         console.error("Invoice payload:", payload);
-        alert("Chyba validace při ukládání faktury");
+        alert(t("alerts.invoiceSaveValidation"));
         return;
       }
 
@@ -387,11 +387,11 @@ export function InvoiceCreatePage() {
 
       if (!result.ok) {
         console.error("Validation error:", formatTypeError(result.error));
-        alert("Chyba validace při ukládání faktury");
+        alert(t("alerts.invoiceSaveValidation"));
         return;
       }
 
-      setSaveMessage("Faktura úspěšně uložena!");
+      setSaveMessage(t("alerts.invoiceSaved"));
       setInvoiceNumber("");
       setClientName("");
       setIssueDate("");
@@ -403,7 +403,7 @@ export function InvoiceCreatePage() {
       setItems([emptyItem()]);
     } catch (error) {
       console.error("Error saving invoice:", error);
-      alert("Error saving invoice");
+      alert(t("alerts.invoiceSaveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -414,8 +414,8 @@ export function InvoiceCreatePage() {
       <div className="page-container-lg">
         <div className="page-card-lg">
           <div className="mb-6">
-            <p className="section-title">Nová</p>
-            <h1 className="page-title">Faktura</h1>
+            <p className="section-title">{t("invoiceCreate.sectionTitle")}</p>
+            <h1 className="page-title">{t("invoiceCreate.title")}</h1>
           </div>
 
           {saveMessage ? (
@@ -425,7 +425,7 @@ export function InvoiceCreatePage() {
           <div className="space-y-4">
             <div>
               <label htmlFor="invoiceNumber" className="form-label">
-                Číslo faktury *
+                {t("invoiceCreate.invoiceNumberLabel")}
               </label>
               <input
                 id="invoiceNumber"
@@ -435,14 +435,14 @@ export function InvoiceCreatePage() {
                   setInvoiceNumberTouched(true);
                   setInvoiceNumber(e.target.value);
                 }}
-                placeholder="INV-2140-0021"
+                placeholder={t("invoiceCreate.invoiceNumberPlaceholder")}
                 className="form-input"
               />
             </div>
 
             <div>
               <label htmlFor="clientName" className="form-label">
-                Klient *
+                {t("invoiceCreate.clientLabel")}
               </label>
               <select
                 id="clientName"
@@ -450,20 +450,20 @@ export function InvoiceCreatePage() {
                 onChange={(e) => setClientName(e.target.value)}
                 className="form-select"
               >
-                <option value="">Vyberte klienta</option>
+                <option value="">{t("invoiceCreate.clientPlaceholder")}</option>
                 {clients.map((client) => (
                   <option
                     key={client.id}
                     value={client.name ?? ""}
                     disabled={!client.name}
                   >
-                    {client.name ?? "Nepojmenovaný klient"}
+                    {client.name ?? t("invoiceCreate.clientUnnamed")}
                   </option>
                 ))}
               </select>
               {clients.length === 0 ? (
                 <p className="text-xs text-slate-500 mt-2">
-                  Žádní klienti nejsou k dispozici.
+                  {t("invoiceCreate.clientsEmpty")}
                 </p>
               ) : null}
             </div>
@@ -480,21 +480,21 @@ export function InvoiceCreatePage() {
                 htmlFor="btcInvoice"
                 className="text-sm font-medium text-slate-700"
               >
-                Fakturuji v bitcoinu
+                {t("invoiceCreate.btcInvoiceLabel")}
               </label>
             </div>
 
             {btcInvoice ? (
               <div>
                 <label htmlFor="btcAddress" className="form-label">
-                  Adresa příjemce
+                  {t("invoiceCreate.btcAddressLabel")}
                 </label>
                 <input
                   id="btcAddress"
                   type="text"
                   value={btcAddress}
                   onChange={(e) => setBtcAddress(e.target.value)}
-                  placeholder="bc1..."
+                  placeholder={t("invoiceCreate.btcAddressPlaceholder")}
                   className="form-input"
                 />
               </div>
@@ -503,7 +503,7 @@ export function InvoiceCreatePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="issueDate" className="form-label">
-                  Datum vystavení *
+                  {t("invoiceCreate.issueDateLabel")}
                 </label>
                 <input
                   id="issueDate"
@@ -515,7 +515,7 @@ export function InvoiceCreatePage() {
               </div>
               <div>
                 <label htmlFor="paymentDays" className="form-label">
-                  Dní splatnosti *
+                  {t("invoiceCreate.paymentDaysLabel")}
                 </label>
                 <input
                   id="paymentDays"
@@ -530,7 +530,7 @@ export function InvoiceCreatePage() {
 
             <div>
               <label htmlFor="paymentMethod" className="form-label">
-                Způsob platby
+                {t("invoiceCreate.paymentMethodLabel")}
               </label>
               <select
                 id="paymentMethod"
@@ -538,21 +538,25 @@ export function InvoiceCreatePage() {
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 className="form-select"
               >
-                <option value="bank">převodem</option>
-                <option value="cash">hotově</option>
+                <option value="bank">
+                  {t("invoiceCreate.paymentMethodBank")}
+                </option>
+                <option value="cash">
+                  {t("invoiceCreate.paymentMethodCash")}
+                </option>
               </select>
             </div>
             {isPoRequired ? (
               <div>
                 <label htmlFor="purchaseOrderNumber" className="form-label">
-                  Číslo objednávky
+                  {t("invoiceCreate.purchaseOrderLabel")}
                 </label>
                 <input
                   id="purchaseOrderNumber"
                   type="text"
                   value={purchaseOrderNumber}
                   onChange={(e) => setPurchaseOrderNumber(e.target.value)}
-                  placeholder="Obj-12345"
+                  placeholder={t("invoiceCreate.purchaseOrderPlaceholder")}
                   className="form-input"
                 />
               </div>
@@ -561,14 +565,14 @@ export function InvoiceCreatePage() {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg font-semibold text-slate-900">
-                  Fakturované položky
+                  {t("invoiceCreate.itemsTitle")}
                 </h2>
                 <button
                   type="button"
                   onClick={addItem}
                   className="btn-secondary"
                 >
-                  Přidat položku
+                  {t("invoiceCreate.addItem")}
                 </button>
               </div>
 
@@ -580,7 +584,7 @@ export function InvoiceCreatePage() {
                         htmlFor={`item-${index}-description`}
                         className="form-label"
                       >
-                        Popis
+                        {t("invoiceCreate.itemDescription")}
                       </label>
                       <input
                         id={`item-${index}-description`}
@@ -589,7 +593,9 @@ export function InvoiceCreatePage() {
                         onChange={(e) =>
                           updateItem(index, "description", e.target.value)
                         }
-                        placeholder="Služba nebo produkt"
+                        placeholder={t(
+                          "invoiceCreate.itemDescriptionPlaceholder",
+                        )}
                         className="form-input"
                       />
                     </div>
@@ -604,7 +610,7 @@ export function InvoiceCreatePage() {
                           htmlFor={`item-${index}-amount`}
                           className="form-label"
                         >
-                          Množství
+                          {t("invoiceCreate.itemAmount")}
                         </label>
                         <input
                           id={`item-${index}-amount`}
@@ -623,7 +629,7 @@ export function InvoiceCreatePage() {
                           htmlFor={`item-${index}-unit`}
                           className="form-label"
                         >
-                          Jednotka
+                          {t("invoiceCreate.itemUnit")}
                         </label>
                         <input
                           id={`item-${index}-unit`}
@@ -632,7 +638,7 @@ export function InvoiceCreatePage() {
                           onChange={(e) =>
                             updateItem(index, "unit", e.target.value)
                           }
-                          placeholder="hodiny, kusy"
+                          placeholder={t("invoiceCreate.itemUnitPlaceholder")}
                           className="form-input"
                         />
                       </div>
@@ -642,7 +648,7 @@ export function InvoiceCreatePage() {
                           htmlFor={`item-${index}-unitPrice`}
                           className="form-label"
                         >
-                          Cena za jednotku
+                          {t("invoiceCreate.itemUnitPrice")}
                         </label>
                         <input
                           id={`item-${index}-unitPrice`}
@@ -663,7 +669,7 @@ export function InvoiceCreatePage() {
                             htmlFor={`item-${index}-vat`}
                             className="form-label"
                           >
-                            DPH (%)
+                            {t("invoiceCreate.itemVat")}
                           </label>
                           <input
                             id={`item-${index}-vat`}
@@ -687,7 +693,7 @@ export function InvoiceCreatePage() {
                         disabled={items.length === 1}
                         className="btn-danger"
                       >
-                        Odstranit položku
+                        {t("invoiceCreate.itemRemove")}
                       </button>
                     </div>
                   </div>
@@ -696,8 +702,10 @@ export function InvoiceCreatePage() {
             </div>
 
             <div className="panel-card text-sm text-slate-700">
-              <span className="font-semibold text-slate-900">Celkem:</span>{" "}
-              {formatUiTotal(invoiceTotal)}
+              <span className="font-semibold text-slate-900">
+                {t("invoiceCreate.totalLabel")}
+              </span>{" "}
+              {formatUiTotal(invoiceTotal, locale)}
             </div>
           </div>
 
@@ -706,7 +714,7 @@ export function InvoiceCreatePage() {
             disabled={isSaving}
             className="btn-primary mt-6 w-full"
           >
-            {isSaving ? "Ukládám..." : "Uložit fakturu"}
+            {isSaving ? t("invoiceCreate.saving") : t("invoiceCreate.save")}
           </button>
         </div>
       </div>

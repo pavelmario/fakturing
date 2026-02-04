@@ -6,9 +6,11 @@ import { InvoiceCreatePage } from "./components/InvoiceCreatePage";
 import { InvoiceDetailPage } from "./components/InvoiceDetailPage";
 import { InvoiceListPage } from "./components/InvoiceListPage";
 import { SettingsPage } from "./components/SettingsPage";
+import { useI18n } from "./i18n";
 import "./index.css";
 
 function App() {
+  const { t } = useI18n();
   const [page, setPage] = useState<
     | "settings"
     | "clients"
@@ -84,7 +86,7 @@ function App() {
   }, []);
 
   return (
-    <Suspense fallback={<div className="app-loading">Načítání...</div>}>
+    <Suspense fallback={<div className="app-loading">{t("app.loading")}</div>}>
       <div className="app-shell">
         <div className="app-nav">
           <div className="app-tabs">
@@ -96,7 +98,7 @@ function App() {
                   : "tab-button-inactive"
               }`}
             >
-              Faktury
+              {t("app.nav.invoices")}
             </button>
             <button
               onClick={() => navigate("clients-list", null, null)}
@@ -106,7 +108,7 @@ function App() {
                   : "tab-button-inactive"
               }`}
             >
-              Klienti
+              {t("app.nav.clients")}
             </button>
             <button
               onClick={() => navigate("settings", null, null)}
@@ -116,7 +118,7 @@ function App() {
                   : "tab-button-inactive"
               }`}
             >
-              Nastavení
+              {t("app.nav.settings")}
             </button>
           </div>
         </div>
@@ -161,7 +163,8 @@ function App() {
             />
           )}
           <p className="text-center text-slate-500">
-            Donate address<br></br>
+            {t("app.donate.title")}
+            <br></br>
             <small>
               poorjames425@walletofsatoshi.com
               <br></br>

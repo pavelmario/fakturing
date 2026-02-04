@@ -2,6 +2,7 @@ import { use, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { useEvolu } from "../evolu";
+import { useI18n } from "../i18n";
 
 type ClientsListPageProps = {
   onViewDetails: (clientId: string) => void;
@@ -12,6 +13,7 @@ export function ClientsListPage({
   onViewDetails,
   onCreateClient,
 }: ClientsListPageProps) {
+  const { t } = useI18n();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
   const [search, setSearch] = useState("");
@@ -44,27 +46,27 @@ export function ClientsListPage({
         <div className="page-card">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
-              <p className="section-title">Adresář</p>
-              <h1 className="page-title">Klienti</h1>
+              <p className="section-title">{t("clientsList.sectionTitle")}</p>
+              <h1 className="page-title">{t("clientsList.title")}</h1>
             </div>
             <button
               onClick={onCreateClient}
               className="btn-primary w-full sm:w-auto"
             >
-              Založit nového klienta
+              {t("clientsList.create")}
             </button>
           </div>
 
           <div className="mb-4">
             <label htmlFor="clientSearch" className="form-label">
-              Hledání
+              {t("clientsList.searchLabel")}
             </label>
             <input
               id="clientSearch"
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Hledat podle názvu subjektu"
+              placeholder={t("clientsList.searchPlaceholder")}
               className="form-input"
             />
           </div>
@@ -72,8 +74,8 @@ export function ClientsListPage({
           {filteredClients.length === 0 ? (
             <div className="empty-state">
               {clients.length === 0
-                ? "Zatím nebyl založen ani jeden klient."
-                : "Žádný klient neodpovídá vašemu hledání."}
+                ? t("clientsList.emptyNone")
+                : t("clientsList.emptyNoMatch")}
             </div>
           ) : (
             <div className="space-y-3">
@@ -84,7 +86,7 @@ export function ClientsListPage({
                 >
                   <div>
                     <div className="text-lg font-semibold text-slate-900">
-                      {client.name ?? "Nepojmenovaný klient"}
+                      {client.name ?? t("clientsList.unnamed")}
                     </div>
                     <div className="text-sm text-slate-600 space-y-1 mt-1">
                       <div>{client.phone || ""}</div>
@@ -95,7 +97,7 @@ export function ClientsListPage({
                     onClick={() => onViewDetails(client.id)}
                     className="btn-secondary w-full sm:w-auto"
                   >
-                    Zobrazit detail
+                    {t("clientsList.viewDetail")}
                   </button>
                 </div>
               ))}
