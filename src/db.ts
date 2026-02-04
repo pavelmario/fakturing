@@ -2,7 +2,11 @@
 // Using localStorage with two-way Evolu relay sync and AES-256 encryption
 
 import CryptoJS from "crypto-js";
-import { deriveKeyFromMnemonic, encryptToString, decryptFromString } from "./encryption";
+import {
+  deriveKeyFromMnemonic,
+  encryptToString,
+  decryptFromString,
+} from "./encryption";
 
 export interface UserProfile {
   id: string;
@@ -21,6 +25,8 @@ export interface UserProfile {
   bankAccount?: string;
   swift?: string;
   iban?: string;
+  // UI language preference: 'cz' or 'en'
+  language?: "cz" | "en";
   // Timestamps
   createdAt: number;
   updatedAt: number;
@@ -76,7 +82,9 @@ async function initRelaySettingsDb(): Promise<void> {
       const db = (event.target as IDBOpenDBRequest).result;
       if (!db.objectStoreNames.contains(RELAY_URL_STORE)) {
         db.createObjectStore(RELAY_URL_STORE, { keyPath: "key" });
-        console.log("[initRelaySettingsDb] Created relay settings object store");
+        console.log(
+          "[initRelaySettingsDb] Created relay settings object store",
+        );
       }
     };
   });
@@ -152,7 +160,7 @@ export async function reconnectToRelay(): Promise<void> {
     relayWs = null;
   }
   notifyConnectionStatus(false);
-  
+
   console.log("[reconnectToRelay] Reconnecting to relay...");
   await initializeRelayConnection();
 }
@@ -190,7 +198,10 @@ async function initRelayDb(): Promise<void> {
 }
 
 // Store data in IndexedDB relay
-async function storeInRelayDb(userId: string, encryptedData: string): Promise<void> {
+async function storeInRelayDb(
+  userId: string,
+  encryptedData: string,
+): Promise<void> {
   if (!relayDb) {
     await initRelayDb();
   }
@@ -202,10 +213,17 @@ async function storeInRelayDb(userId: string, encryptedData: string): Promise<vo
   return new Promise((resolve, reject) => {
     const tx = relayDb!.transaction([RELAY_STORE_OBJECTSTORE], "readwrite");
     const store = tx.objectStore(RELAY_STORE_OBJECTSTORE);
-    const request = store.put({ userId, data: encryptedData, timestamp: Date.now() });
+    const request = store.put({
+      userId,
+      data: encryptedData,
+      timestamp: Date.now(),
+    });
 
     request.onerror = () => {
-      console.error("[storeInRelayDb] Failed to store in IndexedDB:", request.error);
+      console.error(
+        "[storeInRelayDb] Failed to store in IndexedDB:",
+        request.error,
+      );
       reject(request.error);
     };
 
@@ -217,7 +235,9 @@ async function storeInRelayDb(userId: string, encryptedData: string): Promise<vo
 }
 
 // Retrieve data from IndexedDB relay
-async function getFromRelayDb(userId: string): Promise<{ data: string; timestamp: number } | null> {
+async function getFromRelayDb(
+  userId: string,
+): Promise<{ data: string; timestamp: number } | null> {
   if (!relayDb) {
     await initRelayDb();
   }
@@ -232,17 +252,24 @@ async function getFromRelayDb(userId: string): Promise<{ data: string; timestamp
     const request = store.get(userId);
 
     request.onerror = () => {
-      console.error("[getFromRelayDb] Failed to retrieve from IndexedDB:", request.error);
+      console.error(
+        "[getFromRelayDb] Failed to retrieve from IndexedDB:",
+        request.error,
+      );
       reject(request.error);
     };
 
     request.onsuccess = () => {
       const result = request.result;
       if (result) {
-        console.log(`[getFromRelayDb] Found data in IndexedDB for userId: ${userId}`);
+        console.log(
+          `[getFromRelayDb] Found data in IndexedDB for userId: ${userId}`,
+        );
         resolve({ data: result.data, timestamp: result.timestamp });
       } else {
-        console.log(`[getFromRelayDb] No data in IndexedDB for userId: ${userId}`);
+        console.log(
+          `[getFromRelayDb] No data in IndexedDB for userId: ${userId}`,
+        );
         resolve(null);
       }
     };
@@ -258,7 +285,9 @@ if (typeof window !== "undefined") {
     console.log("=== Fallback Relay Store Debug ===");
     console.log(`Total entries: ${relayStore.size}`);
     relayStore.forEach((value, key) => {
-      console.log(`  userId: ${key}, timestamp: ${new Date(value.timestamp).toISOString()}`);
+      console.log(
+        `  userId: ${key}, timestamp: ${new Date(value.timestamp).toISOString()}`,
+      );
     });
     console.log("=================================");
   };
@@ -284,7 +313,9 @@ const profileListeners = new Set<(profile: UserProfile | null) => void>();
 let storageListenerInitialized = false;
 
 type RelayPersistenceStatus = "unknown" | "ok" | "no-persistence" | "error";
-const relayPersistenceListeners = new Set<(status: RelayPersistenceStatus) => void>();
+const relayPersistenceListeners = new Set<
+  (status: RelayPersistenceStatus) => void
+>();
 let relayPersistenceStatus: RelayPersistenceStatus = "unknown";
 
 type PendingRelayCheck = {
@@ -296,7 +327,9 @@ type PendingRelayCheck = {
 
 let pendingRelayCheck: PendingRelayCheck | null = null;
 
-export function onConnectionStatusChange(callback: (connected: boolean) => void) {
+export function onConnectionStatusChange(
+  callback: (connected: boolean) => void,
+) {
   connectionListeners.add(callback);
   return () => connectionListeners.delete(callback);
 }
@@ -314,12 +347,16 @@ function notifyProfile(profile: UserProfile | null) {
   profileListeners.forEach((cb) => cb(profile));
 }
 
-export function onProfileChange(callback: (profile: UserProfile | null) => void) {
+export function onProfileChange(
+  callback: (profile: UserProfile | null) => void,
+) {
   profileListeners.add(callback);
   return () => profileListeners.delete(callback);
 }
 
-export function onRelayPersistenceStatusChange(callback: (status: RelayPersistenceStatus) => void) {
+export function onRelayPersistenceStatusChange(
+  callback: (status: RelayPersistenceStatus) => void,
+) {
   relayPersistenceListeners.add(callback);
   return () => relayPersistenceListeners.delete(callback);
 }
@@ -353,28 +390,40 @@ async function checkFallbackRelay(): Promise<void> {
   const storedData = await getFromRelayDb(userId);
 
   if (storedData) {
-    console.log(`[checkFallbackRelay] ✓ Found data in relay for userId: ${userId}`);
+    console.log(
+      `[checkFallbackRelay] ✓ Found data in relay for userId: ${userId}`,
+    );
     try {
       const key = deriveKeyFromMnemonic(activeMnemonic);
       const relayProfile = decryptFromString<UserProfile>(storedData.data, key);
       if (relayProfile) {
-        console.log("[checkFallbackRelay] ✓ Decrypted and notifying profile from relay", relayProfile);
+        console.log(
+          "[checkFallbackRelay] ✓ Decrypted and notifying profile from relay",
+          relayProfile,
+        );
         notifyProfile(relayProfile);
       } else {
         console.log("[checkFallbackRelay] ✗ Decryption returned null/falsy");
       }
     } catch (error) {
-      console.error("[checkFallbackRelay] ✗ Failed to decrypt from relay:", error);
+      console.error(
+        "[checkFallbackRelay] ✗ Failed to decrypt from relay:",
+        error,
+      );
     }
   } else {
-    console.log(`[checkFallbackRelay] ✗ No data in relay for userId: ${userId}`);
+    console.log(
+      `[checkFallbackRelay] ✗ No data in relay for userId: ${userId}`,
+    );
   }
 }
 
 // Set the active mnemonic for encryption/decryption context
 export function setActiveMnemonic(mnemonic: string | null): void {
   activeMnemonic = mnemonic?.trim() || null;
-  console.log(`[setActiveMnemonic] mnemonic set: ${activeMnemonic ? "***" : "null"}`);
+  console.log(
+    `[setActiveMnemonic] mnemonic set: ${activeMnemonic ? "***" : "null"}`,
+  );
   // Immediately check fallback relay when mnemonic is set
   if (activeMnemonic) {
     console.log(`[setActiveMnemonic] Calling checkFallbackRelay...`);
@@ -432,7 +481,9 @@ export async function initializeRelayConnection(): Promise<void> {
       if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
         reconnectAttempts++;
         setTimeout(() => {
-          console.log(`Reconnecting to relay (attempt ${reconnectAttempts})...`);
+          console.log(
+            `Reconnecting to relay (attempt ${reconnectAttempts})...`,
+          );
           initializeRelayConnection();
         }, RECONNECT_DELAY);
       }
@@ -440,7 +491,10 @@ export async function initializeRelayConnection(): Promise<void> {
 
     relayWs.onmessage = async (event) => {
       try {
-        console.log("[relayWs.onmessage] Message received, type:", typeof event.data);
+        console.log(
+          "[relayWs.onmessage] Message received, type:",
+          typeof event.data,
+        );
         let messageText: string;
 
         // Handle Blob messages
@@ -448,54 +502,80 @@ export async function initializeRelayConnection(): Promise<void> {
           console.log("[relayWs.onmessage] Processing Blob message");
           // Read as ArrayBuffer first, then decode
           const arrayBuffer = await event.data.arrayBuffer();
-          messageText = new TextDecoder('utf-8').decode(arrayBuffer);
+          messageText = new TextDecoder("utf-8").decode(arrayBuffer);
         } else if (event.data instanceof ArrayBuffer) {
           console.log("[relayWs.onmessage] Processing ArrayBuffer message");
-          messageText = new TextDecoder('utf-8').decode(new Uint8Array(event.data));
+          messageText = new TextDecoder("utf-8").decode(
+            new Uint8Array(event.data),
+          );
         } else {
           console.log("[relayWs.onmessage] Processing string message");
           messageText = String(event.data);
         }
 
-        console.log(`[relayWs.onmessage] Raw message length: ${messageText.length}, first 80 chars:`, messageText.substring(0, 80));
+        console.log(
+          `[relayWs.onmessage] Raw message length: ${messageText.length}, first 80 chars:`,
+          messageText.substring(0, 80),
+        );
 
         // Remove BOM, null bytes, and non-printable characters
         const originalLength = messageText.length;
         messageText = messageText
-          .replace(/^\uFEFF/, '') // Remove BOM first
-          .replace(/\0/g, '') // Remove null bytes
+          .replace(/^\uFEFF/, "") // Remove BOM first
+          .replace(/\0/g, "") // Remove null bytes
           .trim();
-        
+
         // Only remove leading non-JSON if we have more than just a quote
-        if (messageText.length > 2 && !messageText.startsWith('{') && !messageText.startsWith('[')) {
+        if (
+          messageText.length > 2 &&
+          !messageText.startsWith("{") &&
+          !messageText.startsWith("[")
+        ) {
           const beforeClean = messageText.length;
-          messageText = messageText.replace(/^[^{[]*/, '');
-          console.log(`[relayWs.onmessage] Removed ${beforeClean - messageText.length} leading chars`);
+          messageText = messageText.replace(/^[^{[]*/, "");
+          console.log(
+            `[relayWs.onmessage] Removed ${beforeClean - messageText.length} leading chars`,
+          );
         }
-        
+
         if (originalLength > messageText.length) {
-          console.log(`[relayWs.onmessage] ✓ Cleaned message (removed ${originalLength - messageText.length} chars), cleaned length: ${messageText.length}`);
+          console.log(
+            `[relayWs.onmessage] ✓ Cleaned message (removed ${originalLength - messageText.length} chars), cleaned length: ${messageText.length}`,
+          );
         }
-        
+
         if (!messageText) {
-          console.log("[relayWs.onmessage] ⚠ Message empty after cleanup (likely echo or keepalive), skipping");
+          console.log(
+            "[relayWs.onmessage] ⚠ Message empty after cleanup (likely echo or keepalive), skipping",
+          );
           return;
         }
 
         // Only process if it looks like JSON
-        if (!messageText.startsWith('{') && !messageText.startsWith('[')) {
-          console.warn("[relayWs.onmessage] ✗ Message doesn't look like JSON after cleanup, skipping. Content:", messageText.substring(0, 100));
+        if (!messageText.startsWith("{") && !messageText.startsWith("[")) {
+          console.warn(
+            "[relayWs.onmessage] ✗ Message doesn't look like JSON after cleanup, skipping. Content:",
+            messageText.substring(0, 100),
+          );
           return;
         }
 
         const message: RelayMessage = JSON.parse(messageText);
-        console.log("[relayWs.onmessage] ✓ Parsed relay message type:", message.type, "userId:", message.userId);
+        console.log(
+          "[relayWs.onmessage] ✓ Parsed relay message type:",
+          message.type,
+          "userId:",
+          message.userId,
+        );
         handleRelayMessage(message);
       } catch (error) {
         // Only log non-JSON parsing errors, ignore JSON parse errors from non-JSON messages
         if (error instanceof SyntaxError) {
           // Silently skip JSON parsing errors - they're likely echo messages or other non-JSON data
-          console.warn("[relayWs.onmessage] JSON parse error (silently skipped):", (error as Error).message);
+          console.warn(
+            "[relayWs.onmessage] JSON parse error (silently skipped):",
+            (error as Error).message,
+          );
         } else {
           console.error("[relayWs.onmessage] Error:", error);
         }
@@ -511,7 +591,12 @@ export async function initializeRelayConnection(): Promise<void> {
 function handleRelayMessage(message: RelayMessage) {
   const normalizedUserId = message.userId || message.u;
   const normalizedData = message.data ?? message.d;
-  console.log("[handleRelayMessage] Processing message type:", message.type, "userId:", normalizedUserId || "N/A");
+  console.log(
+    "[handleRelayMessage] Processing message type:",
+    message.type,
+    "userId:",
+    normalizedUserId || "N/A",
+  );
 
   if (pendingRelayCheck && normalizedUserId === pendingRelayCheck.userId) {
     if (message.type === "pull-response") {
@@ -522,7 +607,7 @@ function handleRelayMessage(message: RelayMessage) {
       notifyRelayPersistenceStatus(isMatch ? "ok" : "no-persistence");
       console.log(
         "[handleRelayMessage] Relay persistence check result:",
-        isMatch ? "✓ persisted" : "✗ not persisted"
+        isMatch ? "✓ persisted" : "✗ not persisted",
       );
       return;
     }
@@ -532,38 +617,60 @@ function handleRelayMessage(message: RelayMessage) {
       pendingRelayCheck.resolve("no-persistence");
       pendingRelayCheck = null;
       notifyRelayPersistenceStatus("no-persistence");
-      console.log("[handleRelayMessage] Relay persistence check result: ✗ relay echoed pull");
+      console.log(
+        "[handleRelayMessage] Relay persistence check result: ✗ relay echoed pull",
+      );
       return;
     }
 
     if (message.type === "push-ack") {
-      console.log("[handleRelayMessage] Relay persistence check received push-ack");
+      console.log(
+        "[handleRelayMessage] Relay persistence check received push-ack",
+      );
       return;
     }
   }
 
   if (message.type === "pull-response") {
     console.log("[handleRelayMessage] ★★★ PULL-RESPONSE RECEIVED ★★★");
-    console.log("[handleRelayMessage] Response data present:", !!normalizedData);
-    console.log("[handleRelayMessage] Response data length:", normalizedData?.length || 0);
-    console.log("[handleRelayMessage] Active mnemonic present:", !!activeMnemonic);
-    
+    console.log(
+      "[handleRelayMessage] Response data present:",
+      !!normalizedData,
+    );
+    console.log(
+      "[handleRelayMessage] Response data length:",
+      normalizedData?.length || 0,
+    );
+    console.log(
+      "[handleRelayMessage] Active mnemonic present:",
+      !!activeMnemonic,
+    );
+
     if (!normalizedData) {
-      console.log("[handleRelayMessage] ✗ pull-response has NO DATA - relay server did not return any stored data");
-      console.log("[handleRelayMessage] This indicates the relay server is not persisting data or does not have data for this userId");
+      console.log(
+        "[handleRelayMessage] ✗ pull-response has NO DATA - relay server did not return any stored data",
+      );
+      console.log(
+        "[handleRelayMessage] This indicates the relay server is not persisting data or does not have data for this userId",
+      );
       return;
     }
-    
+
     // Decrypt relay data using the active mnemonic key
     if (!activeMnemonic) {
-      console.log("[handleRelayMessage] ✗ No active mnemonic to decrypt relay data");
+      console.log(
+        "[handleRelayMessage] ✗ No active mnemonic to decrypt relay data",
+      );
       return;
     }
 
     try {
       const key = deriveKeyFromMnemonic(activeMnemonic);
       const relayProfile = decryptFromString<UserProfile>(normalizedData, key);
-      console.log("[handleRelayMessage] Decryption result:", relayProfile ? "✓ success" : "✗ failed");
+      console.log(
+        "[handleRelayMessage] Decryption result:",
+        relayProfile ? "✓ success" : "✗ failed",
+      );
 
       if (relayProfile) {
         console.log("[handleRelayMessage] ✓ Decrypted profile fields:", {
@@ -575,23 +682,25 @@ function handleRelayMessage(message: RelayMessage) {
           vatNumber: !!relayProfile.vatNumber,
           bankAccount: !!relayProfile.bankAccount,
           swift: !!relayProfile.swift,
-          iban: !!relayProfile.iban
+          iban: !!relayProfile.iban,
         });
         // Merge with local data - newer version wins
         const local = getUserProfile();
         if (!local) {
-          console.log("[handleRelayMessage] Local database MISSING, saving relay data");
+          console.log(
+            "[handleRelayMessage] Local database MISSING, saving relay data",
+          );
           saveEncryptedProfile(relayProfile);
           notifyProfile(relayProfile);
         } else if (relayProfile.updatedAt > local.updatedAt) {
           console.log(
-            `[handleRelayMessage] Relay data is NEWER (relay: ${new Date(relayProfile.updatedAt).toISOString()}, local: ${new Date(local.updatedAt).toISOString()}). Updating...`
+            `[handleRelayMessage] Relay data is NEWER (relay: ${new Date(relayProfile.updatedAt).toISOString()}, local: ${new Date(local.updatedAt).toISOString()}). Updating...`,
           );
           saveEncryptedProfile(relayProfile);
           notifyProfile(relayProfile);
         } else {
           console.log(
-            `[handleRelayMessage] Local data is NEWER or SAME (local: ${new Date(local.updatedAt).toISOString()}, relay: ${new Date(relayProfile.updatedAt).toISOString()}). Keeping local.`
+            `[handleRelayMessage] Local data is NEWER or SAME (local: ${new Date(local.updatedAt).toISOString()}, relay: ${new Date(relayProfile.updatedAt).toISOString()}). Keeping local.`,
           );
         }
       } else {
@@ -603,11 +712,19 @@ function handleRelayMessage(message: RelayMessage) {
   } else if (message.type === "push-ack") {
     console.log("[handleRelayMessage] ✓ Push to relay acknowledged");
   } else if (message.type === "push") {
-    console.log("[handleRelayMessage] ⚠ Received push message from relay (real-time sync) - relay may be echoing back push requests");
+    console.log(
+      "[handleRelayMessage] ⚠ Received push message from relay (real-time sync) - relay may be echoing back push requests",
+    );
   } else if (message.type === "pull") {
-    console.log("[handleRelayMessage] ⚠⚠⚠ RELAY NOT SUPPORTING PROTOCOL: Relay echoed back pull request instead of pull-response");
-    console.log("[handleRelayMessage] ⚠⚠⚠ This indicates relay does not implement persistent storage for push/pull messages");
-    console.log("[handleRelayMessage] ⚠⚠⚠ For cross-session sync (incognito), you need a relay server that stores data");
+    console.log(
+      "[handleRelayMessage] ⚠⚠⚠ RELAY NOT SUPPORTING PROTOCOL: Relay echoed back pull request instead of pull-response",
+    );
+    console.log(
+      "[handleRelayMessage] ⚠⚠⚠ This indicates relay does not implement persistent storage for push/pull messages",
+    );
+    console.log(
+      "[handleRelayMessage] ⚠⚠⚠ For cross-session sync (incognito), you need a relay server that stores data",
+    );
   } else {
     console.log("[handleRelayMessage] Unknown message type:", message.type);
   }
@@ -621,20 +738,27 @@ function saveEncryptedProfile(profile: UserProfile): void {
     localStorage.setItem(STORAGE_KEY, encryptedData);
     // Store mnemonic separately (unencrypted) to enable decryption on page load
     localStorage.setItem(MNEMONIC_KEY, profile.mnemonic);
-    console.log("[saveEncryptedProfile] Profile encrypted and saved to localStorage");
-    
+    console.log(
+      "[saveEncryptedProfile] Profile encrypted and saved to localStorage",
+    );
+
     // Also store in IndexedDB relay for cross-window/incognito sync
     const userId = profile.id || deriveUserId(profile.mnemonic);
     storeInRelayDb(userId, encryptedData).catch(console.error);
-    
+
     notifyProfile(profile);
   } catch (error) {
-    console.error("[saveEncryptedProfile] Failed to save encrypted profile:", error);
+    console.error(
+      "[saveEncryptedProfile] Failed to save encrypted profile:",
+      error,
+    );
   }
 }
 
 // Save user profile to local storage (encrypted) and sync to relay
-export function saveUserProfile(profile: Omit<UserProfile, "id" | "createdAt" | "updatedAt">): UserProfile {
+export function saveUserProfile(
+  profile: Omit<UserProfile, "id" | "createdAt" | "updatedAt">,
+): UserProfile {
   const now = Date.now();
   const existing = getUserProfile();
 
@@ -653,6 +777,7 @@ export function saveUserProfile(profile: Omit<UserProfile, "id" | "createdAt" | 
     bankAccount: profile.bankAccount,
     swift: profile.swift,
     iban: profile.iban,
+    language: (profile as any).language || existing?.language || "cz",
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
@@ -685,9 +810,11 @@ export function getUserProfile(): UserProfile | null {
       // Try to get mnemonic from localStorage first
       const storedMnemonic = localStorage.getItem(MNEMONIC_KEY);
       const mnemonicToUse = storedMnemonic || activeMnemonic;
-      
+
       if (!mnemonicToUse) {
-        console.warn("[getUserProfile] Encrypted data found but no mnemonic available");
+        console.warn(
+          "[getUserProfile] Encrypted data found but no mnemonic available",
+        );
         return null;
       }
 
@@ -722,7 +849,9 @@ export function getUserProfile(): UserProfile | null {
 // Pull latest data from relay with retry logic
 function schedulePull(reason: string): void {
   if (pullScheduled) {
-    console.log(`[schedulePull] Pull already scheduled, skipping. Reason: ${reason}`);
+    console.log(
+      `[schedulePull] Pull already scheduled, skipping. Reason: ${reason}`,
+    );
     return;
   }
   pullScheduled = true;
@@ -736,14 +865,20 @@ function schedulePull(reason: string): void {
 async function pullFromRelay(): Promise<void> {
   // Ensure a connection attempt is in flight
   if (!relayWs || relayWs.readyState !== WebSocket.OPEN) {
-    console.log("[pullFromRelay] Relay not connected, attempting to (re)connect before pull", {
-      ws: !!relayWs,
-      readyState: relayWs?.readyState,
-    });
+    console.log(
+      "[pullFromRelay] Relay not connected, attempting to (re)connect before pull",
+      {
+        ws: !!relayWs,
+        readyState: relayWs?.readyState,
+      },
+    );
     try {
       await initializeRelayConnection();
     } catch (error) {
-      console.error("[pullFromRelay] Failed to initialize relay connection:", error);
+      console.error(
+        "[pullFromRelay] Failed to initialize relay connection:",
+        error,
+      );
       return;
     }
   }
@@ -758,10 +893,13 @@ async function pullFromRelay(): Promise<void> {
           return;
         }
         if (Date.now() - start > 5000) {
-          console.warn("[pullFromRelay] Timed out waiting for WebSocket to open", {
-            ws: !!relayWs,
-            readyState: relayWs?.readyState,
-          });
+          console.warn(
+            "[pullFromRelay] Timed out waiting for WebSocket to open",
+            {
+              ws: !!relayWs,
+              readyState: relayWs?.readyState,
+            },
+          );
           resolve();
           return;
         }
@@ -774,10 +912,13 @@ async function pullFromRelay(): Promise<void> {
   await waitForOpen();
 
   if (!relayWs || relayWs.readyState !== WebSocket.OPEN) {
-    console.warn("[pullFromRelay] WebSocket still not open after wait; aborting pull", {
-      ws: !!relayWs,
-      readyState: relayWs?.readyState,
-    });
+    console.warn(
+      "[pullFromRelay] WebSocket still not open after wait; aborting pull",
+      {
+        ws: !!relayWs,
+        readyState: relayWs?.readyState,
+      },
+    );
     return;
   }
 
@@ -847,7 +988,7 @@ export async function runRelayPersistenceCheck(): Promise<RelayPersistenceStatus
         u: userId,
         d: testData,
         t: Date.now(),
-      })
+      }),
     );
 
     setTimeout(() => {
@@ -857,7 +998,7 @@ export async function runRelayPersistenceCheck(): Promise<RelayPersistenceStatus
           type: "pull" as const,
           userId,
           u: userId,
-        })
+        }),
       );
     }, 150);
 
@@ -871,15 +1012,21 @@ export async function runRelayPersistenceCheck(): Promise<RelayPersistenceStatus
 }
 
 async function performPull(): Promise<void> {
-  console.log("[performPull] START - Checking relay connection and local storage");
-  
+  console.log(
+    "[performPull] START - Checking relay connection and local storage",
+  );
+
   if (!relayWs || relayWs.readyState !== WebSocket.OPEN) {
-    console.warn("[performPull] WebSocket not open:", { ws: !!relayWs, readyState: relayWs?.readyState });
+    console.warn("[performPull] WebSocket not open:", {
+      ws: !!relayWs,
+      readyState: relayWs?.readyState,
+    });
     return;
   }
 
   const profile = getUserProfile();
-  const userId = profile?.id || (activeMnemonic ? deriveUserId(activeMnemonic) : "new-user");
+  const userId =
+    profile?.id || (activeMnemonic ? deriveUserId(activeMnemonic) : "new-user");
 
   console.log(`[performPull] userId for this pull: ${userId}`);
   console.log(`[performPull] activeMnemonic present: ${!!activeMnemonic}`);
@@ -890,40 +1037,59 @@ async function performPull(): Promise<void> {
     console.log(`[performPull] Checking IndexedDB relay store for userId...`);
     const storedData = await getFromRelayDb(userId);
     if (storedData) {
-      console.log(`[performPull] ✓ FOUND data in IndexedDB relay! Data length: ${storedData.data?.length || 0} chars`);
+      console.log(
+        `[performPull] ✓ FOUND data in IndexedDB relay! Data length: ${storedData.data?.length || 0} chars`,
+      );
       try {
         const key = deriveKeyFromMnemonic(activeMnemonic);
-        const relayProfile = decryptFromString<UserProfile>(storedData.data, key);
+        const relayProfile = decryptFromString<UserProfile>(
+          storedData.data,
+          key,
+        );
         if (relayProfile) {
-          console.log("[performPull] ✓ Successfully decrypted relay data:", { name: relayProfile.name, id: relayProfile.id });
+          console.log("[performPull] ✓ Successfully decrypted relay data:", {
+            name: relayProfile.name,
+            id: relayProfile.id,
+          });
           const local = getUserProfile();
           if (!local) {
             // Local database missing - download from relay
-            console.log("[performPull] Local database MISSING, downloading from relay...");
+            console.log(
+              "[performPull] Local database MISSING, downloading from relay...",
+            );
             saveEncryptedProfile(relayProfile);
             notifyProfile(relayProfile);
           } else if (relayProfile.updatedAt > local.updatedAt) {
             // Relay has newer data - update local
             console.log(
-              `[performPull] Relay data is NEWER (relay: ${new Date(relayProfile.updatedAt).toISOString()}, local: ${new Date(local.updatedAt).toISOString()}). Updating...`
+              `[performPull] Relay data is NEWER (relay: ${new Date(relayProfile.updatedAt).toISOString()}, local: ${new Date(local.updatedAt).toISOString()}). Updating...`,
             );
             saveEncryptedProfile(relayProfile);
             notifyProfile(relayProfile);
           } else {
             // Local data is newer or same - keep local
-            console.log(`[performPull] Local data is NEWER or SAME, keeping local version`);
+            console.log(
+              `[performPull] Local data is NEWER or SAME, keeping local version`,
+            );
           }
         } else {
           console.error("[performPull] ✗ Decryption returned falsy value");
         }
       } catch (error) {
-        console.error("[performPull] ✗ Failed to decrypt IndexedDB relay data:", error);
+        console.error(
+          "[performPull] ✗ Failed to decrypt IndexedDB relay data:",
+          error,
+        );
       }
     } else {
-      console.log(`[performPull] ✗ NO data found in IndexedDB relay for userId: ${userId}`);
+      console.log(
+        `[performPull] ✗ NO data found in IndexedDB relay for userId: ${userId}`,
+      );
     }
   } else {
-    console.log("[performPull] ⚠ No active mnemonic, skipping IndexedDB relay check");
+    console.log(
+      "[performPull] ⚠ No active mnemonic, skipping IndexedDB relay check",
+    );
   }
 
   // Send pull request to remote relay for latest data
@@ -933,8 +1099,11 @@ async function performPull(): Promise<void> {
     userId,
     u: userId,
   };
-  
-  console.log("[performPull] Sending pull request to remote relay:", pullMessage);
+
+  console.log(
+    "[performPull] Sending pull request to remote relay:",
+    pullMessage,
+  );
   try {
     relayWs.send(JSON.stringify(pullMessage));
     console.log(`[performPull] ✓ Pull request successfully sent to relay`);
@@ -942,7 +1111,6 @@ async function performPull(): Promise<void> {
     console.error("[performPull] ✗ Failed to send pull request:", error);
   }
 }
-
 
 // Public helper to pull latest data when mnemonic is set
 export function pullLatestFromRelay(): Promise<void> {
@@ -966,7 +1134,9 @@ function pushToRelay(profile: UserProfile): void {
         d: encryptedData,
         t: Date.now(),
       };
-      console.warn("[pushToRelay] Relay not connected, queued push for next connection");
+      console.warn(
+        "[pushToRelay] Relay not connected, queued push for next connection",
+      );
       initializeRelayConnection().catch(console.error);
     } catch (error) {
       console.error("[pushToRelay] Failed to queue push:", error);
@@ -989,7 +1159,7 @@ function pushToRelay(profile: UserProfile): void {
       vatNumber: !!profile.vatNumber,
       bankAccount: !!profile.bankAccount,
       swift: !!profile.swift,
-      iban: !!profile.iban
+      iban: !!profile.iban,
     });
 
     // Store in IndexedDB relay for incognito/cross-tab sync
@@ -1005,7 +1175,11 @@ function pushToRelay(profile: UserProfile): void {
       t: Date.now(),
     };
 
-    console.log("[pushToRelay] Sending push message to remote relay (data length:", encryptedData.length, "chars)");
+    console.log(
+      "[pushToRelay] Sending push message to remote relay (data length:",
+      encryptedData.length,
+      "chars)",
+    );
     relayWs.send(JSON.stringify(pushMessage));
 
     console.log("[pushToRelay] Encrypted profile pushed to remote relay");
@@ -1032,10 +1206,14 @@ export function activateMnemonicAndPull(mnemonic: string): Promise<void> {
   // Also check local storage immediately
   const localProfile = getUserProfile();
   if (localProfile) {
-    console.log("[activateMnemonicAndPull] Found local profile, notifying:", { name: localProfile.name });
+    console.log("[activateMnemonicAndPull] Found local profile, notifying:", {
+      name: localProfile.name,
+    });
     notifyProfile(localProfile);
   } else {
-    console.log("[activateMnemonicAndPull] No local profile found, will pull from relay");
+    console.log(
+      "[activateMnemonicAndPull] No local profile found, will pull from relay",
+    );
   }
 
   // Then pull latest from relay
@@ -1047,19 +1225,27 @@ export function activateMnemonicAndPull(mnemonic: string): Promise<void> {
 // Diagnostic helper - run this in console for debugging
 export function diagnoseSync(): void {
   console.group("📊 SYNC DIAGNOSTIC REPORT");
-  
+
   console.log("=== CONNECTION STATUS ===");
-  console.log("WebSocket connected:", relayWs?.readyState === WebSocket.OPEN ? "✓ YES" : "✗ NO");
+  console.log(
+    "WebSocket connected:",
+    relayWs?.readyState === WebSocket.OPEN ? "✓ YES" : "✗ NO",
+  );
   console.log("WebSocket readyState:", relayWs?.readyState);
   console.log("Current relay URL:", currentRelayUrl);
   console.log("Active mnemonic:", activeMnemonic ? "✓ SET" : "✗ NOT SET");
-  
+
   console.log("\n=== LOCAL STORAGE ===");
   const storedMnemonic = localStorage.getItem(MNEMONIC_KEY);
   const storedProfile = localStorage.getItem(STORAGE_KEY);
   console.log("Stored mnemonic:", storedMnemonic ? "✓ EXISTS" : "✗ MISSING");
-  console.log("Stored profile:", storedProfile ? "✓ EXISTS (length: " + storedProfile.length + " chars)" : "✗ MISSING");
-  
+  console.log(
+    "Stored profile:",
+    storedProfile
+      ? "✓ EXISTS (length: " + storedProfile.length + " chars)"
+      : "✗ MISSING",
+  );
+
   console.log("\n=== LOCAL PROFILE ===");
   const profile = getUserProfile();
   if (profile) {
@@ -1070,29 +1256,30 @@ export function diagnoseSync(): void {
   } else {
     console.log("✗ No local profile");
   }
-  
+
   console.log("\n=== INDEXEDDB RELAY STORE ===");
   if (activeMnemonic) {
     const userId = deriveUserId(activeMnemonic);
     console.log("Current userId:", userId);
-    getFromRelayDb(userId).then(data => {
-      if (data) {
-        console.log("✓ Data found in IndexedDB relay");
-        console.log("Data length:", data.data?.length || 0, "chars");
-        console.log("Stored at:", new Date(data.timestamp).toISOString());
-      } else {
-        console.log("✗ No data in IndexedDB relay for this userId");
-      }
-    }).catch(err => console.error("Error checking IndexedDB:", err));
+    getFromRelayDb(userId)
+      .then((data) => {
+        if (data) {
+          console.log("✓ Data found in IndexedDB relay");
+          console.log("Data length:", data.data?.length || 0, "chars");
+          console.log("Stored at:", new Date(data.timestamp).toISOString());
+        } else {
+          console.log("✗ No data in IndexedDB relay for this userId");
+        }
+      })
+      .catch((err) => console.error("Error checking IndexedDB:", err));
   } else {
     console.log("⚠ Cannot check - no active mnemonic");
   }
-  
+
   console.log("\n=== ENVIRONMENT ===");
   console.log("Mode:", navigator.onLine ? "ONLINE" : "OFFLINE");
   console.log("User Agent:", navigator.userAgent.substring(0, 60) + "...");
   console.log("Window ID:", window.name || "unnamed");
-  
+
   console.groupEnd();
 }
-

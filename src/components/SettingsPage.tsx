@@ -24,6 +24,7 @@ export function SettingsPage() {
   const [iban, setIban] = useState<string>("");
   const [invoiceFooterText, setInvoiceFooterText] = useState<string>("");
   const [discreteMode, setDiscreteMode] = useState<boolean>(false);
+  const [language, setLanguage] = useState<"cz" | "en">("cz");
   const [poRequired, setPoRequired] = useState<boolean>(false);
   const [mempoolUrl, setMempoolUrl] = useState<string>(
     "https://mempool.space/",
@@ -44,6 +45,7 @@ export function SettingsPage() {
     discreteMode?: boolean;
     poRequired?: boolean;
     mempoolUrl?: string;
+    language?: string;
   } | null>(null);
   const [showMnemonicInput, setShowMnemonicInput] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -203,7 +205,9 @@ export function SettingsPage() {
       discreteMode: profile.discreteMode === Evolu.sqliteTrue,
       poRequired: profile.poRequired === Evolu.sqliteTrue,
       mempoolUrl: profile.mempoolUrl ?? "https://mempool.space/",
+      language: profile.language ?? "cz",
     });
+    setLanguage((profile.language as "cz" | "en") ?? "cz");
     setName(profile.name ?? "");
     setEmail(profile.email ?? "");
     setPhone(profile.phone ?? "");
@@ -362,6 +366,7 @@ export function SettingsPage() {
             ? Evolu.sqliteTrue
             : Evolu.sqliteFalse,
           mempoolUrl: toNullable(row.mempoolUrl) ?? "https://mempool.space/",
+          language: row.language?.trim().toLowerCase() === "en" ? "en" : "cz",
         };
 
         if (profile?.id) {
@@ -398,6 +403,7 @@ export function SettingsPage() {
         setDiscreteMode(parseCsvBoolean(row.discreteMode));
         setPoRequired(parseCsvBoolean(row.poRequired));
         setMempoolUrl(row.mempoolUrl?.trim() || "https://mempool.space/");
+        setLanguage(row.language?.trim().toLowerCase() === "en" ? "en" : "cz");
 
         alert("Nastavení bylo importováno.");
       } catch (error) {
@@ -653,6 +659,7 @@ export function SettingsPage() {
         discreteMode: discreteMode ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         poRequired: poRequired ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         mempoolUrl: toNullable(mempoolUrl),
+        language: (language || "cz").toString().trim().toLowerCase(),
       };
 
       if (profile?.id) {
@@ -661,15 +668,21 @@ export function SettingsPage() {
           ...payload,
         });
         if (!result.ok) {
+          const formatTypeError = Evolu.createFormatTypeError();
+          const formatted = formatTypeError(result.error);
           console.error("Validation error:", result.error);
-          alert("Chyba validace při ukládání nastavení");
+          console.error("Validation details:", formatted);
+          alert(`Chyba validace při ukládání nastavení: ${formatted}`);
           return;
         }
       } else {
         const result = evolu.insert("userProfile", payload);
         if (!result.ok) {
+          const formatTypeError = Evolu.createFormatTypeError();
+          const formatted = formatTypeError(result.error);
           console.error("Validation error:", result.error);
-          alert("Chyba validace při ukládání nastavení");
+          console.error("Validation details:", formatted);
+          alert(`Chyba validace při ukládání nastavení: ${formatted}`);
           return;
         }
       }
@@ -811,6 +824,7 @@ export function SettingsPage() {
       "iban",
       "invoiceFooterText",
       "discreteMode",
+      "language",
       "poRequired",
       "mempoolUrl",
       "updatedAt",
@@ -1229,6 +1243,20 @@ export function SettingsPage() {
                 🔩 Další předvolby
               </h3>
               <div className="flex flex-col gap-2">
+                <div>
+                  <label htmlFor="language" className="form-label">
+                    Jazyk aplikace
+                  </label>
+                  <select
+                    id="language"
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value as "cz" | "en")}
+                    className="form-select"
+                  >
+                    <option value="cz">Čeština</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
                 <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
                   <input
                     type="checkbox"
