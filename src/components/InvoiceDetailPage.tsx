@@ -13,6 +13,7 @@ import {
 } from "@react-pdf/renderer";
 import QRCode from "qrcode";
 import { useEvolu } from "../evolu";
+import { useI18n } from "../i18n";
 type InvoiceItemForm = {
   amount: string;
   unit: string;
@@ -276,6 +277,7 @@ export function InvoiceDetailPage({
   invoiceId,
   onBack,
 }: InvoiceDetailPageProps) {
+  const { t, locale } = useI18n();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
   const invoiceIdValue = useMemo(() => {
@@ -394,7 +396,8 @@ export function InvoiceDetailPage({
         client.name && client.name === (invoice?.clientName ?? clientName),
     ) ?? null;
   const displayClientName =
-    (selectedClient?.name ?? invoice?.clientName ?? clientName) || "—";
+    (selectedClient?.name ?? invoice?.clientName ?? clientName) ||
+    t("common.placeholderDash");
 
   const latestInvoiceQuery = useMemo(
     () =>
@@ -447,13 +450,13 @@ export function InvoiceDetailPage({
     );
 
   const formatNumber = (value: number, maxFraction = 2) =>
-    new Intl.NumberFormat("cs-CZ", {
+    new Intl.NumberFormat(locale, {
       minimumFractionDigits: 0,
       maximumFractionDigits: maxFraction,
     }).format(value);
 
   const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("cs-CZ", {
+    new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "CZK",
       minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
@@ -486,7 +489,7 @@ export function InvoiceDetailPage({
   }, 0);
 
   const formatUiTotal = (value: number) =>
-    new Intl.NumberFormat("cs-CZ", {
+    new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "CZK",
       minimumFractionDigits: 2,
@@ -494,10 +497,10 @@ export function InvoiceDetailPage({
     }).format(value);
 
   const invoiceIssueDate = invoice?.issueDate
-    ? new Date(invoice.issueDate).toLocaleDateString("cs-CZ").replace(/\s/g, "")
+    ? new Date(invoice.issueDate).toLocaleDateString(locale).replace(/\s/g, "")
     : "";
   const invoiceDuzpDate = invoice?.duzp
-    ? new Date(invoice.duzp).toLocaleDateString("cs-CZ").replace(/\s/g, "")
+    ? new Date(invoice.duzp).toLocaleDateString(locale).replace(/\s/g, "")
     : "";
   const invoiceDueDate = (() => {
     if (!invoice?.issueDate) return "";
@@ -506,7 +509,7 @@ export function InvoiceDetailPage({
     if (Number.isNaN(paymentDaysValue)) return "";
     const due = new Date(issue);
     due.setDate(issue.getDate() + paymentDaysValue);
-    return due.toLocaleDateString("cs-CZ").replace(/\s/g, "");
+    return due.toLocaleDateString(locale).replace(/\s/g, "");
   })();
 
   const invoiceDueDateQr = (() => {
@@ -593,15 +596,17 @@ export function InvoiceDetailPage({
       <Page size="A4" style={pdfStyles.page}>
         <View style={pdfStyles.headerRow}>
           <Text />
-          <Text
-            style={pdfStyles.headerTitle}
-          >{`Faktura ${invoiceNumberValue || "—"}`}</Text>
+          <Text style={pdfStyles.headerTitle}>
+            {t("pdf.invoiceTitle", {
+              number: invoiceNumberValue || t("common.placeholderDash"),
+            })}
+          </Text>
         </View>
         <View style={pdfStyles.headerLine} />
 
         <View style={pdfStyles.columns}>
           <View style={pdfStyles.column}>
-            <Text style={pdfStyles.label}>Dodavatel</Text>
+            <Text style={pdfStyles.label}>{t("pdf.supplier")}</Text>
             <Text style={pdfStyles.textBold}>{profile?.name ?? ""}</Text>
             <Text style={pdfStyles.textMuted}>
               {profile?.addressLine1 ?? ""}
@@ -611,12 +616,14 @@ export function InvoiceDetailPage({
             </Text>
             <View style={{ marginTop: 6 }}>
               <View style={pdfStyles.detailRow}>
-                <Text style={pdfStyles.textMuted}>IČO</Text>
+                <Text style={pdfStyles.textMuted}>{t("pdf.companyId")}</Text>
                 <Text>{profile?.companyIdentificationNumber ?? ""}</Text>
               </View>
               <View style={pdfStyles.detailRow}>
                 <Text style={pdfStyles.textMuted}>
-                  {profile?.vatNumber ? "DIČ" : "Neplátce DPH"}
+                  {profile?.vatNumber
+                    ? t("pdf.vatIdOrNonVat")
+                    : t("pdf.nonVatPayer")}
                 </Text>
                 <Text>{profile?.vatNumber ?? ""}</Text>
               </View>
@@ -624,7 +631,7 @@ export function InvoiceDetailPage({
           </View>
 
           <View style={pdfStyles.column}>
-            <Text style={pdfStyles.label}>Odběratel</Text>
+            <Text style={pdfStyles.label}>{t("pdf.customer")}</Text>
             <Text style={pdfStyles.textBold}>{displayClientName}</Text>
             <Text style={pdfStyles.textMuted}>
               {selectedClient?.addressLine1 ?? ""}
@@ -635,13 +642,15 @@ export function InvoiceDetailPage({
             <View style={{ marginTop: 6 }}>
               {selectedClient?.companyIdentificationNumber ? (
                 <View style={pdfStyles.detailRow}>
-                  <Text style={pdfStyles.textMuted}>IČO</Text>
+                  <Text style={pdfStyles.textMuted}>{t("pdf.companyId")}</Text>
                   <Text>{selectedClient.companyIdentificationNumber}</Text>
                 </View>
               ) : null}
               <View style={pdfStyles.detailRow}>
                 <Text style={pdfStyles.textMuted}>
-                  {selectedClient?.vatNumber ? "DIČ" : "Neplátce DPH"}
+                  {selectedClient?.vatNumber
+                    ? t("pdf.vatIdOrNonVat")
+                    : t("pdf.nonVatPayer")}
                 </Text>
                 <Text>{selectedClient?.vatNumber ?? ""}</Text>
               </View>
@@ -653,38 +662,46 @@ export function InvoiceDetailPage({
           <View style={pdfStyles.columns}>
             <View style={pdfStyles.column}>
               <View style={pdfStyles.detailRow}>
-                <Text style={pdfStyles.textMuted}>Bankovní účet</Text>
+                <Text style={pdfStyles.textMuted}>{t("pdf.bankAccount")}</Text>
                 <Text>{profile?.bankAccount ?? ""}</Text>
               </View>
               <View style={pdfStyles.detailRow}>
-                <Text style={pdfStyles.textMuted}>Variabilní symbol</Text>
+                <Text style={pdfStyles.textMuted}>
+                  {t("pdf.variableSymbol")}
+                </Text>
                 <Text>{sanitizedInvoiceNumber}</Text>
               </View>
               <View style={pdfStyles.detailRow}>
-                <Text style={pdfStyles.textMuted}>Způsob platby</Text>
+                <Text style={pdfStyles.textMuted}>
+                  {t("pdf.paymentMethod")}
+                </Text>
                 <Text>
-                  {invoice?.paymentMethod === "cash" ? "Hotově" : "Převodem"}
+                  {invoice?.paymentMethod === "cash"
+                    ? t("pdf.paymentCash")
+                    : t("pdf.paymentBank")}
                 </Text>
               </View>
             </View>
             <View style={pdfStyles.column}>
               {invoice?.purchaseOrderNumber?.trim() ? (
                 <View style={pdfStyles.detailRow}>
-                  <Text style={pdfStyles.textMuted}>Číslo objednávky</Text>
+                  <Text style={pdfStyles.textMuted}>
+                    {t("pdf.purchaseOrderNumber")}
+                  </Text>
                   <Text>{invoice.purchaseOrderNumber}</Text>
                 </View>
               ) : null}
               <View style={pdfStyles.detailRow}>
-                <Text style={pdfStyles.textMuted}>Datum vystavení</Text>
+                <Text style={pdfStyles.textMuted}>{t("pdf.issueDate")}</Text>
                 <Text>{invoiceIssueDate}</Text>
               </View>
               <View style={pdfStyles.detailRow}>
-                <Text style={pdfStyles.textMuted}>Datum splatnosti</Text>
+                <Text style={pdfStyles.textMuted}>{t("pdf.dueDate")}</Text>
                 <Text>{invoiceDueDate}</Text>
               </View>
               {invoiceDuzpDate ? (
                 <View style={pdfStyles.detailRow}>
-                  <Text style={pdfStyles.textMuted}>Datum zdan. plnění</Text>
+                  <Text style={pdfStyles.textMuted}>{t("pdf.duzpDate")}</Text>
                   <Text>{invoiceDuzpDate}</Text>
                 </View>
               ) : null}
@@ -693,15 +710,19 @@ export function InvoiceDetailPage({
         </View>
 
         <View style={pdfStyles.tableHeader}>
-          <Text style={[pdfStyles.colQty, pdfStyles.textMuted]}>Počet</Text>
-          <Text style={[pdfStyles.colUnit, pdfStyles.textMuted]}>MJ</Text>
+          <Text style={[pdfStyles.colQty, pdfStyles.textMuted]}>
+            {t("pdf.tableQty")}
+          </Text>
+          <Text style={[pdfStyles.colUnit, pdfStyles.textMuted]}>
+            {t("pdf.tableUnit")}
+          </Text>
           <Text
             style={[
               showVat ? pdfStyles.colDescVat : pdfStyles.colDesc,
               pdfStyles.textMuted,
             ]}
           >
-            Popis
+            {t("pdf.tableDescription")}
           </Text>
           <Text
             style={[
@@ -709,23 +730,25 @@ export function InvoiceDetailPage({
               pdfStyles.textMuted,
             ]}
           >
-            Cena za MJ
+            {t("pdf.tableUnitPrice")}
           </Text>
           {showVat ? (
             <>
               <Text style={[pdfStyles.colTotalNoVat, pdfStyles.textMuted]}>
-                Cena bez DPH
+                {t("pdf.tableTotalNoVat")}
               </Text>
               <Text style={[pdfStyles.colVatPercent, pdfStyles.textMuted]}>
-                DPH (%)
+                {t("pdf.tableVat")}
               </Text>
               {/* DPH column hidden for VAT payer */}
               <Text style={[pdfStyles.colTotalVat, pdfStyles.textMuted]}>
-                Cena s DPH
+                {t("pdf.tableTotalVat")}
               </Text>
             </>
           ) : (
-            <Text style={[pdfStyles.colTotal, pdfStyles.textMuted]}>Cena</Text>
+            <Text style={[pdfStyles.colTotal, pdfStyles.textMuted]}>
+              {t("pdf.tableTotal")}
+            </Text>
           )}
         </View>
 
@@ -782,7 +805,7 @@ export function InvoiceDetailPage({
           {qrCodeDataUrl ? (
             <View style={pdfStyles.qrBlock}>
               <Image style={pdfStyles.qrImage} src={qrCodeDataUrl} />
-              <Text style={pdfStyles.qrLabel}>QR Platba</Text>
+              <Text style={pdfStyles.qrLabel}>{t("pdf.qrPayment")}</Text>
             </View>
           ) : (
             <View />
@@ -800,7 +823,9 @@ export function InvoiceDetailPage({
                         marginBottom: 2,
                       }}
                     >
-                      <Text style={pdfStyles.textMuted}>Celkem bez DPH</Text>
+                      <Text style={pdfStyles.textMuted}>
+                        {t("pdf.totalNoVat")}
+                      </Text>
                       <Text style={pdfStyles.textMuted}>
                         {formatCurrency(invoiceTotal)}
                       </Text>
@@ -813,7 +838,9 @@ export function InvoiceDetailPage({
                         marginBottom: 6,
                       }}
                     >
-                      <Text style={pdfStyles.textMuted}>DPH</Text>
+                      <Text style={pdfStyles.textMuted}>
+                        {t("pdf.totalVat")}
+                      </Text>
                       <Text style={pdfStyles.textMuted}>
                         {formatCurrency(totalVatAmount)}
                       </Text>
@@ -826,7 +853,7 @@ export function InvoiceDetailPage({
             <View style={pdfStyles.totalRow}>
               <View style={{ alignItems: "flex-end" }}>
                 <Text style={pdfStyles.totalValue}>
-                  Celkem{" "}
+                  {t("pdf.total")}{" "}
                   {formatCurrency(showVat ? invoiceTotalWithVat : invoiceTotal)}
                 </Text>
               </View>
@@ -835,9 +862,7 @@ export function InvoiceDetailPage({
         </View>
         {invoice.btcInvoice === Evolu.sqliteTrue ? (
           <View style={pdfStyles.btcNote}>
-            <Text style={pdfStyles.btcNoteText}>
-              Platbu je možné provést v BTC na adresu
-            </Text>
+            <Text style={pdfStyles.btcNoteText}>{t("pdf.btcNote")}</Text>
             <Text
               style={pdfStyles.btcNoteAddress}
               hyphenationCallback={(word) => [word]}
@@ -912,21 +937,21 @@ export function InvoiceDetailPage({
   const handleSave = async () => {
     if (!invoice?.id) return;
     if (!trimmedInvoiceNumber) {
-      alert("Zadejte číslo faktury");
+      alert(t("alerts.invoiceNumberRequired"));
       return;
     }
     if (!clientName.trim()) {
-      alert("Vyberte klienta");
+      alert(t("alerts.invoiceClientRequired"));
       return;
     }
     if (!issueDate.trim()) {
-      alert("Zadejte datum vystavení");
+      alert(t("alerts.issueDateRequired"));
       return;
     }
 
     const paymentDaysNumber = Number(paymentDays);
     if (Number.isNaN(paymentDaysNumber) || paymentDaysNumber < 0) {
-      alert("Počet dní splatnosti musí být kladné číslo");
+      alert(t("alerts.paymentDaysInvalid"));
       return;
     }
 
@@ -937,7 +962,7 @@ export function InvoiceDetailPage({
         "Issue date error:",
         formatTypeError(issueDateResult.error),
       );
-      alert("Neplatné datum vystavení");
+      alert(t("alerts.issueDateInvalid"));
       return;
     }
 
@@ -946,7 +971,7 @@ export function InvoiceDetailPage({
       const duzpResult = Evolu.dateToDateIso(new Date(duzp));
       if (!duzpResult.ok) {
         console.error("DUZP date error:", formatTypeError(duzpResult.error));
-        alert("Neplatné DUZP");
+        alert(t("alerts.duzpInvalid"));
         return;
       }
       duzpValue = duzpResult.value;
@@ -960,7 +985,7 @@ export function InvoiceDetailPage({
           "Payment date error:",
           formatTypeError(paymentDateResult.error),
         );
-        alert("Neplatné datum platby");
+        alert(t("alerts.paymentDateInvalid"));
         return;
       }
       paymentDateValue = paymentDateResult.value;
@@ -972,14 +997,12 @@ export function InvoiceDetailPage({
         "Payment days error:",
         formatTypeError(paymentDaysResult.error),
       );
-      alert("Počet dní splatnosti musí být kladné číslo");
+      alert(t("alerts.paymentDaysInvalid"));
       return;
     }
 
     if (hasDuplicateInvoiceNumber) {
-      const confirmed = confirm(
-        "Toto číslo faktury již existuje. Přesto uložit?",
-      );
+      const confirmed = confirm(t("alerts.duplicateInvoiceConfirm"));
       if (!confirmed) return;
     }
 
@@ -1006,7 +1029,7 @@ export function InvoiceDetailPage({
       const itemsResult = Evolu.Json.from(JSON.stringify(normalizedItems));
       if (!itemsResult.ok) {
         console.error("Items error:", formatTypeError(itemsResult.error));
-        alert("Položky faktury jsou neplatné");
+        alert(t("alerts.invoiceItemsInvalid"));
         return;
       }
 
@@ -1027,15 +1050,15 @@ export function InvoiceDetailPage({
 
       if (!result.ok) {
         console.error("Validation error:", formatTypeError(result.error));
-        alert("Chyba validace při ukládání faktury");
+        alert(t("alerts.invoiceSaveValidation"));
         return;
       }
 
-      setSaveMessage("Faktura byla úspěšně aktualizována!");
+      setSaveMessage(t("alerts.invoiceUpdateSaved"));
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating invoice:", error);
-      alert("Chyba při ukládání faktury");
+      alert(t("alerts.invoiceSaveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -1057,7 +1080,7 @@ export function InvoiceDetailPage({
 
     if (!result.ok) {
       console.error("Payment cancel error:", result.error);
-      alert("Chyba při rušení platby");
+      alert(t("alerts.paymentCancelFailed"));
       return;
     }
 
@@ -1066,9 +1089,7 @@ export function InvoiceDetailPage({
 
   const handleDelete = async () => {
     if (!invoice?.id) return;
-    const confirmed = confirm(
-      "Smazat tuto fakturu? Tuto akci nelze vrátit zpět.",
-    );
+    const confirmed = confirm(t("alerts.invoiceDeleteConfirm"));
     if (!confirmed) return;
 
     setIsDeleting(true);
@@ -1081,13 +1102,13 @@ export function InvoiceDetailPage({
       });
       if (!result.ok) {
         console.error("Delete error:", result.error);
-        alert("Chyba při mazání faktury");
+        alert(t("alerts.invoiceDeleteFailed"));
         return;
       }
       onBack();
     } catch (error) {
       console.error("Error deleting invoice:", error);
-      alert("Chyba při mazání faktury");
+      alert(t("alerts.invoiceDeleteFailed"));
     } finally {
       setIsDeleting(false);
     }
@@ -1102,22 +1123,22 @@ export function InvoiceDetailPage({
       const nextInvoiceNumber = getNextInvoiceNumber(latestInvoiceNumber ?? "");
       const safeClientName = invoice.clientName ?? clientName.trim();
       if (!safeClientName) {
-        alert("Faktura nemá vyplněného klienta");
+        alert(t("alerts.invoiceClientMissing"));
         return;
       }
       if (!invoice.issueDate) {
-        alert("Faktura nemá vyplněné datum vystavení");
+        alert(t("alerts.invoiceIssueDateMissing"));
         return;
       }
       if (invoice.paymentDays == null) {
-        alert("Faktura nemá vyplněný počet dní splatnosti");
+        alert(t("alerts.invoicePaymentDaysMissing"));
         return;
       }
 
       const todayResult = Evolu.dateToDateIso(new Date());
       if (!todayResult.ok) {
         console.error("Today date error:", todayResult.error);
-        alert("Chyba při získání dnešního data");
+        alert(t("alerts.todayDateFailed"));
         return;
       }
       const todayIso = todayResult.value;
@@ -1142,21 +1163,21 @@ export function InvoiceDetailPage({
       });
       if (!validation.ok) {
         console.error("Validation error:", validation.error);
-        alert("Chyba validace při duplikaci faktury");
+        alert(t("alerts.invoiceDuplicateValidation"));
         return;
       }
 
       const result = evolu.insert("invoice", payload);
       if (!result.ok) {
         console.error("Insert error:", result.error);
-        alert("Chyba při duplikaci faktury");
+        alert(t("alerts.invoiceDuplicateFailed"));
         return;
       }
 
-      setSaveMessage("Faktura byla úspěšně duplikována!");
+      setSaveMessage(t("alerts.invoiceDuplicated"));
     } catch (error) {
       console.error("Error duplicating invoice:", error);
-      alert("Chyba při duplikaci faktury");
+      alert(t("alerts.invoiceDuplicateFailed"));
     } finally {
       setIsDuplicating(false);
     }
@@ -1168,12 +1189,12 @@ export function InvoiceDetailPage({
         <div className="page-container-lg">
           <div className="page-card-lg">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="page-title">Detail faktury</h1>
+              <h1 className="page-title">{t("invoiceDetail.title")}</h1>
               <button onClick={onBack} className="btn-secondary">
-                Zpět na seznam
+                {t("common.backToList")}
               </button>
             </div>
-            <div className="empty-state">Faktura nenalezena.</div>
+            <div className="empty-state">{t("invoiceDetail.notFound")}</div>
           </div>
         </div>
       </div>
@@ -1185,9 +1206,9 @@ export function InvoiceDetailPage({
       <div className="page-container-lg">
         <div className="page-card-lg">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="page-title">Detail faktury</h1>
+            <h1 className="page-title">{t("invoiceDetail.title")}</h1>
             <button onClick={onBack} className="btn-secondary">
-              Zpět na seznam
+              {t("common.backToList")}
             </button>
           </div>
 
@@ -1198,7 +1219,7 @@ export function InvoiceDetailPage({
           <div className="space-y-4">
             <div>
               <label htmlFor="invoiceNumber" className="form-label">
-                Číslo faktury *
+                {t("invoiceDetail.invoiceNumberLabel")}
               </label>
               <input
                 id="invoiceNumber"
@@ -1212,7 +1233,7 @@ export function InvoiceDetailPage({
 
             <div>
               <label htmlFor="clientName" className="form-label">
-                Klient *
+                {t("invoiceDetail.clientLabel")}
               </label>
               <select
                 id="clientName"
@@ -1221,7 +1242,7 @@ export function InvoiceDetailPage({
                 disabled={!isEditing}
                 className="form-select disabled:bg-slate-100"
               >
-                <option value="">Vyberte klienta</option>
+                <option value="">{t("invoiceDetail.clientPlaceholder")}</option>
                 {clients
                   .filter((client): client is { id: string; name: string } =>
                     Boolean(client.name),
@@ -1234,7 +1255,7 @@ export function InvoiceDetailPage({
               </select>
               {clients.length === 0 ? (
                 <p className="text-xs text-gray-500 mt-2">
-                  Žádní klienti nenalezeni.
+                  {t("invoiceDetail.clientsEmpty")}
                 </p>
               ) : null}
             </div>
@@ -1242,7 +1263,7 @@ export function InvoiceDetailPage({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="issueDate" className="form-label">
-                  Datum vystavení *
+                  {t("invoiceDetail.issueDateLabel")}
                 </label>
                 <input
                   id="issueDate"
@@ -1255,7 +1276,7 @@ export function InvoiceDetailPage({
               </div>
               <div>
                 <label htmlFor="paymentDays" className="form-label">
-                  Dní splatnosti *
+                  {t("invoiceDetail.paymentDaysLabel")}
                 </label>
                 <input
                   id="paymentDays"
@@ -1271,7 +1292,7 @@ export function InvoiceDetailPage({
 
             <div>
               <label htmlFor="paymentDate" className="form-label">
-                Datum úhrady
+                {t("invoiceDetail.paymentDateLabel")}
               </label>
               <input
                 id="paymentDate"
@@ -1286,7 +1307,7 @@ export function InvoiceDetailPage({
             {profile?.vatPayer === Evolu.sqliteTrue ? (
               <div>
                 <label htmlFor="duzp" className="form-label">
-                  DUZP
+                  {t("invoiceDetail.duzpLabel")}
                 </label>
                 <input
                   id="duzp"
@@ -1301,7 +1322,7 @@ export function InvoiceDetailPage({
 
             <div>
               <label htmlFor="paymentMethod" className="form-label">
-                Způsob platby
+                {t("invoiceDetail.paymentMethodLabel")}
               </label>
               <select
                 id="paymentMethod"
@@ -1310,15 +1331,19 @@ export function InvoiceDetailPage({
                 disabled={!isEditing}
                 className="form-select disabled:bg-slate-100"
               >
-                <option value="bank">převodem</option>
-                <option value="cash">hotově</option>
+                <option value="bank">
+                  {t("invoiceDetail.paymentMethodBank")}
+                </option>
+                <option value="cash">
+                  {t("invoiceDetail.paymentMethodCash")}
+                </option>
               </select>
             </div>
 
             {isPoRequired ? (
               <div>
                 <label htmlFor="purchaseOrderNumber" className="form-label">
-                  Číslo objednávky
+                  {t("invoiceDetail.purchaseOrderLabel")}
                 </label>
                 <input
                   id="purchaseOrderNumber"
@@ -1326,7 +1351,7 @@ export function InvoiceDetailPage({
                   value={purchaseOrderNumber}
                   onChange={(e) => setPurchaseOrderNumber(e.target.value)}
                   disabled={!isEditing}
-                  placeholder="Obj-12345"
+                  placeholder={t("invoiceDetail.purchaseOrderPlaceholder")}
                   className="form-input disabled:bg-slate-100"
                 />
               </div>
@@ -1345,14 +1370,14 @@ export function InvoiceDetailPage({
                 htmlFor="btcInvoice"
                 className="text-sm font-medium text-slate-700"
               >
-                Fakturuji v bitcoinu
+                {t("invoiceDetail.btcInvoiceLabel")}
               </label>
             </div>
 
             {btcInvoice ? (
               <div>
                 <label htmlFor="btcAddress" className="form-label">
-                  Adresa příjemce
+                  {t("invoiceDetail.btcAddressLabel")}
                 </label>
                 <input
                   id="btcAddress"
@@ -1360,7 +1385,7 @@ export function InvoiceDetailPage({
                   value={btcAddress}
                   onChange={(e) => setBtcAddress(e.target.value)}
                   disabled={!isEditing}
-                  placeholder="bc1..."
+                  placeholder={t("invoiceDetail.btcAddressPlaceholder")}
                   className="form-input disabled:bg-slate-100"
                 />
                 {mempoolAddressUrl ? (
@@ -1370,7 +1395,7 @@ export function InvoiceDetailPage({
                     rel="noreferrer"
                     className="btn-secondary mt-3 inline-flex w-full sm:w-auto justify-center"
                   >
-                    Zkontrolovat Mempool
+                    {t("invoiceDetail.mempoolCheck")}
                   </a>
                 ) : null}
               </div>
@@ -1379,7 +1404,7 @@ export function InvoiceDetailPage({
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg font-semibold text-slate-900">
-                  Položky faktury
+                  {t("invoiceDetail.itemsTitle")}
                 </h2>
                 <button
                   type="button"
@@ -1387,7 +1412,7 @@ export function InvoiceDetailPage({
                   disabled={!isEditing}
                   className="btn-secondary"
                 >
-                  Přidat položku
+                  {t("invoiceDetail.addItem")}
                 </button>
               </div>
 
@@ -1399,7 +1424,7 @@ export function InvoiceDetailPage({
                         htmlFor={`item-${index}-description`}
                         className="form-label"
                       >
-                        Popis
+                        {t("invoiceDetail.itemDescription")}
                       </label>
                       <input
                         id={`item-${index}-description`}
@@ -1423,7 +1448,7 @@ export function InvoiceDetailPage({
                           htmlFor={`item-${index}-amount`}
                           className="form-label"
                         >
-                          Množství
+                          {t("invoiceDetail.itemAmount")}
                         </label>
                         <input
                           id={`item-${index}-amount`}
@@ -1443,7 +1468,7 @@ export function InvoiceDetailPage({
                           htmlFor={`item-${index}-unit`}
                           className="form-label"
                         >
-                          Jednotka
+                          {t("invoiceDetail.itemUnit")}
                         </label>
                         <input
                           id={`item-${index}-unit`}
@@ -1462,7 +1487,7 @@ export function InvoiceDetailPage({
                           htmlFor={`item-${index}-unitPrice`}
                           className="form-label"
                         >
-                          Cena za jednotku
+                          {t("invoiceDetail.itemUnitPrice")}
                         </label>
                         <input
                           id={`item-${index}-unitPrice`}
@@ -1484,7 +1509,7 @@ export function InvoiceDetailPage({
                             htmlFor={`item-${index}-vat`}
                             className="form-label"
                           >
-                            DPH (%)
+                            {t("invoiceDetail.itemVat")}
                           </label>
                           <input
                             id={`item-${index}-vat`}
@@ -1509,7 +1534,7 @@ export function InvoiceDetailPage({
                         disabled={!isEditing || items.length === 1}
                         className="btn-danger"
                       >
-                        Odstranit položku
+                        {t("invoiceDetail.itemRemove")}
                       </button>
                     </div>
                   </div>
@@ -1518,7 +1543,9 @@ export function InvoiceDetailPage({
             </div>
 
             <div className="panel-card text-sm text-slate-700">
-              <span className="font-semibold text-slate-900">Celkem:</span>{" "}
+              <span className="font-semibold text-slate-900">
+                {t("invoiceDetail.totalLabel")}
+              </span>{" "}
               {formatUiTotal(invoiceTotal)}
             </div>
           </div>
@@ -1527,11 +1554,15 @@ export function InvoiceDetailPage({
             {pdfDocument ? (
               <PDFDownloadLink
                 document={pdfDocument}
-                fileName={`invoice-${invoiceNumberValue || invoice.id}.pdf`}
+                fileName={t("invoiceDetail.pdfFileName", {
+                  number: invoiceNumberValue || invoice.id,
+                })}
                 className="btn-secondary w-full sm:w-auto text-center"
               >
                 {({ loading }) =>
-                  loading ? "Připravuji PDF..." : "Exportovat do PDF"
+                  loading
+                    ? t("invoiceDetail.pdfPreparing")
+                    : t("invoiceDetail.pdfExport")
                 }
               </PDFDownloadLink>
             ) : null}
@@ -1542,20 +1573,24 @@ export function InvoiceDetailPage({
                   disabled={isDuplicating}
                   className="btn-success w-full sm:w-auto"
                 >
-                  {isDuplicating ? "Duplikuji..." : "Duplikovat"}
+                  {isDuplicating
+                    ? t("invoiceDetail.duplicating")
+                    : t("invoiceDetail.duplicate")}
                 </button>
                 <button
                   onClick={() => setIsEditing(true)}
                   className="btn-primary w-full sm:w-auto"
                 >
-                  Upravit
+                  {t("common.edit")}
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={isDeleting}
                   className="btn-danger w-full sm:w-auto"
                 >
-                  {isDeleting ? "Mažu..." : "Smazat"}
+                  {isDeleting
+                    ? t("invoiceDetail.deleting")
+                    : t("common.delete")}
                 </button>
               </>
             ) : (
@@ -1565,28 +1600,30 @@ export function InvoiceDetailPage({
                   disabled={isSaving || isDeleting}
                   className="btn-primary w-full sm:w-auto"
                 >
-                  {isSaving ? "Ukládám..." : "Uložit"}
+                  {isSaving ? t("common.saving") : t("common.save")}
                 </button>
                 <button
                   onClick={handleCancelPayment}
                   disabled={isSaving || isDeleting}
                   className="btn-secondary w-full sm:w-auto"
                 >
-                  Zrušit platbu
+                  {t("invoiceDetail.cancelPayment")}
                 </button>
                 <button
                   onClick={handleCancel}
                   disabled={isSaving || isDeleting}
                   className="btn-secondary w-full sm:w-auto"
                 >
-                  Zrušit úpravy
+                  {t("invoiceDetail.cancelEdits")}
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={isSaving || isDeleting}
                   className="btn-danger w-full sm:w-auto"
                 >
-                  {isDeleting ? "Mažu..." : "Smazat"}
+                  {isDeleting
+                    ? t("invoiceDetail.deleting")
+                    : t("common.delete")}
                 </button>
               </>
             )}

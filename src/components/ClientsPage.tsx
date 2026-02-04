@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useEvolu } from "../evolu";
+import { useI18n } from "../i18n";
 
 type AresSidlo = {
   textovaAdresa?: string | null;
@@ -54,6 +55,7 @@ const formatAresAddressLines = (sidlo?: AresSidlo | null) => {
 };
 
 export function ClientsPage() {
+  const { t } = useI18n();
   const evolu = useEvolu();
 
   const [name, setName] = useState("");
@@ -78,7 +80,7 @@ export function ClientsPage() {
     setSaveMessage(null);
 
     if (!name.trim()) {
-      alert("Vyplňte název klienta");
+      alert(t("alerts.clientNameRequired"));
       return;
     }
 
@@ -98,11 +100,11 @@ export function ClientsPage() {
 
       if (!result.ok) {
         console.error("Validation error:", result.error);
-        alert("Chyba validace při ukládání klienta");
+        alert(t("alerts.clientSaveValidation"));
         return;
       }
 
-      setSaveMessage("Klient byl úspěšně uložen!");
+      setSaveMessage(t("alerts.clientSaved"));
       setName("");
       setEmail("");
       setPhone("");
@@ -113,7 +115,7 @@ export function ClientsPage() {
       setNote("");
     } catch (error) {
       console.error("Error saving client:", error);
-      alert("Chyba při ukládání klienta");
+      alert(t("alerts.clientSaveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -122,7 +124,7 @@ export function ClientsPage() {
   const handleLoadFromAres = async () => {
     const ico = companyIdentificationNumber.replace(/\s+/g, "").trim();
     if (!ico) {
-      alert("Vyplňte IČO");
+      alert(t("alerts.clientIcoRequired"));
       return;
     }
 
@@ -136,19 +138,19 @@ export function ClientsPage() {
       );
 
       if (!response.ok) {
-        alert("Nepodařilo se načíst data z ARES.");
+        alert(t("alerts.aresLoadFailed"));
         return;
       }
 
       const contentType = response.headers.get("content-type") ?? "";
       if (!contentType.includes("application/json")) {
-        alert("ARES vrátil neočekávanou odpověď.");
+        alert(t("alerts.aresUnexpected"));
         return;
       }
 
       const data = (await response.json()) as AresResponse;
       if (!data?.obchodniJmeno && !data?.sidlo) {
-        alert("ARES nevrátil žádná data pro zadané IČO.");
+        alert(t("alerts.aresNoData"));
         return;
       }
 
@@ -160,7 +162,7 @@ export function ClientsPage() {
       if (line2) setAddressLine2(line2);
     } catch (error) {
       console.error("Error loading ARES data:", error);
-      alert("Chyba při načítání dat z ARES.");
+      alert(t("alerts.aresLoadError"));
     } finally {
       setIsAresLoading(false);
     }
@@ -171,8 +173,8 @@ export function ClientsPage() {
       <div className="page-container">
         <div className="page-card">
           <div className="mb-6">
-            <p className="section-title">Vytvořit záznam</p>
-            <h1 className="page-title">Klient</h1>
+            <p className="section-title">{t("clientsForm.sectionTitle")}</p>
+            <h1 className="page-title">{t("clientsForm.title")}</h1>
           </div>
 
           {saveMessage ? (
@@ -182,7 +184,7 @@ export function ClientsPage() {
           <div className="space-y-4">
             <div>
               <label htmlFor="clientName" className="form-label">
-                Název klienta *
+                {t("clientsForm.nameLabel")}
               </label>
               <input
                 id="clientName"
@@ -197,7 +199,7 @@ export function ClientsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="clientEmail" className="form-label">
-                  Kontaktní e-mail
+                  {t("clientsForm.emailLabel")}
                 </label>
                 <input
                   id="clientEmail"
@@ -210,7 +212,7 @@ export function ClientsPage() {
               </div>
               <div>
                 <label htmlFor="clientPhone" className="form-label">
-                  Telefon
+                  {t("clientsForm.phoneLabel")}
                 </label>
                 <input
                   id="clientPhone"
@@ -225,7 +227,7 @@ export function ClientsPage() {
 
             <div>
               <label htmlFor="clientAddress1" className="form-label">
-                Ulice, číslo popisné
+                {t("clientsForm.addressLine1Label")}
               </label>
               <input
                 id="clientAddress1"
@@ -239,7 +241,7 @@ export function ClientsPage() {
 
             <div>
               <label htmlFor="clientAddress2" className="form-label">
-                PSČ, město
+                {t("clientsForm.addressLine2Label")}
               </label>
               <input
                 id="clientAddress2"
@@ -254,7 +256,7 @@ export function ClientsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="clientCompanyId" className="form-label">
-                  IČO
+                  {t("clientsForm.companyIdLabel")}
                 </label>
                 <input
                   id="clientCompanyId"
@@ -272,12 +274,14 @@ export function ClientsPage() {
                   disabled={isAresLoading}
                   className="btn-secondary mt-2 w-full"
                 >
-                  {isAresLoading ? "Načítám..." : "Načíst data z ARES"}
+                  {isAresLoading
+                    ? t("clientsForm.aresLoading")
+                    : t("clientsForm.aresLoad")}
                 </button>
               </div>
               <div>
                 <label htmlFor="clientVat" className="form-label">
-                  DIČ
+                  {t("clientsForm.vatLabel")}
                 </label>
                 <input
                   id="clientVat"
@@ -292,7 +296,7 @@ export function ClientsPage() {
 
             <div>
               <label htmlFor="clientNote" className="form-label">
-                Poznámka
+                {t("clientsForm.noteLabel")}
               </label>
               <textarea
                 id="clientNote"
@@ -310,7 +314,7 @@ export function ClientsPage() {
             disabled={isSaving || !name.trim()}
             className="btn-primary mt-6 w-full"
           >
-            {isSaving ? "Saving..." : "Save Client"}
+            {isSaving ? t("clientsForm.saving") : t("clientsForm.save")}
           </button>
         </div>
       </div>

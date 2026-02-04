@@ -2,6 +2,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { useEvolu } from "../evolu";
+import { useI18n } from "../i18n";
 
 type ClientDetailPageProps = {
   clientId: string;
@@ -11,6 +12,7 @@ type ClientDetailPageProps = {
 const ClientId = Evolu.id("Client");
 
 export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
+  const { t } = useI18n();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
   const clientIdValue = useMemo(() => {
@@ -77,7 +79,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
   const handleSave = async () => {
     if (!client?.id) return;
     if (!name.trim()) {
-      alert("Vyplňte název klienta");
+      alert(t("alerts.clientNameRequired"));
       return;
     }
 
@@ -98,15 +100,15 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 
       if (!result.ok) {
         console.error("Validation error:", result.error);
-        alert("Chyba validace při ukládání klienta");
+        alert(t("alerts.clientSaveValidation"));
         return;
       }
 
-      setSaveMessage("Klient byl úspěšně uložen!");
+      setSaveMessage(t("alerts.clientSaved"));
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating client:", error);
-      alert("Chyba při ukládání klienta");
+      alert(t("alerts.clientSaveFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -120,9 +122,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 
   const handleDelete = async () => {
     if (!client?.id) return;
-    const confirmed = confirm(
-      "Smazat tohoto klienta? Tuto akci nelze vrátit zpět.",
-    );
+    const confirmed = confirm(t("clientDetail.deleteConfirm"));
     if (!confirmed) return;
 
     setIsDeleting(true);
@@ -135,13 +135,13 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
       });
       if (!result.ok) {
         console.error("Delete error:", result.error);
-        alert("Chyba při mazání klienta");
+        alert(t("alerts.clientDeleteFailed"));
         return;
       }
       onBack();
     } catch (error) {
       console.error("Error deleting client:", error);
-      alert("Chyba při mazání klienta");
+      alert(t("alerts.clientDeleteFailed"));
     } finally {
       setIsDeleting(false);
     }
@@ -153,12 +153,12 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
         <div className="page-container">
           <div className="page-card">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="page-title">Detail klienta</h1>
+              <h1 className="page-title">{t("clientDetail.title")}</h1>
               <button onClick={onBack} className="btn-secondary">
-                Zpět na seznam
+                {t("common.backToList")}
               </button>
             </div>
-            <div className="empty-state">Klient nenalezen.</div>
+            <div className="empty-state">{t("clientDetail.notFound")}</div>
           </div>
         </div>
       </div>
@@ -170,9 +170,9 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
       <div className="page-container">
         <div className="page-card">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="page-title">Detail klienta</h1>
+            <h1 className="page-title">{t("clientDetail.title")}</h1>
             <button onClick={onBack} className="btn-secondary">
-              Zpět na seznam
+              {t("common.backToList")}
             </button>
           </div>
 
@@ -183,7 +183,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
           <div className="space-y-4">
             <div>
               <label htmlFor="clientName" className="form-label">
-                Název klienta *
+                {t("clientDetail.nameLabel")}
               </label>
               <input
                 id="clientName"
@@ -198,7 +198,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="clientEmail" className="form-label">
-                  Kontaktní e-mail
+                  {t("clientDetail.emailLabel")}
                 </label>
                 <input
                   id="clientEmail"
@@ -211,7 +211,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
               </div>
               <div>
                 <label htmlFor="clientPhone" className="form-label">
-                  Telefon
+                  {t("clientDetail.phoneLabel")}
                 </label>
                 <input
                   id="clientPhone"
@@ -226,7 +226,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 
             <div>
               <label htmlFor="clientAddress1" className="form-label">
-                Ulice, číslo popisné
+                {t("clientDetail.addressLine1Label")}
               </label>
               <input
                 id="clientAddress1"
@@ -240,7 +240,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 
             <div>
               <label htmlFor="clientAddress2" className="form-label">
-                PSČ, město
+                {t("clientDetail.addressLine2Label")}
               </label>
               <input
                 id="clientAddress2"
@@ -255,7 +255,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="clientCompanyId" className="form-label">
-                  IČO
+                  {t("clientDetail.companyIdLabel")}
                 </label>
                 <input
                   id="clientCompanyId"
@@ -270,7 +270,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
               </div>
               <div>
                 <label htmlFor="clientVat" className="form-label">
-                  DIČ
+                  {t("clientDetail.vatLabel")}
                 </label>
                 <input
                   id="clientVat"
@@ -285,7 +285,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
 
             <div>
               <label htmlFor="clientNote" className="form-label">
-                Poznámka
+                {t("clientDetail.noteLabel")}
               </label>
               <textarea
                 id="clientNote"
@@ -305,14 +305,14 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
                   onClick={() => setIsEditing(true)}
                   className="btn-primary w-full sm:w-auto"
                 >
-                  Upravit
+                  {t("common.edit")}
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={isDeleting}
                   className="btn-danger w-full sm:w-auto"
                 >
-                  {isDeleting ? "Mažu..." : "Smazat"}
+                  {isDeleting ? t("clientDetail.deleting") : t("common.delete")}
                 </button>
               </>
             ) : (
@@ -322,21 +322,21 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
                   disabled={isSaving || isDeleting}
                   className="btn-primary w-full sm:w-auto"
                 >
-                  {isSaving ? "Ukládám..." : "Uložit"}
+                  {isSaving ? t("common.saving") : t("common.save")}
                 </button>
                 <button
                   onClick={handleCancel}
                   disabled={isSaving || isDeleting}
                   className="btn-secondary w-full sm:w-auto"
                 >
-                  Zrušit
+                  {t("common.cancel")}
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={isSaving || isDeleting}
                   className="btn-danger w-full sm:w-auto"
                 >
-                  {isDeleting ? "Mažu..." : "Smazat"}
+                  {isDeleting ? t("clientDetail.deleting") : t("common.delete")}
                 </button>
               </>
             )}

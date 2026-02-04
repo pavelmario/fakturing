@@ -2,6 +2,7 @@ import { use, useEffect, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { useEvolu } from "../evolu";
+import { useI18n } from "../i18n";
 
 type InvoiceItem = {
   amount?: number;
@@ -39,16 +40,24 @@ const parseItems = (raw: unknown): InvoiceItem[] => {
   return [];
 };
 
-const formatDate = (iso: string | null): string => {
-  if (!iso) return "—";
+const formatDate = (
+  iso: string | null,
+  locale: string,
+  placeholder: string,
+): string => {
+  if (!iso) return placeholder;
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleDateString();
+  return parsed.toLocaleDateString(locale);
 };
 
-const formatTotal = (value: number): string => {
-  if (!Number.isFinite(value)) return "0,00 Kč";
-  return new Intl.NumberFormat("cs-CZ", {
+const formatTotal = (
+  value: number,
+  locale: string,
+  fallback: string,
+): string => {
+  if (!Number.isFinite(value)) return fallback;
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "CZK",
     minimumFractionDigits: 2,
@@ -86,6 +95,7 @@ export function InvoiceListPage({
   onCreateInvoice,
   onViewDetails,
 }: InvoiceListPageProps) {
+  const { t, locale } = useI18n();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
 
@@ -104,7 +114,7 @@ export function InvoiceListPage({
     const paymentDateResult = Evolu.dateToDateIso(new Date());
     if (!paymentDateResult.ok) {
       console.error("Payment date error:", paymentDateResult.error);
-      alert("Unable to set payment date");
+      alert(t("invoicesList.alertPaymentDateError"));
       return;
     }
 
@@ -115,7 +125,7 @@ export function InvoiceListPage({
 
     if (!result.ok) {
       console.error("Payment update error:", result.error);
-      alert("Error updating payment date");
+      alert(t("invoicesList.alertPaymentUpdateError"));
     }
   };
 
@@ -253,64 +263,99 @@ export function InvoiceListPage({
         <div className="page-card-lg">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <div>
-              <p className="section-title">Přehled</p>
-              <h1 className="page-title">Faktury</h1>
+              <p className="section-title">{t("invoicesList.sectionTitle")}</p>
+              <h1 className="page-title">{t("invoicesList.title")}</h1>
             </div>
             <button
               onClick={onCreateInvoice}
               className="btn-primary w-full sm:w-auto"
             >
-              Vytvořit fakturu
+              {t("invoicesList.create")}
             </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div className="stat-card">
-              <div className="section-title">Faktury letos</div>
+              <div className="section-title">{t("invoicesList.statYear")}</div>
               <div className="mt-2 text-lg font-semibold text-slate-900">
                 {stats.year.count}
               </div>
               <div className="text-sm text-slate-700">
-                za {isDiscreteMode ? "#####" : formatTotal(stats.year.total)}
+                {t("invoicesList.statPrefix")}{" "}
+                {isDiscreteMode
+                  ? t("common.discreteMask")
+                  : formatTotal(
+                      stats.year.total,
+                      locale,
+                      t("invoicesList.currencyFallback"),
+                    )}
               </div>
             </div>
             <div className="stat-card">
-              <div className="section-title">Neuhrazeno</div>
+              <div className="section-title">
+                {t("invoicesList.statUnpaid")}
+              </div>
               <div className="mt-2 text-lg font-semibold text-slate-900">
                 {stats.unpaid.count}
               </div>
               <div className="text-sm text-slate-700">
-                za {isDiscreteMode ? "#####" : formatTotal(stats.unpaid.total)}
+                {t("invoicesList.statPrefix")}{" "}
+                {isDiscreteMode
+                  ? t("common.discreteMask")
+                  : formatTotal(
+                      stats.unpaid.total,
+                      locale,
+                      t("invoicesList.currencyFallback"),
+                    )}
               </div>
             </div>
             <div className="stat-card">
-              <div className="section-title">Po splatnosti</div>
+              <div className="section-title">
+                {t("invoicesList.statOverdue")}
+              </div>
               <div className="mt-2 text-lg font-semibold text-slate-900">
                 {stats.overdue.count}
               </div>
               <div className="text-sm text-slate-700">
-                za {isDiscreteMode ? "#####" : formatTotal(stats.overdue.total)}
+                {t("invoicesList.statPrefix")}{" "}
+                {isDiscreteMode
+                  ? t("common.discreteMask")
+                  : formatTotal(
+                      stats.overdue.total,
+                      locale,
+                      t("invoicesList.currencyFallback"),
+                    )}
               </div>
             </div>
             <div className="stat-card">
-              <div className="section-title">Letos uhrazeno</div>
+              <div className="section-title">
+                {t("invoicesList.statPaidYear")}
+              </div>
               <div className="mt-2 text-lg font-semibold text-slate-900">
                 {stats.paidYear.count}
               </div>
               <div className="text-sm text-slate-700">
-                za{" "}
-                {isDiscreteMode ? "#####" : formatTotal(stats.paidYear.total)}
+                {t("invoicesList.statPrefix")}{" "}
+                {isDiscreteMode
+                  ? t("common.discreteMask")
+                  : formatTotal(
+                      stats.paidYear.total,
+                      locale,
+                      t("invoicesList.currencyFallback"),
+                    )}
               </div>
             </div>
           </div>
 
           <details className="panel-card mb-6">
             <summary className="cursor-pointer text-sm font-semibold text-slate-900">
-              Filtry
+              {t("invoicesList.filters")}
             </summary>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               <label className="flex flex-col gap-2 text-sm text-gray-700">
-                <span className="font-semibold text-slate-900">Rok</span>
+                <span className="font-semibold text-slate-900">
+                  {t("invoicesList.year")}
+                </span>
                 <select
                   value={selectedYear ?? ""}
                   onChange={(event) => {
@@ -321,7 +366,7 @@ export function InvoiceListPage({
                   disabled={availableYears.length === 0}
                 >
                   {availableYears.length === 0 ? (
-                    <option value="">nic k zobrazení</option>
+                    <option value="">{t("invoicesList.yearEmpty")}</option>
                   ) : (
                     availableYears.map((year) => (
                       <option key={year} value={year}>
@@ -333,7 +378,9 @@ export function InvoiceListPage({
               </label>
 
               <div className="flex flex-col gap-2 text-sm text-slate-700">
-                <span className="font-semibold text-slate-900">Stav</span>
+                <span className="font-semibold text-slate-900">
+                  {t("invoicesList.status")}
+                </span>
                 <div className="flex flex-wrap gap-3">
                   {(["unpaid", "overdue", "paid"] as const).map((status) => (
                     <label key={status} className="flex items-center gap-2">
@@ -350,10 +397,10 @@ export function InvoiceListPage({
                       />
                       <span>
                         {status === "paid"
-                          ? "uhrazeno"
+                          ? t("invoicesList.statusPaid")
                           : status === "overdue"
-                            ? "po splatnosti"
-                            : "neuhrazeno"}
+                            ? t("invoicesList.statusOverdue")
+                            : t("invoicesList.statusUnpaid")}
                       </span>
                     </label>
                   ))}
@@ -362,13 +409,19 @@ export function InvoiceListPage({
 
               <div className="flex flex-col gap-2 text-sm text-slate-700">
                 <span className="font-semibold text-slate-900">
-                  Forma úhrady
+                  {t("invoicesList.paymentType")}
                 </span>
                 <div className="flex flex-wrap gap-3">
                   {(
                     [
-                      { key: "nonBitcoin", label: "fiat" },
-                      { key: "bitcoin", label: "bitcoin" },
+                      {
+                        key: "nonBitcoin",
+                        label: t("invoicesList.paymentTypeFiat"),
+                      },
+                      {
+                        key: "bitcoin",
+                        label: t("invoicesList.paymentTypeBitcoin"),
+                      },
                     ] as const
                   ).map((type) => (
                     <label key={type.key} className="flex items-center gap-2">
@@ -394,8 +447,8 @@ export function InvoiceListPage({
           {filteredInvoices.length === 0 ? (
             <div className="empty-state">
               {invoices.length === 0
-                ? "Zatím nebyla založena ani jedna faktura."
-                : "Zadaným kritériím neodpovídá žádná faktura."}
+                ? t("invoicesList.emptyNone")
+                : t("invoicesList.emptyNoMatch")}
             </div>
           ) : (
             <div className="space-y-3">
@@ -426,31 +479,43 @@ export function InvoiceListPage({
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="text-lg font-semibold text-slate-900">
-                            {invoice.invoiceNumber ?? "—"}&nbsp;
+                            {invoice.invoiceNumber ??
+                              t("common.placeholderDash")}
+                            &nbsp;
                           </div>
                           <span className={statusStyles}>
                             {status === "paid"
-                              ? "uhrazeno"
+                              ? t("invoicesList.statusPaid")
                               : status === "overdue"
-                                ? "po splatnosti"
-                                : "neuhrazeno"}
+                                ? t("invoicesList.statusOverdue")
+                                : t("invoicesList.statusUnpaid")}
                             {isBtcInvoice && (
                               <span className="ml-1 text-[#f7931a]">₿</span>
                             )}
                           </span>
                         </div>
                         <div className="text-sm text-slate-600">
-                          {invoice.clientName ?? "—"}
+                          {invoice.clientName ?? t("common.placeholderDash")}
                         </div>
                       </div>
                       <div className="text-sm text-slate-600">
-                        {formatDate(invoice.issueDate)}
+                        {formatDate(
+                          invoice.issueDate,
+                          locale,
+                          t("common.placeholderDash"),
+                        )}
                       </div>
                     </div>
                     {/* Description removed as requested */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div className="text-sm font-semibold text-slate-900">
-                        {isDiscreteMode ? "#####" : formatTotal(total)}
+                        {isDiscreteMode
+                          ? t("common.discreteMask")
+                          : formatTotal(
+                              total,
+                              locale,
+                              t("invoicesList.currencyFallback"),
+                            )}
                       </div>
                       <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                         {!invoice.paymentDate ? (
@@ -458,14 +523,14 @@ export function InvoiceListPage({
                             onClick={() => handleMarkPayment(invoice.id)}
                             className="btn-success w-full sm:w-auto"
                           >
-                            Zaznamenat platbu
+                            {t("invoicesList.markPaid")}
                           </button>
                         ) : null}
                         <button
                           onClick={() => onViewDetails(invoice.id)}
                           className="btn-secondary w-full sm:w-auto"
                         >
-                          Detail faktury
+                          {t("invoicesList.detail")}
                         </button>
                       </div>
                     </div>
