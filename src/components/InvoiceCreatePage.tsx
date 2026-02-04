@@ -575,48 +575,28 @@ export function InvoiceCreatePage() {
               <div className="space-y-4">
                 {items.map((item, index) => (
                   <div key={index} className="panel-card space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label
-                          htmlFor={`item-${index}-description`}
-                          className="form-label"
-                        >
-                          Popis
-                        </label>
-                        <input
-                          id={`item-${index}-description`}
-                          type="text"
-                          value={item.description}
-                          onChange={(e) =>
-                            updateItem(index, "description", e.target.value)
-                          }
-                          placeholder="Služba nebo produkt"
-                          className="form-input"
-                        />
-                      </div>
-                      <div>
-                        <label
-                          htmlFor={`item-${index}-unit`}
-                          className="form-label"
-                        >
-                          Jednotka
-                        </label>
-                        <input
-                          id={`item-${index}-unit`}
-                          type="text"
-                          value={item.unit}
-                          onChange={(e) =>
-                            updateItem(index, "unit", e.target.value)
-                          }
-                          placeholder="hodiny, kusy"
-                          className="form-input"
-                        />
-                      </div>
+                    <div>
+                      <label
+                        htmlFor={`item-${index}-description`}
+                        className="form-label"
+                      >
+                        Popis
+                      </label>
+                      <input
+                        id={`item-${index}-description`}
+                        type="text"
+                        value={item.description}
+                        onChange={(e) =>
+                          updateItem(index, "description", e.target.value)
+                        }
+                        placeholder="Služba nebo produkt"
+                        className="form-input"
+                      />
                     </div>
 
                     <div
                       className={`grid grid-cols-1 ${
-                        isVatPayer ? "md:grid-cols-3" : "md:grid-cols-2"
+                        isVatPayer ? "md:grid-cols-4" : "md:grid-cols-3"
                       } gap-3`}
                     >
                       <div>
@@ -637,6 +617,26 @@ export function InvoiceCreatePage() {
                           className="form-input"
                         />
                       </div>
+
+                      <div>
+                        <label
+                          htmlFor={`item-${index}-unit`}
+                          className="form-label"
+                        >
+                          Jednotka
+                        </label>
+                        <input
+                          id={`item-${index}-unit`}
+                          type="text"
+                          value={item.unit}
+                          onChange={(e) =>
+                            updateItem(index, "unit", e.target.value)
+                          }
+                          placeholder="hodiny, kusy"
+                          className="form-input"
+                        />
+                      </div>
+
                       <div>
                         <label
                           htmlFor={`item-${index}-unitPrice`}
@@ -656,6 +656,7 @@ export function InvoiceCreatePage() {
                           className="form-input"
                         />
                       </div>
+
                       {isVatPayer ? (
                         <div>
                           <label
