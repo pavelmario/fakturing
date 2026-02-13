@@ -1,6 +1,7 @@
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
+import TrezorConnect from "@trezor/connect-web";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
 
@@ -130,9 +131,11 @@ export function InvoiceCreatePage() {
   );
   const [btcInvoice, setBtcInvoice] = useState(initialBtcInvoice);
   const [btcAddress, setBtcAddress] = useState(initialBtcAddress);
+  const [isTrezorLoading, setIsTrezorLoading] = useState(false);
   const [items, setItems] = useState<InvoiceItemForm[]>(initialItems);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const trezorInitializedRef = useRef(false);
 
   const clientsQuery = useMemo(
     () =>
@@ -260,6 +263,64 @@ export function InvoiceCreatePage() {
     const trimmed = value.trim();
     return trimmed ? trimmed : null;
   };
+
+  const ensureTrezorInit = useCallback(async () => {
+    if (trezorInitializedRef.current) return true;
+    try {
+      const appUrl =
+        typeof window === "undefined" || !window.location.origin
+          ? "http://localhost"
+          : window.location.origin;
+      await TrezorConnect.init({
+        connectSrc: "https://connect.trezor.io/9/",
+        lazyLoad: true,
+        manifest: {
+          email: "pavel.mario43@gmail.com",
+          appUrl,
+        },
+      });
+      trezorInitializedRef.current = true;
+      return true;
+    } catch (error) {
+      console.error("Trezor init failed", error);
+      alert(t("invoiceCreate.trezorInitError"));
+      return false;
+    }
+  }, [t]);
+
+  const handleLoadFromTrezor = useCallback(async () => {
+    setIsTrezorLoading(true);
+    try {
+      const ready = await ensureTrezorInit();
+      if (!ready) return;
+
+      const result = await TrezorConnect.getAccountInfo({
+        coin: "btc",
+        details: "tokens",
+        tokens: "derived",
+      });
+
+      if (!result.success) {
+        console.error("Trezor getAccountInfo error", result.payload?.error);
+        alert(t("invoiceCreate.trezorRequestError"));
+        return;
+      }
+
+      const unused = result.payload.addresses?.unused ?? [];
+      const address = unused.find((entry) => entry?.address)?.address ?? "";
+      if (!address) {
+        alert(t("invoiceCreate.trezorNoUnused"));
+        return;
+      }
+
+      setBtcAddress(address);
+    } catch (error) {
+      console.error("Trezor request failed", error);
+      alert(t("invoiceCreate.trezorRequestError"));
+    } finally {
+      setIsTrezorLoading(false);
+    }
+  }, [ensureTrezorInit, t]);
 
   const updateItem = (
     index: number,
@@ -486,9 +547,21 @@ export function InvoiceCreatePage() {
 
             {btcInvoice ? (
               <div>
-                <label htmlFor="btcAddress" className="form-label">
-                  {t("invoiceCreate.btcAddressLabel")}
-                </label>
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="btcAddress" className="form-label">
+                    {t("invoiceCreate.btcAddressLabel")}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleLoadFromTrezor}
+                    disabled={isTrezorLoading}
+                    className="btn-secondary"
+                  >
+                    {isTrezorLoading
+                      ? t("invoiceCreate.trezorLoading")
+                      : t("invoiceCreate.trezorLoad")}
+                  </button>
+                </div>
                 <input
                   id="btcAddress"
                   type="text"

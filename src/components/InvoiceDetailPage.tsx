@@ -1,4 +1,4 @@
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import {
@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from "@react-pdf/renderer";
+import TrezorConnect from "@trezor/connect-web";
 import QRCode from "qrcode";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
@@ -297,6 +298,7 @@ export function InvoiceDetailPage({
   const [purchaseOrderNumber, setPurchaseOrderNumber] = useState("");
   const [btcInvoice, setBtcInvoice] = useState(false);
   const [btcAddress, setBtcAddress] = useState("");
+  const [isTrezorLoading, setIsTrezorLoading] = useState(false);
   const [items, setItems] = useState<InvoiceItemForm[]>([emptyItem()]);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -304,6 +306,7 @@ export function InvoiceDetailPage({
   const [isDuplicating, setIsDuplicating] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+  const trezorInitializedRef = useRef(false);
 
   const clientsQuery = useMemo(
     () =>
@@ -914,6 +917,64 @@ export function InvoiceDetailPage({
     return trimmed ? trimmed : null;
   };
 
+  const ensureTrezorInit = useCallback(async () => {
+    if (trezorInitializedRef.current) return true;
+    try {
+      const appUrl =
+        typeof window === "undefined" || !window.location.origin
+          ? "http://localhost"
+          : window.location.origin;
+      await TrezorConnect.init({
+        connectSrc: "https://connect.trezor.io/9/",
+        lazyLoad: true,
+        manifest: {
+          email: "support@fakturing.app",
+          appUrl,
+        },
+      });
+      trezorInitializedRef.current = true;
+      return true;
+    } catch (error) {
+      console.error("Trezor init failed", error);
+      alert(t("invoiceDetail.trezorInitError"));
+      return false;
+    }
+  }, [t]);
+
+  const handleLoadFromTrezor = useCallback(async () => {
+    setIsTrezorLoading(true);
+    try {
+      const ready = await ensureTrezorInit();
+      if (!ready) return;
+
+      const result = await TrezorConnect.getAccountInfo({
+        coin: "btc",
+        details: "tokens",
+        tokens: "derived",
+      });
+
+      if (!result.success) {
+        console.error("Trezor getAccountInfo error", result.payload?.error);
+        alert(t("invoiceDetail.trezorRequestError"));
+        return;
+      }
+
+      const unused = result.payload.addresses?.unused ?? [];
+      const address = unused.find((entry) => entry?.address)?.address ?? "";
+      if (!address) {
+        alert(t("invoiceDetail.trezorNoUnused"));
+        return;
+      }
+
+      setBtcAddress(address);
+    } catch (error) {
+      console.error("Trezor request failed", error);
+      alert(t("invoiceDetail.trezorRequestError"));
+    } finally {
+      setIsTrezorLoading(false);
+    }
+  }, [ensureTrezorInit, t]);
+
   const updateItem = (
     index: number,
     field: keyof InvoiceItemForm,
@@ -1376,9 +1437,23 @@ export function InvoiceDetailPage({
 
             {btcInvoice ? (
               <div>
-                <label htmlFor="btcAddress" className="form-label">
-                  {t("invoiceDetail.btcAddressLabel")}
-                </label>
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="btcAddress" className="form-label">
+                    {t("invoiceDetail.btcAddressLabel")}
+                  </label>
+                  {isEditing && !btcAddress.trim() ? (
+                    <button
+                      type="button"
+                      onClick={handleLoadFromTrezor}
+                      disabled={isTrezorLoading}
+                      className="btn-secondary"
+                    >
+                      {isTrezorLoading
+                        ? t("invoiceDetail.trezorLoading")
+                        : t("invoiceDetail.trezorLoad")}
+                    </button>
+                  ) : null}
+                </div>
                 <input
                   id="btcAddress"
                   type="text"
