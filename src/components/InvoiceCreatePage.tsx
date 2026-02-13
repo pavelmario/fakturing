@@ -566,16 +566,18 @@ export function InvoiceCreatePage() {
                   <label htmlFor="btcAddress" className="form-label">
                     {t("invoiceCreate.btcAddressLabel")}
                   </label>
-                  <button
-                    type="button"
-                    onClick={handleLoadFromTrezor}
-                    disabled={isTrezorLoading}
-                    className="btn-secondary"
-                  >
-                    {isTrezorLoading
-                      ? t("invoiceCreate.trezorLoading")
-                      : t("invoiceCreate.trezorLoad")}
-                  </button>
+                  {!btcAddress.trim() ? (
+                    <button
+                      type="button"
+                      onClick={handleLoadFromTrezor}
+                      disabled={isTrezorLoading}
+                      className="btn-secondary"
+                    >
+                      {isTrezorLoading
+                        ? t("invoiceCreate.trezorLoading")
+                        : t("invoiceCreate.trezorLoad")}
+                    </button>
+                  ) : null}
                 </div>
                 <input
                   id="btcAddress"
