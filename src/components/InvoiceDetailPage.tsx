@@ -931,10 +931,12 @@ export function InvoiceDetailPage({
         typeof window === "undefined" || !window.location.origin
           ? "http://localhost"
           : window.location.origin;
+      const coreMode = import.meta.env.PROD ? "iframe" : "auto";
       await TrezorConnect.init({
         connectSrc: "https://connect.trezor.io/9/",
         lazyLoad: true,
-        coreMode: "auto",
+        coreMode,
+        ...(import.meta.env.PROD ? { popup: false } : {}),
         manifest: {
           email: "pavel.mario43@gmail.com",
           appName: "Fakturing",
