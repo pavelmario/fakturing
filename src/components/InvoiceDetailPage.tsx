@@ -917,6 +917,13 @@ export function InvoiceDetailPage({
     return trimmed ? trimmed : null;
   };
 
+  const getTrezorErrorKey = (message?: string) =>
+    message?.toLowerCase().includes("thpstate.deserialize invalid state")
+      ? "invoiceDetail.trezorThpInvalid"
+      : message?.toLowerCase().includes("transport is missing")
+        ? "invoiceDetail.trezorTransportMissing"
+        : "invoiceDetail.trezorRequestError";
+
   const ensureTrezorInit = useCallback(async () => {
     if (trezorInitializedRef.current) return true;
     try {
@@ -927,8 +934,10 @@ export function InvoiceDetailPage({
       await TrezorConnect.init({
         connectSrc: "https://connect.trezor.io/9/",
         lazyLoad: true,
+        coreMode: "auto",
         manifest: {
-          email: "support@fakturing.app",
+          email: "pavel.mario43@gmail.com",
+          appName: "Fakturing",
           appUrl,
         },
       });
@@ -955,7 +964,7 @@ export function InvoiceDetailPage({
 
       if (!result.success) {
         console.error("Trezor getAccountInfo error", result.payload?.error);
-        alert(t("invoiceDetail.trezorRequestError"));
+        alert(t(getTrezorErrorKey(result.payload?.error)));
         return;
       }
 
@@ -969,7 +978,13 @@ export function InvoiceDetailPage({
       setBtcAddress(address);
     } catch (error) {
       console.error("Trezor request failed", error);
-      alert(t("invoiceDetail.trezorRequestError"));
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : "";
+      alert(t(getTrezorErrorKey(message)));
     } finally {
       setIsTrezorLoading(false);
     }
