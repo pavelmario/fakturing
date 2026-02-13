@@ -1433,7 +1433,7 @@ export function InvoiceDetailPage({
               </div>
             ) : null}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mt-6">
               <input
                 id="btcInvoice"
                 type="checkbox"
@@ -1453,7 +1453,10 @@ export function InvoiceDetailPage({
             {btcInvoice ? (
               <div>
                 <div className="flex items-center justify-between gap-3">
-                  <label htmlFor="btcAddress" className="form-label">
+                  <label
+                    htmlFor="btcAddress"
+                    className="form-label gap-3 mt-3 mb-3"
+                  >
                     {t("invoiceDetail.btcAddressLabel")}
                   </label>
                   {isEditing && !btcAddress.trim() ? (
