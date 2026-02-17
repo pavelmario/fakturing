@@ -917,52 +917,87 @@ export function InvoiceDetailPage({
     return trimmed ? trimmed : null;
   };
 
-  const getTrezorErrorKey = (message?: string) =>
-    message?.toLowerCase().includes("thpstate.deserialize invalid state")
-      ? "invoiceDetail.trezorThpInvalid"
-      : message?.toLowerCase().includes("transport is missing")
-        ? "invoiceDetail.trezorTransportMissing"
-        : "invoiceDetail.trezorRequestError";
+  const getTrezorErrorKey = (message?: string) => {
+    const normalized = message?.toLowerCase() ?? "";
 
-  const ensureTrezorInit = useCallback(async () => {
-    if (trezorInitializedRef.current) return true;
-    try {
-      const appUrl =
-        typeof window === "undefined" || !window.location.origin
-          ? "http://localhost"
-          : window.location.origin;
-      const coreMode = import.meta.env.PROD ? "iframe" : "auto";
-      await TrezorConnect.init({
-        connectSrc: "https://connect.trezor.io/9/",
-        lazyLoad: true,
-        coreMode,
-        ...(import.meta.env.PROD ? { popup: false } : {}),
-        manifest: {
-          email: "pavel.mario43@gmail.com",
-          appName: "Fakturing",
-          appUrl,
-        },
-      });
-      trezorInitializedRef.current = true;
-      return true;
-    } catch (error) {
-      console.error("Trezor init failed", error);
-      alert(t("invoiceDetail.trezorInitError"));
-      return false;
+    if (normalized.includes("thpstate.deserialize invalid state")) {
+      return "invoiceDetail.trezorThpInvalid";
     }
-  }, [t]);
+
+    if (
+      normalized.includes("transport is missing") ||
+      normalized.includes("desktop_connectionmissing") ||
+      normalized.includes("browser_localnetworkpermissionmissing") ||
+      normalized.includes("connect-ws")
+    ) {
+      return "invoiceDetail.trezorTransportMissing";
+    }
+
+    return "invoiceDetail.trezorRequestError";
+  };
+
+  const shouldFallbackToPopupMode = (message?: string) => {
+    const normalized = message?.toLowerCase() ?? "";
+    return (
+      normalized.includes("desktop_connectionmissing") ||
+      normalized.includes("browser_localnetworkpermissionmissing") ||
+      normalized.includes("connect-ws")
+    );
+  };
+
+  const ensureTrezorInit = useCallback(
+    async (coreMode: "auto" | "popup") => {
+      if (trezorInitializedRef.current) return true;
+      try {
+        const appUrl =
+          typeof window === "undefined" || !window.location.origin
+            ? "http://localhost"
+            : window.location.origin;
+        await TrezorConnect.init({
+          connectSrc: "https://connect.trezor.io/9/",
+          lazyLoad: true,
+          coreMode,
+          manifest: {
+            email: "pavel.mario43@gmail.com",
+            appName: "Fakturing",
+            appUrl,
+          },
+        });
+        trezorInitializedRef.current = true;
+        return true;
+      } catch (error) {
+        console.error("Trezor init failed", error);
+        alert(t("invoiceDetail.trezorInitError"));
+        return false;
+      }
+    },
+    [t],
+  );
 
   const handleLoadFromTrezor = useCallback(async () => {
-    setIsTrezorLoading(true);
-    try {
-      const ready = await ensureTrezorInit();
-      if (!ready) return;
-
-      const result = await TrezorConnect.getAccountInfo({
+    const requestAccountInfo = () =>
+      TrezorConnect.getAccountInfo({
         coin: "btc",
         details: "tokens",
         tokens: "derived",
       });
+
+    setIsTrezorLoading(true);
+    try {
+      const ready = await ensureTrezorInit("auto");
+      if (!ready) return;
+
+      let result = await requestAccountInfo();
+
+      if (!result.success && shouldFallbackToPopupMode(result.payload?.error)) {
+        trezorInitializedRef.current = false;
+        await TrezorConnect.dispose();
+
+        const fallbackReady = await ensureTrezorInit("popup");
+        if (!fallbackReady) return;
+
+        result = await requestAccountInfo();
+      }
 
       if (!result.success) {
         console.error("Trezor getAccountInfo error", result.payload?.error);
