@@ -1,7 +1,8 @@
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
-import TrezorConnect from "@trezor/connect-web";
+import TrezorConnectWeb from "@trezor/connect-web";
+import TrezorConnectMobile from "@trezor/connect-mobile";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
 
@@ -72,6 +73,14 @@ const formatUiTotal = (value: number, locale: string) =>
     maximumFractionDigits: 2,
   }).format(value);
 
+const TREZOR_CONNECT_SRC = "https://connect.trezor.io/9/";
+const TREZOR_SUITE_IOS_URL =
+  "https://apps.apple.com/us/app/trezor-suite/id1631884497";
+const TREZOR_SUITE_ANDROID_URL =
+  "https://play.google.com/store/apps/details?id=io.trezor.suite&pli=1";
+
+type TrezorInitMode = "desktop-auto" | "desktop-popup" | "mobile";
+
 export function InvoiceCreatePage() {
   const { t, locale } = useI18n();
   const searchParams =
@@ -135,7 +144,14 @@ export function InvoiceCreatePage() {
   const [items, setItems] = useState<InvoiceItemForm[]>(initialItems);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const trezorInitializedRef = useRef(false);
+  const trezorInitModeRef = useRef<TrezorInitMode | null>(null);
+  const isMobileTrezorEnv =
+    typeof navigator !== "undefined" &&
+    /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+  const mobileSuiteStoreUrl =
+    typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent)
+      ? TREZOR_SUITE_IOS_URL
+      : TREZOR_SUITE_ANDROID_URL;
 
   const clientsQuery = useMemo(
     () =>
@@ -292,16 +308,82 @@ export function InvoiceCreatePage() {
     );
   };
 
+  useEffect(() => {
+    if (!isMobileTrezorEnv || typeof window === "undefined") return;
+
+    const currentUrl = new URL(window.location.href);
+    const hasDeeplinkPayload =
+      currentUrl.searchParams.has("id") && currentUrl.searchParams.has("response");
+
+    if (!hasDeeplinkPayload) return;
+
+    TrezorConnectMobile.handleDeeplink(window.location.href);
+
+    currentUrl.searchParams.delete("id");
+    currentUrl.searchParams.delete("response");
+    window.history.replaceState({}, "", currentUrl.toString());
+  }, [isMobileTrezorEnv]);
+
   const ensureTrezorInit = useCallback(
     async (coreMode: "auto" | "popup") => {
-      if (trezorInitializedRef.current) return true;
+      if (
+        !isMobileTrezorEnv &&
+        ((coreMode === "auto" && trezorInitModeRef.current === "desktop-auto") ||
+          (coreMode === "popup" && trezorInitModeRef.current === "desktop-popup"))
+      ) {
+        return true;
+      }
+
+      if (isMobileTrezorEnv && trezorInitModeRef.current === "mobile") return true;
+
       try {
         const appUrl =
           typeof window === "undefined" || !window.location.origin
             ? "http://localhost"
             : window.location.origin;
-        await TrezorConnect.init({
-          connectSrc: "https://connect.trezor.io/9/",
+
+        if (isMobileTrezorEnv) {
+          const callbackUrl =
+            typeof window === "undefined"
+              ? "https://localhost"
+              : (() => {
+                  const url = new URL(window.location.href);
+                  url.searchParams.delete("id");
+                  url.searchParams.delete("response");
+                  return url.toString();
+                })();
+
+          await TrezorConnectMobile.init({
+            connectSrc: TREZOR_CONNECT_SRC,
+            lazyLoad: true,
+            coreMode: "deeplink",
+            manifest: {
+              email: "pavel.mario43@gmail.com",
+              appName: "Fakturing",
+              appUrl,
+            },
+            deeplinkOpen: (url) => {
+              if (typeof window === "undefined") return;
+
+              const openTimestamp = Date.now();
+              window.location.assign(url);
+
+              window.setTimeout(() => {
+                const elapsed = Date.now() - openTimestamp;
+                if (document.visibilityState === "visible" && elapsed > 1000) {
+                  window.location.assign(mobileSuiteStoreUrl);
+                }
+              }, 1400);
+            },
+            deeplinkCallbackUrl: callbackUrl,
+          });
+
+          trezorInitModeRef.current = "mobile";
+          return true;
+        }
+
+        await TrezorConnectWeb.init({
+          connectSrc: TREZOR_CONNECT_SRC,
           lazyLoad: true,
           coreMode,
           manifest: {
@@ -310,7 +392,8 @@ export function InvoiceCreatePage() {
             appUrl,
           },
         });
-        trezorInitializedRef.current = true;
+        trezorInitModeRef.current =
+          coreMode === "popup" ? "desktop-popup" : "desktop-auto";
         return true;
       } catch (error) {
         console.error("Trezor init failed", error);
@@ -318,12 +401,12 @@ export function InvoiceCreatePage() {
         return false;
       }
     },
-    [t],
+    [isMobileTrezorEnv, mobileSuiteStoreUrl, t],
   );
 
   const handleLoadFromTrezor = useCallback(async () => {
     const requestAccountInfo = () =>
-      TrezorConnect.getAccountInfo({
+      (isMobileTrezorEnv ? TrezorConnectMobile : TrezorConnectWeb).getAccountInfo({
         coin: "btc",
         details: "tokens",
         tokens: "derived",
@@ -336,9 +419,13 @@ export function InvoiceCreatePage() {
 
       let result = await requestAccountInfo();
 
-      if (!result.success && shouldFallbackToPopupMode(result.payload?.error)) {
-        trezorInitializedRef.current = false;
-        await TrezorConnect.dispose();
+      if (
+        !isMobileTrezorEnv &&
+        !result.success &&
+        shouldFallbackToPopupMode(result.payload?.error)
+      ) {
+        trezorInitModeRef.current = null;
+        await TrezorConnectWeb.dispose();
 
         const fallbackReady = await ensureTrezorInit("popup");
         if (!fallbackReady) return;
@@ -372,7 +459,7 @@ export function InvoiceCreatePage() {
     } finally {
       setIsTrezorLoading(false);
     }
-  }, [ensureTrezorInit, t]);
+  }, [ensureTrezorInit, isMobileTrezorEnv, t]);
 
   const updateItem = (
     index: number,
