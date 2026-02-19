@@ -49,16 +49,39 @@ function App() {
 
   // Restore state from history on mount and listen for back/forward
   useEffect(() => {
+    const callbackSearch =
+      typeof window === "undefined" ? "" : window.location.search;
+    const callbackParams = new URLSearchParams(callbackSearch);
+    const hasTrezorCallback = callbackParams.has("trezorCallback");
+
+    if (hasTrezorCallback) {
+      setPage("invoice-create");
+      setSelectedClientId(null);
+      setSelectedInvoiceId(null);
+      try {
+        window.history.replaceState(
+          {
+            page: "invoice-create",
+            selectedClientId: null,
+            selectedInvoiceId: null,
+          },
+          "",
+        );
+      } catch {
+        /* ignore history failures */
+      }
+    }
+
     const s = window.history.state as {
       page?: typeof page;
       selectedClientId?: string | null;
       selectedInvoiceId?: string | null;
     } | null;
-    if (s && s.page) {
+    if (s && s.page && !hasTrezorCallback) {
       setPage(s.page as any);
       setSelectedClientId(s.selectedClientId ?? null);
       setSelectedInvoiceId(s.selectedInvoiceId ?? null);
-    } else {
+    } else if (!hasTrezorCallback) {
       // ensure there's at least one history entry representing current app state
       navigate(page, selectedClientId, selectedInvoiceId, true);
     }

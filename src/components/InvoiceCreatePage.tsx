@@ -74,12 +74,22 @@ const formatUiTotal = (value: number, locale: string) =>
   }).format(value);
 
 const TREZOR_CONNECT_SRC = "https://connect.trezor.io/9/";
-const TREZOR_SUITE_IOS_URL =
-  "https://apps.apple.com/us/app/trezor-suite/id1631884497";
-const TREZOR_SUITE_ANDROID_URL =
-  "https://play.google.com/store/apps/details?id=io.trezor.suite&pli=1";
+const TREZOR_MOBILE_CALLBACK_STORAGE_KEY = "fakturing:trezor-mobile-callback";
+const TREZOR_MOBILE_BROADCAST_CHANNEL = "fakturing-trezor-mobile-callback";
+const INVOICE_CREATE_DRAFT_STORAGE_KEY = "fakturing:invoice-create-draft";
 
 type TrezorInitMode = "desktop-auto" | "desktop-popup" | "mobile";
+type InvoiceCreateDraft = {
+  invoiceNumber: string;
+  clientName: string;
+  issueDate: string;
+  paymentDays: string;
+  paymentMethod: string;
+  purchaseOrderNumber: string;
+  btcInvoice: boolean;
+  btcAddress: string;
+  items: InvoiceItemForm[];
+};
 
 export function InvoiceCreatePage() {
   const { t, locale } = useI18n();
@@ -148,10 +158,6 @@ export function InvoiceCreatePage() {
   const isMobileTrezorEnv =
     typeof navigator !== "undefined" &&
     /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-  const mobileSuiteStoreUrl =
-    typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent)
-      ? TREZOR_SUITE_IOS_URL
-      : TREZOR_SUITE_ANDROID_URL;
 
   const clientsQuery = useMemo(
     () =>
@@ -308,33 +314,255 @@ export function InvoiceCreatePage() {
     );
   };
 
+  const applyTrezorAddress = useCallback((address: string) => {
+    const normalized = address.trim();
+    if (!normalized) return;
+
+    setBtcInvoice(true);
+    setBtcAddress(normalized);
+    setIsTrezorLoading(false);
+  }, []);
+
+  const publishTrezorAddressAcrossTabs = useCallback((address: string) => {
+    if (typeof window === "undefined") return;
+    const normalized = address.trim();
+    if (!normalized) return;
+
+    const payload = JSON.stringify({
+      address: normalized,
+      timestamp: Date.now(),
+    });
+
+    try {
+      window.localStorage.setItem(TREZOR_MOBILE_CALLBACK_STORAGE_KEY, payload);
+    } catch {
+      /* ignore storage restrictions */
+    }
+
+    try {
+      if (typeof BroadcastChannel !== "undefined") {
+        const channel = new BroadcastChannel(TREZOR_MOBILE_BROADCAST_CHANNEL);
+        channel.postMessage({ address: normalized, timestamp: Date.now() });
+        channel.close();
+      }
+    } catch {
+      /* ignore unsupported channel */
+    }
+  }, []);
+
+  const clearTrezorCallbackPayload = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(TREZOR_MOBILE_CALLBACK_STORAGE_KEY);
+    } catch {
+      /* ignore storage restrictions */
+    }
+  }, []);
+
+  const persistInvoiceDraft = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    const draft: InvoiceCreateDraft = {
+      invoiceNumber,
+      clientName,
+      issueDate,
+      paymentDays,
+      paymentMethod,
+      purchaseOrderNumber,
+      btcInvoice,
+      btcAddress,
+      items,
+    };
+
+    try {
+      window.localStorage.setItem(
+        INVOICE_CREATE_DRAFT_STORAGE_KEY,
+        JSON.stringify(draft),
+      );
+    } catch {
+      /* ignore storage restrictions */
+    }
+  }, [
+    btcAddress,
+    btcInvoice,
+    clientName,
+    invoiceNumber,
+    issueDate,
+    items,
+    paymentDays,
+    paymentMethod,
+    purchaseOrderNumber,
+  ]);
+
+  const clearInvoiceDraft = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(INVOICE_CREATE_DRAFT_STORAGE_KEY);
+    } catch {
+      /* ignore storage restrictions */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const hasTrezorCallback = params.has("trezorCallback");
+    if (!hasTrezorCallback) return;
+
+    const rawDraft = window.localStorage.getItem(INVOICE_CREATE_DRAFT_STORAGE_KEY);
+    if (!rawDraft) return;
+
+    try {
+      const parsed = JSON.parse(rawDraft) as Partial<InvoiceCreateDraft>;
+
+      if (typeof parsed.invoiceNumber === "string") {
+        setInvoiceNumber(parsed.invoiceNumber);
+        setInvoiceNumberTouched(Boolean(parsed.invoiceNumber.trim()));
+      }
+      if (typeof parsed.clientName === "string") setClientName(parsed.clientName);
+      if (typeof parsed.issueDate === "string") setIssueDate(parsed.issueDate);
+      if (typeof parsed.paymentDays === "string") setPaymentDays(parsed.paymentDays);
+      if (parsed.paymentMethod === "bank" || parsed.paymentMethod === "cash") {
+        setPaymentMethod(parsed.paymentMethod);
+      }
+      if (typeof parsed.purchaseOrderNumber === "string") {
+        setPurchaseOrderNumber(parsed.purchaseOrderNumber);
+      }
+      if (typeof parsed.btcInvoice === "boolean") setBtcInvoice(parsed.btcInvoice);
+      if (typeof parsed.btcAddress === "string") setBtcAddress(parsed.btcAddress);
+      if (Array.isArray(parsed.items) && parsed.items.length > 0) {
+        setItems(
+          parsed.items.map((item) => ({
+            amount: item?.amount ?? "",
+            unit: item?.unit ?? "",
+            description: item?.description ?? "",
+            unitPrice: item?.unitPrice ?? "",
+            vat: item?.vat ?? "",
+          })),
+        );
+      }
+    } catch {
+      /* ignore malformed draft */
+    }
+  }, []);
+
   useEffect(() => {
     if (!isMobileTrezorEnv || typeof window === "undefined") return;
 
-    const currentUrl = new URL(window.location.href);
-    const hasDeeplinkPayload =
-      currentUrl.searchParams.has("id") && currentUrl.searchParams.has("response");
+    const consumeAddressPayload = (raw: string | null) => {
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw) as { address?: string };
+        if (parsed.address) {
+          applyTrezorAddress(parsed.address);
+          clearTrezorCallbackPayload();
+        }
+      } catch {
+        /* ignore malformed payload */
+      }
+    };
 
-    if (!hasDeeplinkPayload) return;
+    const existingPayload = window.localStorage.getItem(
+      TREZOR_MOBILE_CALLBACK_STORAGE_KEY,
+    );
+    consumeAddressPayload(existingPayload);
 
-    TrezorConnectMobile.handleDeeplink(window.location.href);
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== TREZOR_MOBILE_CALLBACK_STORAGE_KEY) return;
+      consumeAddressPayload(event.newValue);
+    };
 
-    currentUrl.searchParams.delete("id");
-    currentUrl.searchParams.delete("response");
-    window.history.replaceState({}, "", currentUrl.toString());
-  }, [isMobileTrezorEnv]);
+    window.addEventListener("storage", onStorage);
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== "undefined") {
+        channel = new BroadcastChannel(TREZOR_MOBILE_BROADCAST_CHANNEL);
+        channel.onmessage = (event) => {
+          const address =
+            typeof event.data === "object" && event.data
+              ? (event.data as { address?: string }).address
+              : undefined;
+          if (address) applyTrezorAddress(address);
+        };
+      }
+    } catch {
+      /* ignore channel init failures */
+    }
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      channel?.close();
+    };
+  }, [applyTrezorAddress, clearTrezorCallbackPayload, isMobileTrezorEnv]);
+
+  useEffect(() => {
+    if (!isMobileTrezorEnv || typeof window === "undefined") return;
+
+    const processDeeplinkResponse = () => {
+      const currentUrl = new URL(window.location.href);
+      const hasDeeplinkPayload =
+        currentUrl.searchParams.has("id") &&
+        currentUrl.searchParams.has("response");
+
+      if (!hasDeeplinkPayload) return;
+
+      const responseRaw = currentUrl.searchParams.get("response");
+      if (responseRaw) {
+        try {
+          const parsed = JSON.parse(responseRaw) as {
+            success?: boolean;
+            payload?: { address?: string };
+          };
+          const callbackAddress = parsed.payload?.address?.trim() ?? "";
+          if (parsed.success && callbackAddress) {
+            applyTrezorAddress(callbackAddress);
+            publishTrezorAddressAcrossTabs(callbackAddress);
+            clearTrezorCallbackPayload();
+          }
+        } catch (error) {
+          console.error("Failed to parse Trezor callback response", error);
+        }
+      }
+
+      TrezorConnectMobile.handleDeeplink(window.location.href);
+
+      currentUrl.searchParams.delete("id");
+      currentUrl.searchParams.delete("response");
+      currentUrl.searchParams.delete("trezorCallback");
+      window.history.replaceState({}, "", currentUrl.toString());
+    };
+
+    processDeeplinkResponse();
+    window.addEventListener("pageshow", processDeeplinkResponse);
+    window.addEventListener("focus", processDeeplinkResponse);
+
+    return () => {
+      window.removeEventListener("pageshow", processDeeplinkResponse);
+      window.removeEventListener("focus", processDeeplinkResponse);
+    };
+  }, [
+    applyTrezorAddress,
+    clearTrezorCallbackPayload,
+    isMobileTrezorEnv,
+    publishTrezorAddressAcrossTabs,
+  ]);
 
   const ensureTrezorInit = useCallback(
     async (coreMode: "auto" | "popup") => {
       if (
         !isMobileTrezorEnv &&
-        ((coreMode === "auto" && trezorInitModeRef.current === "desktop-auto") ||
-          (coreMode === "popup" && trezorInitModeRef.current === "desktop-popup"))
+        ((coreMode === "auto" &&
+          trezorInitModeRef.current === "desktop-auto") ||
+          (coreMode === "popup" &&
+            trezorInitModeRef.current === "desktop-popup"))
       ) {
         return true;
       }
 
-      if (isMobileTrezorEnv && trezorInitModeRef.current === "mobile") return true;
+      if (isMobileTrezorEnv && trezorInitModeRef.current === "mobile")
+        return true;
 
       try {
         const appUrl =
@@ -347,16 +575,14 @@ export function InvoiceCreatePage() {
             typeof window === "undefined"
               ? "https://localhost"
               : (() => {
-                  const url = new URL(window.location.href);
-                  url.searchParams.delete("id");
-                  url.searchParams.delete("response");
+                  const url = new URL(
+                    window.location.origin + window.location.pathname,
+                  );
+                  url.searchParams.set("trezorCallback", "1");
                   return url.toString();
                 })();
 
           await TrezorConnectMobile.init({
-            connectSrc: TREZOR_CONNECT_SRC,
-            lazyLoad: true,
-            coreMode: "deeplink",
             manifest: {
               email: "pavel.mario43@gmail.com",
               appName: "Fakturing",
@@ -364,16 +590,7 @@ export function InvoiceCreatePage() {
             },
             deeplinkOpen: (url) => {
               if (typeof window === "undefined") return;
-
-              const openTimestamp = Date.now();
               window.location.assign(url);
-
-              window.setTimeout(() => {
-                const elapsed = Date.now() - openTimestamp;
-                if (document.visibilityState === "visible" && elapsed > 1000) {
-                  window.location.assign(mobileSuiteStoreUrl);
-                }
-              }, 1400);
             },
             deeplinkCallbackUrl: callbackUrl,
           });
@@ -401,12 +618,12 @@ export function InvoiceCreatePage() {
         return false;
       }
     },
-    [isMobileTrezorEnv, mobileSuiteStoreUrl, t],
+    [isMobileTrezorEnv, t],
   );
 
   const handleLoadFromTrezor = useCallback(async () => {
-    const requestAccountInfo = () =>
-      (isMobileTrezorEnv ? TrezorConnectMobile : TrezorConnectWeb).getAccountInfo({
+    const requestDesktopAccountInfo = () =>
+      TrezorConnectWeb.getAccountInfo({
         coin: "btc",
         details: "tokens",
         tokens: "derived",
@@ -417,7 +634,58 @@ export function InvoiceCreatePage() {
       const ready = await ensureTrezorInit("auto");
       if (!ready) return;
 
-      let result = await requestAccountInfo();
+      if (isMobileTrezorEnv) {
+        persistInvoiceDraft();
+
+        const accountInput = window.prompt(
+          "Select BTC account index (0 = first account)",
+          "0",
+        );
+        if (accountInput === null) return;
+
+        const addressInput = window.prompt(
+          "Select BTC address index (0 = first address)",
+          "0",
+        );
+        if (addressInput === null) return;
+
+        const accountIndex = Number.parseInt(accountInput.trim(), 10);
+        const addressIndex = Number.parseInt(addressInput.trim(), 10);
+
+        if (
+          Number.isNaN(accountIndex) ||
+          accountIndex < 0 ||
+          Number.isNaN(addressIndex) ||
+          addressIndex < 0
+        ) {
+          alert(t("invoiceCreate.trezorRequestError"));
+          return;
+        }
+
+        const path = `m/84'/0'/${accountIndex}'/0/${addressIndex}`;
+        const mobileResult = await TrezorConnectMobile.getAddress({
+          coin: "btc",
+          path,
+          showOnTrezor: false,
+        });
+
+        if (!mobileResult.success) {
+          console.error("Trezor getAddress error", mobileResult.payload?.error);
+          alert(t(getTrezorErrorKey(mobileResult.payload?.error)));
+          return;
+        }
+
+        const address = mobileResult.payload.address ?? "";
+        if (!address) {
+          alert(t("invoiceCreate.trezorNoUnused"));
+          return;
+        }
+
+        setBtcAddress(address);
+        return;
+      }
+
+      let result = await requestDesktopAccountInfo();
 
       if (
         !isMobileTrezorEnv &&
@@ -430,7 +698,7 @@ export function InvoiceCreatePage() {
         const fallbackReady = await ensureTrezorInit("popup");
         if (!fallbackReady) return;
 
-        result = await requestAccountInfo();
+        result = await requestDesktopAccountInfo();
       }
 
       if (!result.success) {
@@ -440,7 +708,13 @@ export function InvoiceCreatePage() {
       }
 
       const unused = result.payload.addresses?.unused ?? [];
-      const address = unused.find((entry) => entry?.address)?.address ?? "";
+      const used = result.payload.addresses?.used ?? [];
+      const change = result.payload.addresses?.change ?? [];
+      const address =
+        unused.find((entry) => entry?.address)?.address ??
+        used.find((entry) => entry?.address)?.address ??
+        change.find((entry) => entry?.address)?.address ??
+        "";
       if (!address) {
         alert(t("invoiceCreate.trezorNoUnused"));
         return;
@@ -459,7 +733,7 @@ export function InvoiceCreatePage() {
     } finally {
       setIsTrezorLoading(false);
     }
-  }, [ensureTrezorInit, isMobileTrezorEnv, t]);
+  }, [ensureTrezorInit, isMobileTrezorEnv, persistInvoiceDraft, t]);
 
   const updateItem = (
     index: number,
@@ -601,6 +875,8 @@ export function InvoiceCreatePage() {
       setBtcInvoice(false);
       setBtcAddress("");
       setItems([emptyItem()]);
+      clearTrezorCallbackPayload();
+      clearInvoiceDraft();
     } catch (error) {
       console.error("Error saving invoice:", error);
       alert(t("alerts.invoiceSaveFailed"));
