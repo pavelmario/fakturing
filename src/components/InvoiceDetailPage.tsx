@@ -1501,7 +1501,7 @@ export function InvoiceDetailPage({
                       type="button"
                       onClick={handleLoadFromTrezor}
                       disabled={isTrezorLoading}
-                      className="btn-secondary"
+                      className="btn-secondary hidden sm:inline-flex"
                     >
                       {isTrezorLoading
                         ? t("invoiceDetail.trezorLoading")
