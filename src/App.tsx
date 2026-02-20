@@ -10,7 +10,7 @@ import { useI18n } from "./i18n";
 import "./index.css";
 
 function App() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [page, setPage] = useState<
     | "settings"
     | "clients"
@@ -155,6 +155,8 @@ function App() {
             <InvoiceCreatePage />
           ) : page === "invoice-list" ? (
             <InvoiceListPage
+              t={t}
+              locale={locale}
               onCreateInvoice={() => navigate("invoice-create", null, null)}
               onViewDetails={(invoiceId) =>
                 navigate("invoice-detail", null, invoiceId)

@@ -1,8 +1,7 @@
-import { use, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { useEvolu } from "../evolu";
-import { useI18n } from "../i18n";
 
 type InvoiceItem = {
   amount?: number;
@@ -24,6 +23,8 @@ type InvoiceRow = {
 type InvoiceListPageProps = {
   onCreateInvoice: () => void;
   onViewDetails: (invoiceId: string) => void;
+  t: (key: string, vars?: Record<string, string | number>) => string;
+  locale: string;
 };
 
 const parseItems = (raw: unknown): InvoiceItem[] => {
@@ -94,10 +95,10 @@ const getYear = (iso: string | null): number | null => {
 export function InvoiceListPage({
   onCreateInvoice,
   onViewDetails,
+  t,
+  locale,
 }: InvoiceListPageProps) {
-  const { t, locale } = useI18n();
   const evolu = useEvolu();
-  const owner = use(evolu.appOwner);
 
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [statusFilters, setStatusFilters] = useState({
@@ -144,15 +145,15 @@ export function InvoiceListPage({
             "btcInvoice",
             "items",
           ])
-          .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
           .orderBy("invoiceNumber", "desc"),
       ),
-    [evolu, owner.id],
+    [evolu],
   );
 
-  const invoices = useQuery(invoicesQuery) as readonly InvoiceRow[];
+  const invoices =
+    ((useQuery(invoicesQuery) ?? []) as readonly InvoiceRow[]) || [];
 
   const availableYears = useMemo(() => {
     const years = new Set<number>();
@@ -179,15 +180,14 @@ export function InvoiceListPage({
         db
           .selectFrom("userProfile")
           .select(["discreteMode"])
-          .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .orderBy("updatedAt", "desc")
           .limit(1),
       ),
-    [evolu, owner.id],
+    [evolu],
   );
 
-  const profileRows = useQuery(profileQuery);
+  const profileRows = useQuery(profileQuery) ?? [];
   const isDiscreteMode = profileRows[0]?.discreteMode === Evolu.sqliteTrue;
 
   const currentYear = new Date().getFullYear();
