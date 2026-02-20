@@ -502,11 +502,14 @@ export function InvoiceCreatePage() {
 
     const processDeeplinkResponse = () => {
       const currentUrl = new URL(window.location.href);
-      const hasDeeplinkPayload =
-        currentUrl.searchParams.has("id") &&
-        currentUrl.searchParams.has("response");
+      const hasId = currentUrl.searchParams.has("id");
+      const hasResponse = currentUrl.searchParams.has("response");
+      const hasTrezorCallback = currentUrl.searchParams.has("trezorCallback");
+      const isCallbackUrl = hasTrezorCallback || hasId || hasResponse;
 
-      if (!hasDeeplinkPayload) return;
+      if (!isCallbackUrl) return;
+
+      TrezorConnectMobile.handleDeeplink(window.location.href);
 
       const responseRaw = currentUrl.searchParams.get("response");
       if (responseRaw) {
@@ -525,8 +528,6 @@ export function InvoiceCreatePage() {
           console.error("Failed to parse Trezor callback response", error);
         }
       }
-
-      TrezorConnectMobile.handleDeeplink(window.location.href);
 
       currentUrl.searchParams.delete("id");
       currentUrl.searchParams.delete("response");
@@ -874,6 +875,7 @@ export function InvoiceCreatePage() {
       setPurchaseOrderNumber("");
       setBtcInvoice(false);
       setBtcAddress("");
+      setIsTrezorLoading(false);
       setItems([emptyItem()]);
       clearTrezorCallbackPayload();
       clearInvoiceDraft();
