@@ -530,7 +530,11 @@ export function InvoiceDetailPage({
 
   useEffect(() => {
     const buildQr = async () => {
-      if (!invoice || invoice.btcInvoice === Evolu.sqliteTrue) {
+      if (
+        !invoice ||
+        invoice.btcInvoice === Evolu.sqliteTrue ||
+        invoice.paymentMethod === "cash"
+      ) {
         setQrCodeDataUrl(null);
         return;
       }
@@ -585,6 +589,7 @@ export function InvoiceDetailPage({
     buildQr();
   }, [
     invoice,
+    invoice?.paymentMethod,
     invoiceTotal,
     invoiceTotalWithVat,
     invoiceDueDateQr,
