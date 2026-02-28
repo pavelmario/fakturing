@@ -530,11 +530,39 @@ export function InvoiceDetailPage({
 
   useEffect(() => {
     const buildQr = async () => {
-      if (
-        !invoice ||
-        invoice.btcInvoice === Evolu.sqliteTrue ||
-        invoice.paymentMethod === "cash"
-      ) {
+      if (!invoice) {
+        setQrCodeDataUrl(null);
+        return;
+      }
+
+      // If the invoice is a BTC invoice, build a bitcoin: URI QR
+      if (invoice.btcInvoice === Evolu.sqliteTrue) {
+        const address = (invoice.btcAddress ?? "").trim();
+        if (!address) {
+          setQrCodeDataUrl(null);
+          return;
+        }
+
+        const label = sanitizedInvoiceNumber
+          ? `?label=${encodeURIComponent(sanitizedInvoiceNumber)}`
+          : "";
+        const uri = `bitcoin:${address}${label}`;
+        try {
+          const dataUrl = await QRCode.toDataURL(uri, {
+            margin: 0,
+            width: 256,
+          });
+          setQrCodeDataUrl(dataUrl);
+          return;
+        } catch (error) {
+          console.error("Failed to generate BTC QR code:", error);
+          setQrCodeDataUrl(null);
+          return;
+        }
+      }
+
+      // For non-BTC invoices, do not show QR for cash payments
+      if (invoice.paymentMethod === "cash") {
         setQrCodeDataUrl(null);
         return;
       }
@@ -589,6 +617,8 @@ export function InvoiceDetailPage({
     buildQr();
   }, [
     invoice,
+    invoice?.btcInvoice,
+    invoice?.btcAddress,
     invoice?.paymentMethod,
     invoiceTotal,
     invoiceTotalWithVat,
@@ -597,6 +627,7 @@ export function InvoiceDetailPage({
     profile?.bankAccount,
     profile?.swift,
     showVat,
+    sanitizedInvoiceNumber,
   ]);
 
   const pdfDocument = invoice ? (
@@ -819,7 +850,11 @@ export function InvoiceDetailPage({
           {qrCodeDataUrl ? (
             <View style={pdfStyles.qrBlock}>
               <Image style={pdfStyles.qrImage} src={qrCodeDataUrl} />
-              <Text style={pdfStyles.qrLabel}>{t("pdf.qrPayment")}</Text>
+              <Text style={pdfStyles.qrLabel}>
+                {invoice.btcInvoice === Evolu.sqliteTrue
+                  ? t("pdf.qrPaymentBtc")
+                  : t("pdf.qrPayment")}
+              </Text>
             </View>
           ) : (
             <View />
