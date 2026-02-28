@@ -669,16 +669,22 @@ export function InvoiceDetailPage({
         <View style={{ marginTop: 18 }}>
           <View style={pdfStyles.columns}>
             <View style={pdfStyles.column}>
-              <View style={pdfStyles.detailRow}>
-                <Text style={pdfStyles.textMuted}>{t("pdf.bankAccount")}</Text>
-                <Text>{profile?.bankAccount ?? ""}</Text>
-              </View>
-              <View style={pdfStyles.detailRow}>
-                <Text style={pdfStyles.textMuted}>
-                  {t("pdf.variableSymbol")}
-                </Text>
-                <Text>{sanitizedInvoiceNumber}</Text>
-              </View>
+              {invoice?.paymentMethod !== "cash" ? (
+                <>
+                  <View style={pdfStyles.detailRow}>
+                    <Text style={pdfStyles.textMuted}>
+                      {t("pdf.bankAccount")}
+                    </Text>
+                    <Text>{profile?.bankAccount ?? ""}</Text>
+                  </View>
+                  <View style={pdfStyles.detailRow}>
+                    <Text style={pdfStyles.textMuted}>
+                      {t("pdf.variableSymbol")}
+                    </Text>
+                    <Text>{sanitizedInvoiceNumber}</Text>
+                  </View>
+                </>
+              ) : null}
               <View style={pdfStyles.detailRow}>
                 <Text style={pdfStyles.textMuted}>
                   {t("pdf.paymentMethod")}
