@@ -779,7 +779,8 @@ export function saveUserProfile(
     swift: profile.swift,
     iban: profile.iban,
     invoiceNamingFormat:
-      (profile as any).invoiceNamingFormat || existing?.invoiceNamingFormat ||
+      (profile as any).invoiceNamingFormat ||
+      existing?.invoiceNamingFormat ||
       "invoice-year-invoice_number",
     language: (profile as any).language || existing?.language || "cz",
     createdAt: existing?.createdAt || now,
