@@ -31,6 +31,9 @@ export function SettingsPage() {
   const [mempoolUrl, setMempoolUrl] = useState<string>(
     "https://mempool.space/",
   );
+  const [invoiceNamingFormat, setInvoiceNamingFormat] = useState<string>(
+    "invoice-year-invoice_number",
+  );
   const [savedData, setSavedData] = useState<{
     name: string;
     email?: string;
@@ -47,6 +50,7 @@ export function SettingsPage() {
     discreteMode?: boolean;
     poRequired?: boolean;
     mempoolUrl?: string;
+    invoiceNamingFormat?: string;
     language?: string;
   } | null>(null);
   const [showMnemonicInput, setShowMnemonicInput] = useState(false);
@@ -207,6 +211,8 @@ export function SettingsPage() {
       discreteMode: profile.discreteMode === Evolu.sqliteTrue,
       poRequired: profile.poRequired === Evolu.sqliteTrue,
       mempoolUrl: profile.mempoolUrl ?? "https://mempool.space/",
+      invoiceNamingFormat:
+        profile.invoiceNamingFormat ?? "invoice-year-invoice_number",
       language: profile.language ?? "cz",
     });
     const normalizedLanguage =
@@ -227,6 +233,9 @@ export function SettingsPage() {
     setDiscreteMode(profile.discreteMode === Evolu.sqliteTrue);
     setPoRequired(profile.poRequired === Evolu.sqliteTrue);
     setMempoolUrl(profile.mempoolUrl ?? "https://mempool.space/");
+    setInvoiceNamingFormat(
+      profile.invoiceNamingFormat ?? "invoice-year-invoice_number",
+    );
   }, [profile]);
 
   useEffect(() => {
@@ -373,6 +382,9 @@ export function SettingsPage() {
             ? Evolu.sqliteTrue
             : Evolu.sqliteFalse,
           mempoolUrl: toNullable(row.mempoolUrl) ?? "https://mempool.space/",
+          invoiceNamingFormat:
+            toNullable(row.invoiceNamingFormat) ??
+            "invoice-year-invoice_number",
           language: row.language?.trim().toLowerCase() === "en" ? "en" : "cz",
         };
 
@@ -410,6 +422,9 @@ export function SettingsPage() {
         setDiscreteMode(parseCsvBoolean(row.discreteMode));
         setPoRequired(parseCsvBoolean(row.poRequired));
         setMempoolUrl(row.mempoolUrl?.trim() || "https://mempool.space/");
+        setInvoiceNamingFormat(
+          row.invoiceNamingFormat?.trim() || "invoice-year-invoice_number",
+        );
         setLanguage(row.language?.trim().toLowerCase() === "en" ? "en" : "cz");
 
         alert(t("alerts.settingsImported"));
@@ -667,6 +682,7 @@ export function SettingsPage() {
         discreteMode: discreteMode ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         poRequired: poRequired ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         mempoolUrl: toNullable(mempoolUrl),
+        invoiceNamingFormat: toNullable(invoiceNamingFormat),
         language: (language || "cz").toString().trim().toLowerCase(),
       };
 
@@ -831,6 +847,7 @@ export function SettingsPage() {
       "language",
       "poRequired",
       "mempoolUrl",
+      "invoiceNamingFormat",
       "updatedAt",
     ];
 
@@ -1291,6 +1308,26 @@ export function SettingsPage() {
                   {t("settings.poRequired")}
                 </label>
                 <div>
+                  <label htmlFor="invoiceNamingFormat" className="form-label">
+                    {t("settings.invoiceNamingFormatLabel")}
+                  </label>
+                  <p className="text-xs text-slate-500 mb-2">
+                    {t("settings.invoiceNamingFormatDescription")}
+                  </p>
+                  <select
+                    id="invoiceNamingFormat"
+                    value={invoiceNamingFormat}
+                    onChange={(e) => setInvoiceNamingFormat(e.target.value)}
+                    className="form-select mb-2"
+                  >
+                    <option value="invoice-year-invoice_number">
+                      {t("settings.invoiceNamingFormatOptionInvoice")}
+                    </option>
+                    <option value="name-year-invoice_number">
+                      {t("settings.invoiceNamingFormatOptionName")}
+                    </option>
+                  </select>
+
                   <label htmlFor="mempoolUrl" className="form-label">
                     {t("settings.mempoolLabel")}
                   </label>
