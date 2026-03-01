@@ -47,6 +47,29 @@ function App() {
     }
   };
 
+  // Theme (light / dark) persisted in localStorage and applied as `dark` class
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    try {
+      const saved = localStorage.getItem("theme");
+      if (saved === "light" || saved === "dark") return saved;
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    } catch {
+      return "light";
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (theme === "dark") document.documentElement.classList.add("dark");
+      else document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme]);
+
   // Restore state from history on mount and listen for back/forward
   useEffect(() => {
     const s = window.history.state as {
@@ -89,37 +112,46 @@ function App() {
     <Suspense fallback={<div className="app-loading">{t("app.loading")}</div>}>
       <div className="app-shell">
         <div className="app-nav">
-          <div className="app-tabs">
-            <button
-              onClick={() => navigate("invoice-list", null, null)}
-              className={`tab-button ${
-                page === "invoice-list"
-                  ? "tab-button-active"
-                  : "tab-button-inactive"
-              }`}
-            >
-              {t("app.nav.invoices")}
-            </button>
-            <button
-              onClick={() => navigate("clients-list", null, null)}
-              className={`tab-button ${
-                page === "clients-list" || page === "client-detail"
-                  ? "tab-button-active"
-                  : "tab-button-inactive"
-              }`}
-            >
-              {t("app.nav.clients")}
-            </button>
-            <button
-              onClick={() => navigate("settings", null, null)}
-              className={`tab-button ${
-                page === "settings"
-                  ? "tab-button-active"
-                  : "tab-button-inactive"
-              }`}
-            >
-              {t("app.nav.settings")}
-            </button>
+          <div className="app-tabs flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate("invoice-list", null, null)}
+                className={`tab-button ${
+                  page === "invoice-list" ? "tab-button-active" : "tab-button-inactive"
+                }`}
+              >
+                {t("app.nav.invoices")}
+              </button>
+              <button
+                onClick={() => navigate("clients-list", null, null)}
+                className={`tab-button ${
+                  page === "clients-list" || page === "client-detail"
+                    ? "tab-button-active"
+                    : "tab-button-inactive"
+                }`}
+              >
+                {t("app.nav.clients")}
+              </button>
+              <button
+                onClick={() => navigate("settings", null, null)}
+                className={`tab-button ${
+                  page === "settings" ? "tab-button-active" : "tab-button-inactive"
+                }`}
+              >
+                {t("app.nav.settings")}
+              </button>
+            </div>
+
+            <div className="ml-4">
+              <button
+                aria-label={theme === "dark" ? "Switch to light" : "Switch to dark"}
+                onClick={() => setTheme((s) => (s === "dark" ? "light" : "dark"))}
+                className="theme-toggle"
+                title={theme === "dark" ? t("app.theme.light") : t("app.theme.dark")}
+              >
+                {theme === "dark" ? "🌙" : "☀️"}
+              </button>
+            </div>
           </div>
         </div>
 

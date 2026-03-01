@@ -189,3 +189,157 @@
     line-height: 2.5rem;
   }
 }
+
+/* Dark mode overrides */
+@layer base {
+  .dark :root {
+    color-scheme: dark;
+  }
+
+  .dark body {
+    background: radial-gradient(circle at top, #071029 0%, #031025 40%, #020617 100%);
+    color: #e6eef8;
+  }
+}
+
+@layer components {
+  .theme-toggle {
+    @apply inline-flex items-center justify-center rounded-2xl px-3 py-2 text-sm font-semibold bg-transparent;
+  }
+
+  .stat-count {
+    @apply text-slate-900;
+  }
+
+  .stat-sum {
+    @apply text-slate-700;
+  }
+
+  .filters-summary {
+    @apply text-slate-900;
+  }
+
+  .filters-group {
+    @apply text-slate-700;
+  }
+
+  .filters-heading {
+    @apply text-slate-900;
+  }
+
+  .invoice-row-number {
+    @apply text-slate-900;
+  }
+
+  .invoice-row-client,
+  .invoice-row-date {
+    @apply text-slate-600;
+  }
+
+  .invoice-row-amount {
+    @apply text-slate-900;
+  }
+
+  .dark .app-nav {
+    @apply border-slate-700/60 bg-slate-900/70 shadow-xl shadow-slate-900/60;
+  }
+
+  .dark .tab-button-inactive {
+    @apply bg-slate-800/60 text-slate-300 hover:bg-slate-700/60;
+  }
+
+  .dark .page-card,
+  .dark .page-card-lg {
+    @apply border-slate-700/60 bg-slate-900/80 text-slate-100 shadow-2xl shadow-slate-900/50;
+  }
+
+  .dark .page-title {
+    @apply text-slate-100;
+  }
+
+  .dark .section-title {
+    @apply text-slate-400;
+  }
+
+  .dark .form-label {
+    @apply text-slate-300;
+  }
+
+  .dark .form-input,
+  .dark .form-textarea,
+  .dark .form-select {
+    @apply border-slate-700/60 bg-slate-900/80 text-slate-100 focus:border-blue-300 focus:ring-2 focus:ring-blue-300/20;
+  }
+
+  .dark .btn-secondary {
+    @apply border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700/60;
+  }
+
+  .dark .btn-ghost {
+    @apply text-slate-300 hover:bg-slate-800/60 focus:ring-slate-700/40;
+  }
+
+  .dark .empty-state {
+    @apply border-slate-700 bg-slate-800/60 text-slate-300;
+  }
+
+  .dark .app-loading {
+    @apply text-slate-400;
+  }
+
+  .dark .stat-card,
+  .dark .panel-card,
+  .dark .list-card {
+    @apply border-slate-700 bg-slate-800/60 text-slate-200;
+  }
+
+  .dark .stat-count {
+    @apply text-slate-100;
+  }
+
+  .dark .stat-sum {
+    @apply text-slate-200;
+  }
+
+  .dark .filters-summary {
+    @apply text-slate-100;
+  }
+
+  .dark .filters-group {
+    @apply text-slate-200;
+  }
+
+  .dark .filters-heading {
+    @apply text-slate-100;
+  }
+
+  .dark .invoice-row-number,
+  .dark .invoice-row-amount {
+    @apply text-slate-100;
+  }
+
+  .dark .invoice-row-client,
+  .dark .invoice-row-date {
+    @apply text-slate-200;
+  }
+
+  .dark .alert-success {
+    @apply bg-emerald-900/50 text-emerald-300 border-emerald-700/50;
+  }
+
+  .dark .alert-warning {
+    @apply bg-amber-900/50 text-amber-300 border-amber-700/50;
+  }
+
+  .dark .status-paid {
+    @apply bg-emerald-900/20 text-emerald-200;
+  }
+
+  .dark .status-overdue {
+    @apply bg-rose-900/20 text-rose-200;
+  }
+
+  .dark .status-unpaid {
+    @apply bg-amber-900/20 text-amber-200;
+  }
+}

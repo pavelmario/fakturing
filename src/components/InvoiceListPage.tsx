@@ -277,10 +277,10 @@ export function InvoiceListPage({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
             <div className="stat-card">
               <div className="section-title">{t("invoicesList.statYear")}</div>
-              <div className="mt-2 text-lg font-semibold text-slate-900">
+              <div className="mt-2 text-lg font-semibold stat-count">
                 {stats.year.count}
               </div>
-              <div className="text-sm text-slate-700">
+              <div className="text-sm stat-sum">
                 {t("invoicesList.statPrefix")}{" "}
                 {isDiscreteMode
                   ? t("common.discreteMask")
@@ -295,10 +295,10 @@ export function InvoiceListPage({
               <div className="section-title">
                 {t("invoicesList.statUnpaid")}
               </div>
-              <div className="mt-2 text-lg font-semibold text-slate-900">
+              <div className="mt-2 text-lg font-semibold stat-count">
                 {stats.unpaid.count}
               </div>
-              <div className="text-sm text-slate-700">
+              <div className="text-sm stat-sum">
                 {t("invoicesList.statPrefix")}{" "}
                 {isDiscreteMode
                   ? t("common.discreteMask")
@@ -313,10 +313,10 @@ export function InvoiceListPage({
               <div className="section-title">
                 {t("invoicesList.statOverdue")}
               </div>
-              <div className="mt-2 text-lg font-semibold text-slate-900">
+              <div className="mt-2 text-lg font-semibold stat-count">
                 {stats.overdue.count}
               </div>
-              <div className="text-sm text-slate-700">
+              <div className="text-sm stat-sum">
                 {t("invoicesList.statPrefix")}{" "}
                 {isDiscreteMode
                   ? t("common.discreteMask")
@@ -331,10 +331,10 @@ export function InvoiceListPage({
               <div className="section-title">
                 {t("invoicesList.statPaidYear")}
               </div>
-              <div className="mt-2 text-lg font-semibold text-slate-900">
+              <div className="mt-2 text-lg font-semibold stat-count">
                 {stats.paidYear.count}
               </div>
-              <div className="text-sm text-slate-700">
+              <div className="text-sm stat-sum">
                 {t("invoicesList.statPrefix")}{" "}
                 {isDiscreteMode
                   ? t("common.discreteMask")
@@ -348,12 +348,12 @@ export function InvoiceListPage({
           </div>
 
           <details className="panel-card mb-6">
-            <summary className="cursor-pointer text-sm font-semibold text-slate-900">
+            <summary className="cursor-pointer text-sm font-semibold filters-summary">
               {t("invoicesList.filters")} 🔎
             </summary>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <label className="flex flex-col gap-2 text-sm text-gray-700">
-                <span className="font-semibold text-slate-900">
+              <label className="flex flex-col gap-2 text-sm filters-group">
+                <span className="font-semibold filters-heading">
                   {t("invoicesList.year")}
                 </span>
                 <select
@@ -377,8 +377,8 @@ export function InvoiceListPage({
                 </select>
               </label>
 
-              <div className="flex flex-col gap-2 text-sm text-slate-700">
-                <span className="font-semibold text-slate-900">
+              <div className="flex flex-col gap-2 text-sm filters-group">
+                <span className="font-semibold filters-heading">
                   {t("invoicesList.status")}
                 </span>
                 <div className="flex flex-wrap gap-3">
@@ -407,8 +407,8 @@ export function InvoiceListPage({
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 text-sm text-slate-700">
-                <span className="font-semibold text-slate-900">
+              <div className="flex flex-col gap-2 text-sm filters-group">
+                <span className="font-semibold filters-heading">
                   {t("invoicesList.paymentType")}
                 </span>
                 <div className="flex flex-wrap gap-3">
@@ -478,7 +478,7 @@ export function InvoiceListPage({
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <div className="text-lg font-semibold text-slate-900">
+                          <div className="text-lg font-semibold invoice-row-number">
                             {invoice.invoiceNumber ??
                               t("common.placeholderDash")}
                             &nbsp;
@@ -494,11 +494,11 @@ export function InvoiceListPage({
                             )}
                           </span>
                         </div>
-                        <div className="text-sm text-slate-600">
+                        <div className="text-sm invoice-row-client">
                           {invoice.clientName ?? t("common.placeholderDash")}
                         </div>
                       </div>
-                      <div className="text-sm text-slate-600">
+                      <div className="text-sm invoice-row-date">
                         {formatDate(
                           invoice.issueDate,
                           locale,
@@ -508,7 +508,7 @@ export function InvoiceListPage({
                     </div>
                     {/* Description removed as requested */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                      <div className="text-sm font-semibold text-slate-900">
+                      <div className="text-sm font-semibold invoice-row-amount">
                         {isDiscreteMode
                           ? t("common.discreteMask")
                           : formatTotal(
