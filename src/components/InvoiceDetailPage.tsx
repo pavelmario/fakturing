@@ -567,11 +567,13 @@ export function InvoiceDetailPage({
         return;
       }
 
-      const ibanCandidate = (
-        profile?.iban ??
-        profile?.bankAccount ??
-        ""
-      ).replace(/\s/g, "");
+      // Require both IBAN and SWIFT set in settings for bank QR (non-BTC)
+      if (!profile?.iban || !profile?.swift) {
+        setQrCodeDataUrl(null);
+        return;
+      }
+
+      const ibanCandidate = (profile.iban ?? "").replace(/\s/g, "");
       if (!ibanCandidate) {
         setQrCodeDataUrl(null);
         return;
