@@ -42,6 +42,7 @@ type ClientRow = {
 type UserProfileRow = {
   id: string;
   name: string | null;
+  invoiceNamingFormat?: string | null;
   email?: string | null;
   phone?: string | null;
   addressLine1?: string | null;
@@ -372,6 +373,21 @@ export function InvoiceDetailPage({
   const invoiceRows = useQuery(invoiceQuery);
   const invoice = invoiceRows[0] ?? null;
   const invoiceNumberValue = invoice?.invoiceNumber ?? "";
+  const invoiceNumberForFileName = invoiceNumberValue || invoice?.id || "invoice";
+  const invoiceNamingFormat =
+    profile?.invoiceNamingFormat ?? "invoice-year-invoice_number";
+  const sanitizedProfileName = (profile?.name ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+  const pdfFileName =
+    invoiceNamingFormat === "name-year-invoice_number" && sanitizedProfileName
+      ? `${sanitizedProfileName}-${invoiceNumberForFileName}.pdf`
+      : t("invoiceDetail.pdfFileName", {
+          number: invoiceNumberForFileName,
+        });
   const sanitizedInvoiceNumber = invoiceNumberValue.replace(/-/g, "");
 
   const trimmedInvoiceNumber = invoiceNumber.trim();
@@ -1762,9 +1778,7 @@ export function InvoiceDetailPage({
             {pdfDocument ? (
               <PDFDownloadLink
                 document={pdfDocument}
-                fileName={t("invoiceDetail.pdfFileName", {
-                  number: invoiceNumberValue || invoice.id,
-                })}
+                fileName={pdfFileName}
                 className="btn-secondary w-full sm:w-auto text-center"
               >
                 {({ loading }) =>
