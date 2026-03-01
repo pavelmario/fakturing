@@ -25,6 +25,7 @@ export interface UserProfile {
   bankAccount?: string;
   swift?: string;
   iban?: string;
+  invoiceNamingFormat?: string;
   // UI language preference: 'cz' or 'en'
   language?: "cz" | "en";
   // Timestamps
@@ -777,6 +778,9 @@ export function saveUserProfile(
     bankAccount: profile.bankAccount,
     swift: profile.swift,
     iban: profile.iban,
+    invoiceNamingFormat:
+      (profile as any).invoiceNamingFormat || existing?.invoiceNamingFormat ||
+      "invoice-year-invoice_number",
     language: (profile as any).language || existing?.language || "cz",
     createdAt: existing?.createdAt || now,
     updatedAt: now,
