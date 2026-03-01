@@ -679,13 +679,13 @@ export function InvoiceCreatePage() {
             </div>
             <div>
               <label htmlFor="invoicingNote" className="form-label">
-                Invoicing note
+                {t("invoiceCreate.invoicingNoteLabel")}
               </label>
               <textarea
                 id="invoicingNote"
                 value={invoicingNote}
                 onChange={(e) => setInvoicingNote(e.target.value)}
-                placeholder="Optional note to appear on invoice"
+                placeholder={t("invoiceCreate.invoicingNotePlaceholder")}
                 className="form-input"
                 rows={3}
               />

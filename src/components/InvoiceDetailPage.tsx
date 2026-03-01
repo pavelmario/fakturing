@@ -1518,14 +1518,14 @@ export function InvoiceDetailPage({
 
             <div>
               <label htmlFor="invoicingNote" className="form-label">
-                Invoicing note
+                {t("invoiceDetail.invoicingNoteLabel")}
               </label>
               <textarea
                 id="invoicingNote"
                 value={invoicingNote}
                 onChange={(e) => setInvoicingNote(e.target.value)}
                 disabled={!isEditing}
-                placeholder="Optional note to appear on invoice"
+                placeholder={t("invoiceDetail.invoicingNotePlaceholder")}
                 className="form-input disabled:bg-slate-100"
                 rows={3}
               />
