@@ -87,6 +87,7 @@ export function InvoiceCreatePage() {
   const initialPaymentDays = getParam("paymentDays") ?? "";
   const initialPurchaseOrderNumber =
     getParam("purchaseOrderNumber") ?? getParam("po") ?? "";
+  const initialInvoicingNote = getParam("invoicingNote") ?? "";
   const initialPaymentMethod = (() => {
     const raw = getParam("paymentMethod") ?? getParam("payment") ?? "";
     const value = raw ? raw.trim().toLowerCase() : "";
@@ -129,6 +130,7 @@ export function InvoiceCreatePage() {
   const [purchaseOrderNumber, setPurchaseOrderNumber] = useState(
     initialPurchaseOrderNumber,
   );
+  const [invoicingNote, setInvoicingNote] = useState(initialInvoicingNote);
   const [btcInvoice, setBtcInvoice] = useState(initialBtcInvoice);
   const [btcAddress, setBtcAddress] = useState(initialBtcAddress);
   const [isTrezorLoading, setIsTrezorLoading] = useState(false);
@@ -480,6 +482,7 @@ export function InvoiceCreatePage() {
         paymentDays: paymentDaysResult.value,
         paymentMethod,
         purchaseOrderNumber: toNullable(purchaseOrderNumber),
+        invoicingNote: toNullable(invoicingNote),
         btcInvoice: btcInvoice ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         btcAddress: toNullable(btcAddress),
         items: itemsResult.value,
@@ -511,6 +514,7 @@ export function InvoiceCreatePage() {
       setPaymentDays("14");
       setPaymentMethod("bank");
       setPurchaseOrderNumber("");
+      setInvoicingNote("");
       setBtcInvoice(false);
       setBtcAddress("");
       setItems([emptyItem()]);
@@ -672,6 +676,19 @@ export function InvoiceCreatePage() {
                   {t("invoiceCreate.paymentMethodCash")}
                 </option>
               </select>
+            </div>
+            <div>
+              <label htmlFor="invoicingNote" className="form-label">
+                Invoicing note
+              </label>
+              <textarea
+                id="invoicingNote"
+                value={invoicingNote}
+                onChange={(e) => setInvoicingNote(e.target.value)}
+                placeholder="Optional note to appear on invoice"
+                className="form-input"
+                rows={3}
+              />
             </div>
             {isPoRequired ? (
               <div>

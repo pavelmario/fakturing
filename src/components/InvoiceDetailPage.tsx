@@ -268,6 +268,11 @@ const pdfStyles = StyleSheet.create({
     width: "50%",
     paddingRight: 8,
   },
+  invoicingNote: {
+    marginTop: 12,
+    marginBottom: 8,
+    width: "100%",
+  },
   footerRight: {
     width: "50%",
     textAlign: "right",
@@ -296,6 +301,7 @@ export function InvoiceDetailPage({
   const [paymentDays, setPaymentDays] = useState("14");
   const [paymentMethod, setPaymentMethod] = useState("bank");
   const [purchaseOrderNumber, setPurchaseOrderNumber] = useState("");
+  const [invoicingNote, setInvoicingNote] = useState("");
   const [btcInvoice, setBtcInvoice] = useState(false);
   const [btcAddress, setBtcAddress] = useState("");
   const [isTrezorLoading, setIsTrezorLoading] = useState(false);
@@ -756,6 +762,12 @@ export function InvoiceDetailPage({
           </View>
         </View>
 
+        {invoice.invoicingNote && invoice.invoicingNote.trim() ? (
+          <View style={pdfStyles.invoicingNote}>
+            <Text>{invoice.invoicingNote}</Text>
+          </View>
+        ) : null}
+
         <View style={pdfStyles.tableHeader}>
           <Text style={[pdfStyles.colQty, pdfStyles.textMuted]}>
             {t("pdf.tableQty")}
@@ -949,6 +961,7 @@ export function InvoiceDetailPage({
         : "bank",
     );
     setPurchaseOrderNumber(source?.purchaseOrderNumber ?? "");
+    setInvoicingNote(source?.invoicingNote ?? "");
     setBtcInvoice(source?.btcInvoice === Evolu.sqliteTrue);
     setBtcAddress(source?.btcAddress ?? "");
     setItems(parseItems(source?.items));
@@ -1203,6 +1216,7 @@ export function InvoiceDetailPage({
         paymentDate: paymentDateValue,
         paymentDays: paymentDaysResult.value,
         paymentMethod,
+        invoicingNote: toNullable(invoicingNote),
         purchaseOrderNumber: toNullable(purchaseOrderNumber),
         btcInvoice: btcInvoice ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         btcAddress: toNullable(btcAddress),
@@ -1313,6 +1327,7 @@ export function InvoiceDetailPage({
         paymentDays: invoice.paymentDays,
         paymentMethod: invoice.paymentMethod ?? "bank",
         purchaseOrderNumber: invoice.purchaseOrderNumber,
+        invoicingNote: invoice.invoicingNote,
         btcInvoice: invoice.btcInvoice ?? Evolu.sqliteFalse,
         btcAddress: invoice.btcAddress,
         items: invoice.items ?? Evolu.Json.orThrow("[]"),
@@ -1499,6 +1514,21 @@ export function InvoiceDetailPage({
                   {t("invoiceDetail.paymentMethodCash")}
                 </option>
               </select>
+            </div>
+
+            <div>
+              <label htmlFor="invoicingNote" className="form-label">
+                Invoicing note
+              </label>
+              <textarea
+                id="invoicingNote"
+                value={invoicingNote}
+                onChange={(e) => setInvoicingNote(e.target.value)}
+                disabled={!isEditing}
+                placeholder="Optional note to appear on invoice"
+                className="form-input disabled:bg-slate-100"
+                rows={3}
+              />
             </div>
 
             {isPoRequired ? (

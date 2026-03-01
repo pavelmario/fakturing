@@ -605,6 +605,7 @@ export function SettingsPage() {
             paymentDays: paymentDaysResult.value,
             paymentMethod: toNullable(row.paymentMethod),
             purchaseOrderNumber: toNullable(row.purchaseOrderNumber),
+            invoicingNote: toNullable(row.invoicingNote),
             btcInvoice: parseCsvBoolean(row.btcInvoice)
               ? Evolu.sqliteTrue
               : Evolu.sqliteFalse,
