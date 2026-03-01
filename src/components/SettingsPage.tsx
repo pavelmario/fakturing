@@ -1172,6 +1172,9 @@ export function SettingsPage() {
                       className="form-input"
                     />
                   </div>
+                  <p className="text-sm text-gray-500 mb-3">
+                    ⚠️ {t("settings.bankQrNote")}
+                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="swift" className="form-label">
