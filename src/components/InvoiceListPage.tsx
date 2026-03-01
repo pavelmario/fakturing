@@ -349,7 +349,7 @@ export function InvoiceListPage({
 
           <details className="panel-card mb-6">
             <summary className="cursor-pointer text-sm font-semibold text-slate-900">
-              {t("invoicesList.filters")}
+              {t("invoicesList.filters")} 🔎
             </summary>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
               <label className="flex flex-col gap-2 text-sm text-gray-700">
