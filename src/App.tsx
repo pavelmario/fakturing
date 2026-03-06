@@ -52,7 +52,8 @@ function App() {
     try {
       const saved = localStorage.getItem("theme");
       if (saved === "light" || saved === "dark") return saved;
-      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+      return window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light";
     } catch {
@@ -117,7 +118,9 @@ function App() {
               <button
                 onClick={() => navigate("invoice-list", null, null)}
                 className={`tab-button ${
-                  page === "invoice-list" ? "tab-button-active" : "tab-button-inactive"
+                  page === "invoice-list"
+                    ? "tab-button-active"
+                    : "tab-button-inactive"
                 }`}
               >
                 {t("app.nav.invoices")}
@@ -135,7 +138,9 @@ function App() {
               <button
                 onClick={() => navigate("settings", null, null)}
                 className={`tab-button ${
-                  page === "settings" ? "tab-button-active" : "tab-button-inactive"
+                  page === "settings"
+                    ? "tab-button-active"
+                    : "tab-button-inactive"
                 }`}
               >
                 {t("app.nav.settings")}
@@ -144,10 +149,16 @@ function App() {
 
             <div className="ml-4">
               <button
-                aria-label={theme === "dark" ? "Switch to light" : "Switch to dark"}
-                onClick={() => setTheme((s) => (s === "dark" ? "light" : "dark"))}
+                aria-label={
+                  theme === "dark" ? "Switch to light" : "Switch to dark"
+                }
+                onClick={() =>
+                  setTheme((s) => (s === "dark" ? "light" : "dark"))
+                }
                 className="theme-toggle"
-                title={theme === "dark" ? t("app.theme.light") : t("app.theme.dark")}
+                title={
+                  theme === "dark" ? t("app.theme.light") : t("app.theme.dark")
+                }
               >
                 {theme === "dark" ? "🌙" : "☀️"}
               </button>

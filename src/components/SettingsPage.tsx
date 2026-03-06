@@ -895,10 +895,10 @@ export function SettingsPage() {
 
           {/* Relay Configuration Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+            <h2 className="settings-section-heading">
               {t("settings.relayTitle")}
             </h2>
-            <p className="text-sm text-slate-600 mb-4">
+            <p className="settings-section-description">
               {t("settings.relayDescription")}
             </p>
             <div>
@@ -929,17 +929,17 @@ export function SettingsPage() {
                       ? t("settings.relayDisconnected")
                       : t("settings.relayConnecting")}
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="settings-help-text mt-1">
                   {t("settings.relayCurrent", {
                     url: connectedRelayUrl || t("settings.relayOfflineValue"),
                   })}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="settings-help-text">
                   {t("settings.relayLastSync", {
                     time: lastSyncTime || t("settings.relayNeverSynced"),
                   })}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="settings-help-text">
                   {t("settings.relayDefault")}
                 </p>
                 <p></p>
@@ -959,10 +959,10 @@ export function SettingsPage() {
 
           {/* Mnemonic Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+            <h2 className="settings-section-heading">
               {t("settings.seedTitle")}
             </h2>
-            <p className="text-sm text-slate-600 mb-4">
+            <p className="settings-section-description">
               {t("settings.seedDescription")}
             </p>
 
@@ -1037,7 +1037,7 @@ export function SettingsPage() {
 
           {/* Profile Section */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-slate-900 mb-4">
+            <h2 className="settings-section-heading">
               {t("settings.profileTitle")}
             </h2>
 
@@ -1059,7 +1059,7 @@ export function SettingsPage() {
 
               {/* Contact Information */}
               <div className="border-t border-slate-200/70 pt-4 mt-4">
-                <h3 className="font-semibold text-slate-700 mb-3">
+                <h3 className="settings-subsection-heading">
                   {t("settings.contactTitle")}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1094,7 +1094,7 @@ export function SettingsPage() {
 
               {/* Address */}
               <div className="border-t border-slate-200/70 pt-4 mt-4">
-                <h3 className="font-semibold text-slate-700 mb-3">
+                <h3 className="settings-subsection-heading">
                   {t("settings.addressTitle")}
                 </h3>
                 <div>
@@ -1127,7 +1127,7 @@ export function SettingsPage() {
 
               {/* Company Information */}
               <div className="border-t border-slate-200/70 pt-4 mt-4">
-                <h3 className="font-semibold text-slate-700 mb-3">
+                <h3 className="settings-subsection-heading">
                   {t("settings.companyTitle")}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1147,7 +1147,7 @@ export function SettingsPage() {
                     />
                   </div>
                 </div>
-                <label className="mt-3 flex items-center gap-3 text-sm font-medium text-slate-700">
+                <label className="settings-checkbox-label-spaced">
                   <input
                     type="checkbox"
                     checked={vatPayer}
@@ -1175,7 +1175,7 @@ export function SettingsPage() {
 
               {/* Banking Information */}
               <div className="border-t border-slate-200/70 pt-4 mt-4">
-                <h3 className="font-semibold text-slate-700 mb-3">
+                <h3 className="settings-subsection-heading">
                   {t("settings.bankTitle")}
                 </h3>
                 <div className="space-y-3">
@@ -1192,7 +1192,7 @@ export function SettingsPage() {
                       className="form-input"
                     />
                   </div>
-                  <p className="text-sm text-gray-500 mb-3">
+                  <p className="settings-note-text">
                     ⚠️ {t("settings.bankQrNote")}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1227,14 +1227,14 @@ export function SettingsPage() {
               </div>
 
               <div className="border-t border-slate-200/70 pt-4 mt-4">
-                <h3 className="font-semibold text-slate-700 mb-3">
+                <h3 className="settings-subsection-heading">
                   {t("settings.footerTitle")}
                 </h3>
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <label
                       htmlFor="invoiceFooterText"
-                      className="block text-sm font-medium text-slate-700"
+                      className="settings-inline-label"
                     >
                       {t("settings.footerLabel")}
                     </label>
@@ -1248,10 +1248,10 @@ export function SettingsPage() {
                     className="form-textarea"
                   />
                   <details className="mt-3 panel-card">
-                    <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+                    <summary className="settings-summary-label">
                       {t("settings.footerExamples")}
                     </summary>
-                    <div className="mt-2 text-sm text-slate-600 space-y-2">
+                    <div className="settings-details-text">
                       <p>
                         <span className="font-semibold">
                           {t("settings.footerExampleNonVat")}
@@ -1271,7 +1271,7 @@ export function SettingsPage() {
             </div>
 
             <div className="border-t border-slate-200/70 pt-4 mt-4">
-              <h3 className="font-semibold text-slate-700 mb-3">
+              <h3 className="settings-subsection-heading">
                 {t("settings.otherTitle")}
               </h3>
               <div className="flex flex-col gap-2">
@@ -1289,7 +1289,7 @@ export function SettingsPage() {
                     <option value="en">{t("settings.languageEn")}</option>
                   </select>
                 </div>
-                <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                <label className="settings-checkbox-label">
                   <input
                     type="checkbox"
                     checked={discreteMode}
@@ -1298,7 +1298,7 @@ export function SettingsPage() {
                   />
                   {t("settings.discreteMode")}
                 </label>
-                <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
+                <label className="settings-checkbox-label">
                   <input
                     type="checkbox"
                     checked={poRequired}
@@ -1311,7 +1311,7 @@ export function SettingsPage() {
                   <label htmlFor="invoiceNamingFormat" className="form-label">
                     {t("settings.invoiceNamingFormatLabel")}
                   </label>
-                  <p className="text-xs text-slate-500 mb-2">
+                  <p className="settings-help-text-with-margin">
                     {t("settings.invoiceNamingFormatDescription")}
                   </p>
                   <select
@@ -1341,7 +1341,7 @@ export function SettingsPage() {
                   />
                 </div>
                 <details className="panel-card mt-2">
-                  <summary className="cursor-pointer text-sm font-semibold text-slate-700">
+                  <summary className="settings-summary-label">
                     {t("settings.importTitle")}
                   </summary>
                   <div className="mt-3 flex flex-col sm:flex-row gap-2">

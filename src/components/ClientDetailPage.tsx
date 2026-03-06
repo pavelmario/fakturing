@@ -191,7 +191,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 disabled={!isEditing}
-                className="form-input disabled:bg-slate-100"
+                className="form-input"
               />
             </div>
 
@@ -206,7 +206,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={!isEditing}
-                  className="form-input disabled:bg-slate-100"
+                  className="form-input"
                 />
               </div>
               <div>
@@ -219,7 +219,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={!isEditing}
-                  className="form-input disabled:bg-slate-100"
+                  className="form-input"
                 />
               </div>
             </div>
@@ -234,7 +234,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
                 value={addressLine1}
                 onChange={(e) => setAddressLine1(e.target.value)}
                 disabled={!isEditing}
-                className="form-input disabled:bg-slate-100"
+                className="form-input"
               />
             </div>
 
@@ -248,7 +248,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
                 value={addressLine2}
                 onChange={(e) => setAddressLine2(e.target.value)}
                 disabled={!isEditing}
-                className="form-input disabled:bg-slate-100"
+                className="form-input"
               />
             </div>
 
@@ -265,7 +265,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
                     setCompanyIdentificationNumber(e.target.value)
                   }
                   disabled={!isEditing}
-                  className="form-input disabled:bg-slate-100"
+                  className="form-input"
                 />
               </div>
               <div>
@@ -278,7 +278,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
                   value={vatNumber}
                   onChange={(e) => setVatNumber(e.target.value)}
                   disabled={!isEditing}
-                  className="form-input disabled:bg-slate-100"
+                  className="form-input"
                 />
               </div>
             </div>
@@ -293,7 +293,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
                 onChange={(e) => setNote(e.target.value)}
                 disabled={!isEditing}
                 rows={4}
-                className="form-textarea disabled:bg-slate-100"
+                className="form-textarea"
               />
             </div>
           </div>

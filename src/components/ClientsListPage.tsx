@@ -85,10 +85,10 @@ export function ClientsListPage({
                   className="list-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                 >
                   <div>
-                    <div className="text-lg font-semibold text-slate-900">
+                    <div className="text-lg font-semibold client-list-name">
                       {client.name ?? t("clientsList.unnamed")}
                     </div>
-                    <div className="text-sm text-slate-600 space-y-1 mt-1">
+                    <div className="text-sm client-list-contact space-y-1 mt-1">
                       <div>{client.phone || ""}</div>
                       <div>{client.email || ""}</div>
                     </div>

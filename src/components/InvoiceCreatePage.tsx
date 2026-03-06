@@ -595,7 +595,7 @@ export function InvoiceCreatePage() {
               />
               <label
                 htmlFor="btcInvoice"
-                className="text-sm font-medium text-slate-700"
+                className="text-sm font-medium invoice-btc-label"
               >
                 {t("invoiceCreate.btcInvoiceLabel")}
               </label>
@@ -845,8 +845,8 @@ export function InvoiceCreatePage() {
               </div>
             </div>
 
-            <div className="panel-card text-sm text-slate-700">
-              <span className="font-semibold text-slate-900">
+            <div className="panel-card text-sm invoice-total-text">
+              <span className="font-semibold invoice-total-label">
                 {t("invoiceCreate.totalLabel")}
               </span>{" "}
               {formatUiTotal(invoiceTotal, locale)}

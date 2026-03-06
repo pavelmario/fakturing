@@ -373,7 +373,8 @@ export function InvoiceDetailPage({
   const invoiceRows = useQuery(invoiceQuery);
   const invoice = invoiceRows[0] ?? null;
   const invoiceNumberValue = invoice?.invoiceNumber ?? "";
-  const invoiceNumberForFileName = invoiceNumberValue || invoice?.id || "invoice";
+  const invoiceNumberForFileName =
+    invoiceNumberValue || invoice?.id || "invoice";
   const invoiceNamingFormat =
     profile?.invoiceNamingFormat ?? "invoice-year-invoice_number";
   const sanitizedProfileName = (profile?.name ?? "")
@@ -1419,7 +1420,7 @@ export function InvoiceDetailPage({
                 value={invoiceNumber}
                 onChange={(e) => setInvoiceNumber(e.target.value)}
                 disabled={!isEditing}
-                className="form-input disabled:bg-slate-100"
+                className="form-input"
               />
             </div>
 
@@ -1432,7 +1433,7 @@ export function InvoiceDetailPage({
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 disabled={!isEditing}
-                className="form-select disabled:bg-slate-100"
+                className="form-select"
               >
                 <option value="">{t("invoiceDetail.clientPlaceholder")}</option>
                 {clients
@@ -1463,7 +1464,7 @@ export function InvoiceDetailPage({
                   value={issueDate}
                   onChange={(e) => setIssueDate(e.target.value)}
                   disabled={!isEditing}
-                  className="form-input disabled:bg-slate-100"
+                  className="form-input"
                 />
               </div>
               <div>
@@ -1477,7 +1478,7 @@ export function InvoiceDetailPage({
                   value={paymentDays}
                   onChange={(e) => setPaymentDays(e.target.value)}
                   disabled={!isEditing}
-                  className="form-input disabled:bg-slate-100"
+                  className="form-input"
                 />
               </div>
             </div>
@@ -1492,7 +1493,7 @@ export function InvoiceDetailPage({
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
                 disabled={!isEditing}
-                className="form-input disabled:bg-slate-100"
+                className="form-input"
               />
             </div>
 
@@ -1507,7 +1508,7 @@ export function InvoiceDetailPage({
                   value={duzp}
                   onChange={(e) => setDuzp(e.target.value)}
                   disabled={!isEditing}
-                  className="form-input disabled:bg-slate-100"
+                  className="form-input"
                 />
               </div>
             ) : null}
@@ -1521,7 +1522,7 @@ export function InvoiceDetailPage({
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 disabled={!isEditing}
-                className="form-select disabled:bg-slate-100"
+                className="form-select"
               >
                 <option value="bank">
                   {t("invoiceDetail.paymentMethodBank")}
@@ -1542,7 +1543,7 @@ export function InvoiceDetailPage({
                 onChange={(e) => setInvoicingNote(e.target.value)}
                 disabled={!isEditing}
                 placeholder={t("invoiceDetail.invoicingNotePlaceholder")}
-                className="form-input disabled:bg-slate-100"
+                className="form-input"
                 rows={3}
               />
             </div>
@@ -1559,7 +1560,7 @@ export function InvoiceDetailPage({
                   onChange={(e) => setPurchaseOrderNumber(e.target.value)}
                   disabled={!isEditing}
                   placeholder={t("invoiceDetail.purchaseOrderPlaceholder")}
-                  className="form-input disabled:bg-slate-100"
+                  className="form-input"
                 />
               </div>
             ) : null}
@@ -1575,7 +1576,7 @@ export function InvoiceDetailPage({
               />
               <label
                 htmlFor="btcInvoice"
-                className="text-sm font-medium text-slate-700"
+                className="text-sm font-semibold invoice-btc-label"
               >
                 {t("invoiceDetail.btcInvoiceLabel")}
               </label>
@@ -1610,7 +1611,7 @@ export function InvoiceDetailPage({
                   onChange={(e) => setBtcAddress(e.target.value)}
                   disabled={!isEditing}
                   placeholder={t("invoiceDetail.btcAddressPlaceholder")}
-                  className="form-input disabled:bg-slate-100"
+                  className="form-input"
                 />
                 {mempoolAddressUrl ? (
                   <a
@@ -1658,7 +1659,7 @@ export function InvoiceDetailPage({
                           updateItem(index, "description", e.target.value)
                         }
                         disabled={!isEditing}
-                        className="form-input disabled:bg-slate-100"
+                        className="form-input"
                       />
                     </div>
 
@@ -1683,7 +1684,7 @@ export function InvoiceDetailPage({
                             updateItem(index, "amount", e.target.value)
                           }
                           disabled={!isEditing}
-                          className="form-input disabled:bg-slate-100"
+                          className="form-input"
                         />
                       </div>
 
@@ -1702,7 +1703,7 @@ export function InvoiceDetailPage({
                             updateItem(index, "unit", e.target.value)
                           }
                           disabled={!isEditing}
-                          className="form-input disabled:bg-slate-100"
+                          className="form-input"
                         />
                       </div>
 
@@ -1723,7 +1724,7 @@ export function InvoiceDetailPage({
                             updateItem(index, "unitPrice", e.target.value)
                           }
                           disabled={!isEditing}
-                          className="form-input disabled:bg-slate-100"
+                          className="form-input"
                         />
                       </div>
 
@@ -1745,7 +1746,7 @@ export function InvoiceDetailPage({
                               updateItem(index, "vat", e.target.value)
                             }
                             disabled={!isEditing}
-                            className="form-input disabled:bg-slate-100"
+                            className="form-input"
                           />
                         </div>
                       ) : null}
@@ -1766,8 +1767,8 @@ export function InvoiceDetailPage({
               </div>
             </div>
 
-            <div className="panel-card text-sm text-slate-700">
-              <span className="font-semibold text-slate-900">
+            <div className="panel-card text-sm invoice-total-text">
+              <span className="font-semibold invoice-total-label">
                 {t("invoiceDetail.totalLabel")}
               </span>{" "}
               {formatUiTotal(invoiceTotal)}

@@ -4,8 +4,13 @@
 
 @layer base {
   :root {
-    font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont,
-      "Segoe UI", sans-serif;
+    font-family:
+      "Plus Jakarta Sans",
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
     line-height: 1.6;
     font-weight: 400;
     color-scheme: light;
@@ -20,7 +25,12 @@
     margin: 0;
     min-width: 320px;
     min-height: 100vh;
-    background: radial-gradient(circle at top, #e0f2fe 0%, #eef2ff 40%, #f8fafc 100%);
+    background: radial-gradient(
+      circle at top,
+      #e0f2fe 0%,
+      #eef2ff 40%,
+      #f8fafc 100%
+    );
     background-attachment: fixed;
   }
 
@@ -106,6 +116,12 @@
 
   .form-select {
     @apply w-full rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-2.5 text-slate-900 shadow-sm transition focus:border-blue-400 focus:ring-2 focus:ring-blue-400/40;
+  }
+
+  .form-input:disabled,
+  .form-textarea:disabled,
+  .form-select:disabled {
+    @apply bg-slate-100 text-slate-600;
   }
 
   .btn-primary {
@@ -197,7 +213,12 @@
   }
 
   .dark body {
-    background: radial-gradient(circle at top, #071029 0%, #031025 40%, #020617 100%);
+    background: radial-gradient(
+      circle at top,
+      #071029 0%,
+      #031025 40%,
+      #020617 100%
+    );
     color: #e6eef8;
   }
 }
@@ -240,6 +261,70 @@
     @apply text-slate-900;
   }
 
+  .invoice-btc-label {
+    @apply text-slate-700;
+  }
+
+  .invoice-total-text {
+    @apply text-slate-700;
+  }
+
+  .invoice-total-label {
+    @apply text-slate-900;
+  }
+
+  .client-list-name {
+    @apply text-slate-900;
+  }
+
+  .client-list-contact {
+    @apply text-slate-800;
+  }
+
+  .settings-section-heading {
+    @apply text-xl font-semibold text-slate-900 mb-4;
+  }
+
+  .settings-section-description {
+    @apply text-sm text-slate-700 mb-4;
+  }
+
+  .settings-subsection-heading {
+    @apply font-semibold text-slate-800 mb-3;
+  }
+
+  .settings-checkbox-label {
+    @apply flex items-center gap-3 text-sm font-medium text-slate-700;
+  }
+
+  .settings-checkbox-label-spaced {
+    @apply mt-3 flex items-center gap-3 text-sm font-medium text-slate-700;
+  }
+
+  .settings-summary-label {
+    @apply cursor-pointer text-sm font-semibold text-slate-700;
+  }
+
+  .settings-inline-label {
+    @apply block text-sm font-medium text-slate-700;
+  }
+
+  .settings-help-text {
+    @apply text-xs text-slate-600;
+  }
+
+  .settings-help-text-with-margin {
+    @apply text-xs text-slate-600 mb-2;
+  }
+
+  .settings-note-text {
+    @apply text-sm text-slate-700 mb-3;
+  }
+
+  .settings-details-text {
+    @apply mt-2 text-sm text-slate-700 space-y-2;
+  }
+
   .dark .app-nav {
     @apply border-slate-700/60 bg-slate-900/70 shadow-xl shadow-slate-900/60;
   }
@@ -269,6 +354,12 @@
   .dark .form-textarea,
   .dark .form-select {
     @apply border-slate-700/60 bg-slate-900/80 text-slate-100 focus:border-blue-300 focus:ring-2 focus:ring-blue-300/20;
+  }
+
+  .dark .form-input:disabled,
+  .dark .form-textarea:disabled,
+  .dark .form-select:disabled {
+    @apply border-slate-700/80 bg-slate-800/70 text-slate-400 cursor-not-allowed;
   }
 
   .dark .btn-secondary {
@@ -320,6 +411,58 @@
 
   .dark .invoice-row-client,
   .dark .invoice-row-date {
+    @apply text-slate-200;
+  }
+
+  .dark .invoice-btc-label,
+  .dark .invoice-total-text {
+    @apply text-slate-50;
+  }
+
+  .dark .invoice-total-label {
+    @apply text-white;
+  }
+
+  .dark .client-list-name {
+    @apply text-slate-100;
+  }
+
+  .dark .client-list-contact {
+    @apply text-slate-200;
+  }
+
+  .dark .settings-section-heading {
+    @apply text-slate-100;
+  }
+
+  .dark .settings-section-description {
+    @apply text-slate-200;
+  }
+
+  .dark .settings-subsection-heading {
+    @apply text-slate-100;
+  }
+
+  .dark .settings-checkbox-label,
+  .dark .settings-checkbox-label-spaced {
+    @apply text-slate-200;
+  }
+
+  .dark .settings-summary-label {
+    @apply text-slate-100;
+  }
+
+  .dark .settings-inline-label {
+    @apply text-slate-200;
+  }
+
+  .dark .settings-help-text,
+  .dark .settings-help-text-with-margin {
+    @apply text-slate-300;
+  }
+
+  .dark .settings-note-text,
+  .dark .settings-details-text {
     @apply text-slate-200;
   }
 
