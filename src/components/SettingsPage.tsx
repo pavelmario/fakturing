@@ -5,7 +5,12 @@ import { useQuery } from "@evolu/react";
 import { getRelayUrl, setRelayUrl as saveRelayUrl, useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
 
-export function SettingsPage() {
+type SettingsPageProps = {
+  theme: "light" | "dark";
+  onToggleTheme: () => void;
+};
+
+export function SettingsPage({ theme, onToggleTheme }: SettingsPageProps) {
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
   const currentMnemonic = owner.mnemonic ?? "";
@@ -1288,6 +1293,44 @@ export function SettingsPage() {
                     <option value="cz">{t("settings.languageCz")}</option>
                     <option value="en">{t("settings.languageEn")}</option>
                   </select>
+                </div>
+                <div>
+                  <label className="form-label">
+                    {t("settings.themeLabel")}
+                  </label>
+                  <div className="mt-1 flex items-center gap-3">
+                    <span aria-hidden="true" className="text-lg leading-none">
+                      ☀️
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={theme === "dark"}
+                      aria-label={
+                        theme === "dark"
+                          ? t("settings.themeSwitchToLight")
+                          : t("settings.themeSwitchToDark")
+                      }
+                      onClick={onToggleTheme}
+                      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+                        theme === "dark" ? "bg-blue-600" : "bg-slate-300"
+                      }`}
+                      title={
+                        theme === "dark"
+                          ? t("settings.themeSwitchToLight")
+                          : t("settings.themeSwitchToDark")
+                      }
+                    >
+                      <span
+                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+                          theme === "dark" ? "translate-x-5" : "translate-x-0.5"
+                        }`}
+                      />
+                    </button>
+                    <span aria-hidden="true" className="text-lg leading-none">
+                      🌙
+                    </span>
+                  </div>
                 </div>
                 <label className="settings-checkbox-label">
                   <input

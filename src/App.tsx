@@ -146,29 +146,17 @@ function App() {
                 {t("app.nav.settings")}
               </button>
             </div>
-
-            <div className="ml-4">
-              <button
-                aria-label={
-                  theme === "dark" ? "Switch to light" : "Switch to dark"
-                }
-                onClick={() =>
-                  setTheme((s) => (s === "dark" ? "light" : "dark"))
-                }
-                className="theme-toggle"
-                title={
-                  theme === "dark" ? t("app.theme.light") : t("app.theme.dark")
-                }
-              >
-                {theme === "dark" ? "🌙" : "☀️"}
-              </button>
-            </div>
           </div>
         </div>
 
         <div className="mt-6">
           {page === "settings" ? (
-            <SettingsPage />
+            <SettingsPage
+              theme={theme}
+              onToggleTheme={() =>
+                setTheme((current) => (current === "dark" ? "light" : "dark"))
+              }
+            />
           ) : page === "clients" ? (
             <ClientsPage />
           ) : page === "invoice-create" ? (
