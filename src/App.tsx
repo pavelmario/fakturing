@@ -113,7 +113,7 @@ function App() {
     <Suspense fallback={<div className="app-loading">{t("app.loading")}</div>}>
       <div className="app-shell">
         <div className="app-nav">
-          <div className="app-tabs flex items-center justify-between">
+          <div className="app-tabs flex items-center justify-center">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate("invoice-list", null, null)}
