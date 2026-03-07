@@ -24,6 +24,9 @@ function App() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(
     null,
   );
+  const [invoiceCreatedMessage, setInvoiceCreatedMessage] = useState<
+    string | null
+  >(null);
 
   const navigate = (
     newPage: typeof page,
@@ -31,6 +34,9 @@ function App() {
     invoiceId: string | null = null,
     replace = false,
   ) => {
+    if (newPage !== "invoice-list") {
+      setInvoiceCreatedMessage(null);
+    }
     setPage(newPage);
     setSelectedClientId(clientId);
     setSelectedInvoiceId(invoiceId);
@@ -70,6 +76,16 @@ function App() {
       /* ignore */
     }
   }, [theme]);
+
+  useEffect(() => {
+    if (!invoiceCreatedMessage) return;
+
+    const timeout = window.setTimeout(() => {
+      setInvoiceCreatedMessage(null);
+    }, 3000);
+
+    return () => window.clearTimeout(timeout);
+  }, [invoiceCreatedMessage]);
 
   // Restore state from history on mount and listen for back/forward
   useEffect(() => {
@@ -112,41 +128,51 @@ function App() {
   return (
     <Suspense fallback={<div className="app-loading">{t("app.loading")}</div>}>
       <div className="app-shell">
-        <div className="app-nav">
-          <div className="app-tabs flex items-center justify-center">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate("invoice-list", null, null)}
-                className={`tab-button ${
-                  page === "invoice-list"
-                    ? "tab-button-active"
-                    : "tab-button-inactive"
-                }`}
-              >
-                {t("app.nav.invoices")}
-              </button>
-              <button
-                onClick={() => navigate("clients-list", null, null)}
-                className={`tab-button ${
-                  page === "clients-list" || page === "client-detail"
-                    ? "tab-button-active"
-                    : "tab-button-inactive"
-                }`}
-              >
-                {t("app.nav.clients")}
-              </button>
-              <button
-                onClick={() => navigate("settings", null, null)}
-                className={`tab-button ${
-                  page === "settings"
-                    ? "tab-button-active"
-                    : "tab-button-inactive"
-                }`}
-              >
-                {t("app.nav.settings")}
-              </button>
+        <div className="relative">
+          <div className="app-nav">
+            <div className="app-tabs flex items-center justify-center">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => navigate("invoice-list", null, null)}
+                  className={`tab-button ${
+                    page === "invoice-list"
+                      ? "tab-button-active"
+                      : "tab-button-inactive"
+                  }`}
+                >
+                  {t("app.nav.invoices")}
+                </button>
+                <button
+                  onClick={() => navigate("clients-list", null, null)}
+                  className={`tab-button ${
+                    page === "clients-list" || page === "client-detail"
+                      ? "tab-button-active"
+                      : "tab-button-inactive"
+                  }`}
+                >
+                  {t("app.nav.clients")}
+                </button>
+                <button
+                  onClick={() => navigate("settings", null, null)}
+                  className={`tab-button ${
+                    page === "settings"
+                      ? "tab-button-active"
+                      : "tab-button-inactive"
+                  }`}
+                >
+                  {t("app.nav.settings")}
+                </button>
+              </div>
             </div>
           </div>
+
+          {invoiceCreatedMessage ? (
+            <div className="absolute inset-x-0 top-full z-20 mt-4">
+              <div className="mx-auto max-w-4xl">
+                <div className="alert-success">{invoiceCreatedMessage}</div>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-6">
@@ -160,7 +186,13 @@ function App() {
           ) : page === "clients" ? (
             <ClientsPage />
           ) : page === "invoice-create" ? (
-            <InvoiceCreatePage />
+            <InvoiceCreatePage
+              onInvoiceCreated={() => {
+                setInvoiceCreatedMessage(t("alerts.invoiceSaved"));
+                navigate("invoice-list", null, null);
+                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+              }}
+            />
           ) : page === "invoice-list" ? (
             <InvoiceListPage
               onCreateInvoice={() => navigate("invoice-create", null, null)}

@@ -18,6 +18,10 @@ type InvoiceNumberRow = {
   invoiceNumber: string | null;
 };
 
+type InvoiceCreatePageProps = {
+  onInvoiceCreated: () => void;
+};
+
 const emptyItem = (): InvoiceItemForm => ({
   amount: "",
   unit: "",
@@ -72,7 +76,7 @@ const formatUiTotal = (value: number, locale: string) =>
     maximumFractionDigits: 2,
   }).format(value);
 
-export function InvoiceCreatePage() {
+export function InvoiceCreatePage({ onInvoiceCreated }: InvoiceCreatePageProps) {
   const { t, locale } = useI18n();
   const searchParams =
     typeof window === "undefined"
@@ -136,7 +140,6 @@ export function InvoiceCreatePage() {
   const [isTrezorLoading, setIsTrezorLoading] = useState(false);
   const [items, setItems] = useState<InvoiceItemForm[]>(initialItems);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const trezorInitializedRef = useRef(false);
 
   const clientsQuery = useMemo(
@@ -397,8 +400,6 @@ export function InvoiceCreatePage() {
   };
 
   const handleSave = async () => {
-    setSaveMessage(null);
-
     if (!trimmedInvoiceNumber) {
       alert(t("alerts.invoiceNumberRequired"));
       return;
@@ -507,17 +508,7 @@ export function InvoiceCreatePage() {
         return;
       }
 
-      setSaveMessage(t("alerts.invoiceSaved"));
-      setInvoiceNumber("");
-      setClientName("");
-      setIssueDate("");
-      setPaymentDays("14");
-      setPaymentMethod("bank");
-      setPurchaseOrderNumber("");
-      setInvoicingNote("");
-      setBtcInvoice(false);
-      setBtcAddress("");
-      setItems([emptyItem()]);
+      onInvoiceCreated();
     } catch (error) {
       console.error("Error saving invoice:", error);
       alert(t("alerts.invoiceSaveFailed"));
@@ -534,10 +525,6 @@ export function InvoiceCreatePage() {
             <p className="section-title">{t("invoiceCreate.sectionTitle")}</p>
             <h1 className="page-title">{t("invoiceCreate.title")}</h1>
           </div>
-
-          {saveMessage ? (
-            <div className="mb-6 alert-success">{saveMessage}</div>
-          ) : null}
 
           <div className="space-y-4">
             <div>
