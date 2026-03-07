@@ -7,11 +7,16 @@ import { useI18n } from "../i18n";
 type ClientDetailPageProps = {
   clientId: string;
   onBack: () => void;
+  onClientDeleted: () => void;
 };
 
 const ClientId = Evolu.id("Client");
 
-export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
+export function ClientDetailPage({
+  clientId,
+  onBack,
+  onClientDeleted,
+}: ClientDetailPageProps) {
   const { t } = useI18n();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
@@ -138,7 +143,7 @@ export function ClientDetailPage({ clientId, onBack }: ClientDetailPageProps) {
         alert(t("alerts.clientDeleteFailed"));
         return;
       }
-      onBack();
+      onClientDeleted();
     } catch (error) {
       console.error("Error deleting client:", error);
       alert(t("alerts.clientDeleteFailed"));

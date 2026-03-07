@@ -225,6 +225,11 @@ function App() {
             <ClientDetailPage
               clientId={selectedClientId}
               onBack={() => navigate("clients-list", null, null)}
+              onClientDeleted={() => {
+                setFlashMessage(t("alerts.clientDeleted"));
+                navigate("clients-list", null, null);
+                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+              }}
             />
           ) : (
             <ClientsListPage
