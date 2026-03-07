@@ -180,6 +180,10 @@ function App() {
               onToggleTheme={() =>
                 setTheme((current) => (current === "dark" ? "light" : "dark"))
               }
+              onSettingsSaved={() => {
+                navigate("invoice-list", null, null);
+                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+              }}
             />
           ) : page === "clients" ? (
             <ClientsPage

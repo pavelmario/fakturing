@@ -8,9 +8,14 @@ import { useI18n } from "../i18n";
 type SettingsPageProps = {
   theme: "light" | "dark";
   onToggleTheme: () => void;
+  onSettingsSaved: () => void;
 };
 
-export function SettingsPage({ theme, onToggleTheme }: SettingsPageProps) {
+export function SettingsPage({
+  theme,
+  onToggleTheme,
+  onSettingsSaved,
+}: SettingsPageProps) {
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
   const currentMnemonic = owner.mnemonic ?? "";
@@ -717,6 +722,7 @@ export function SettingsPage({ theme, onToggleTheme }: SettingsPageProps) {
       }
 
       alert(t("alerts.settingsSaved"));
+      onSettingsSaved();
     } catch (error) {
       console.error("Error saving settings:", error);
       alert(t("alerts.settingsSaveFailed"));
