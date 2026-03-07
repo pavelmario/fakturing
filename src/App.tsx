@@ -126,7 +126,7 @@ function App() {
   return (
     <Suspense fallback={<div className="app-loading">{t("app.loading")}</div>}>
       <div className="app-shell">
-        <div className="relative">
+        <div className="fixed inset-x-0 top-4 z-20 px-4 sm:px-6">
           <div className="app-nav">
             <div className="app-tabs flex items-center justify-center">
               <div className="flex items-center gap-2">
@@ -173,7 +173,7 @@ function App() {
           ) : null}
         </div>
 
-        <div className="mt-6">
+        <div className="mt-28">
           {page === "settings" ? (
             <SettingsPage
               theme={theme}
