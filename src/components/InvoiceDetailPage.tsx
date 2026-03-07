@@ -62,6 +62,7 @@ type InvoiceDetailPageProps = {
   invoiceId: string;
   onBack: () => void;
   onInvoiceDeleted: () => void;
+  onInvoiceDuplicated: () => void;
 };
 
 const InvoiceId = Evolu.id("Invoice");
@@ -285,6 +286,7 @@ export function InvoiceDetailPage({
   invoiceId,
   onBack,
   onInvoiceDeleted,
+  onInvoiceDuplicated,
 }: InvoiceDetailPageProps) {
   const { t, locale } = useI18n();
   const evolu = useEvolu();
@@ -1369,7 +1371,7 @@ export function InvoiceDetailPage({
         return;
       }
 
-      setSaveMessage(t("alerts.invoiceDuplicated"));
+      onInvoiceDuplicated();
     } catch (error) {
       console.error("Error duplicating invoice:", error);
       alert(t("alerts.invoiceDuplicateFailed"));

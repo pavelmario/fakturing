@@ -217,6 +217,11 @@ function App() {
                 navigate("invoice-list", null, null);
                 window.scrollTo({ top: 0, left: 0, behavior: "auto" });
               }}
+              onInvoiceDuplicated={() => {
+                setFlashMessage(t("alerts.invoiceDuplicated"));
+                navigate("invoice-list", null, null);
+                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+              }}
             />
           ) : page === "clients-list" ? (
             <ClientsListPage
