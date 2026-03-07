@@ -3,9 +3,9 @@
     "app": {
       "loading": "Načítání...",
       "nav": {
-        "invoices": "Faktury",
-        "clients": "Klienti",
-        "settings": "Nastavení"
+        "invoices": "🧾 Faktury",
+        "clients": "👤 Klienti",
+        "settings": "⚙️ Nastavení"
       },
       "donate": {
         "title": "Donate address"
@@ -360,9 +360,9 @@
     "app": {
       "loading": "Loading...",
       "nav": {
-        "invoices": "Invoices",
-        "clients": "Clients",
-        "settings": "Settings"
+        "invoices": "🧾 Invoices",
+        "clients": "👤 Clients",
+        "settings": "⚙️ Settings"
       },
       "donate": {
         "title": "Donate address"
