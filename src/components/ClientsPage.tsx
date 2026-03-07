@@ -3,6 +3,10 @@ import * as Evolu from "@evolu/common";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
 
+type ClientsPageProps = {
+  onClientCreated: () => void;
+};
+
 type AresSidlo = {
   textovaAdresa?: string | null;
   ulice?: string | null;
@@ -54,7 +58,7 @@ const formatAresAddressLines = (sidlo?: AresSidlo | null) => {
   return { line1, line2 };
 };
 
-export function ClientsPage() {
+export function ClientsPage({ onClientCreated }: ClientsPageProps) {
   const { t } = useI18n();
   const evolu = useEvolu();
 
@@ -69,7 +73,6 @@ export function ClientsPage() {
   const [note, setNote] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isAresLoading, setIsAresLoading] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const toNullable = (value: string) => {
     const trimmed = value.trim();
@@ -77,8 +80,6 @@ export function ClientsPage() {
   };
 
   const handleSave = async () => {
-    setSaveMessage(null);
-
     if (!name.trim()) {
       alert(t("alerts.clientNameRequired"));
       return;
@@ -104,15 +105,7 @@ export function ClientsPage() {
         return;
       }
 
-      setSaveMessage(t("alerts.clientSaved"));
-      setName("");
-      setEmail("");
-      setPhone("");
-      setAddressLine1("");
-      setAddressLine2("");
-      setCompanyIdentificationNumber("");
-      setVatNumber("");
-      setNote("");
+      onClientCreated();
     } catch (error) {
       console.error("Error saving client:", error);
       alert(t("alerts.clientSaveFailed"));
@@ -176,10 +169,6 @@ export function ClientsPage() {
             <p className="section-title">{t("clientsForm.sectionTitle")}</p>
             <h1 className="page-title">{t("clientsForm.title")}</h1>
           </div>
-
-          {saveMessage ? (
-            <div className="mb-6 alert-success">{saveMessage}</div>
-          ) : null}
 
           <div className="space-y-4">
             <div>

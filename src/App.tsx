@@ -24,9 +24,7 @@ function App() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(
     null,
   );
-  const [invoiceCreatedMessage, setInvoiceCreatedMessage] = useState<
-    string | null
-  >(null);
+  const [flashMessage, setFlashMessage] = useState<string | null>(null);
 
   const navigate = (
     newPage: typeof page,
@@ -34,8 +32,8 @@ function App() {
     invoiceId: string | null = null,
     replace = false,
   ) => {
-    if (newPage !== "invoice-list") {
-      setInvoiceCreatedMessage(null);
+    if (newPage !== "invoice-list" && newPage !== "clients-list") {
+      setFlashMessage(null);
     }
     setPage(newPage);
     setSelectedClientId(clientId);
@@ -78,14 +76,14 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    if (!invoiceCreatedMessage) return;
+    if (!flashMessage) return;
 
     const timeout = window.setTimeout(() => {
-      setInvoiceCreatedMessage(null);
+      setFlashMessage(null);
     }, 3000);
 
     return () => window.clearTimeout(timeout);
-  }, [invoiceCreatedMessage]);
+  }, [flashMessage]);
 
   // Restore state from history on mount and listen for back/forward
   useEffect(() => {
@@ -166,10 +164,10 @@ function App() {
             </div>
           </div>
 
-          {invoiceCreatedMessage ? (
+          {flashMessage ? (
             <div className="absolute inset-x-0 top-full z-20 mt-4">
               <div className="mx-auto max-w-4xl">
-                <div className="alert-success">{invoiceCreatedMessage}</div>
+                <div className="alert-success">{flashMessage}</div>
               </div>
             </div>
           ) : null}
@@ -184,11 +182,17 @@ function App() {
               }
             />
           ) : page === "clients" ? (
-            <ClientsPage />
+            <ClientsPage
+              onClientCreated={() => {
+                setFlashMessage(t("alerts.clientSaved"));
+                navigate("clients-list", null, null);
+                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+              }}
+            />
           ) : page === "invoice-create" ? (
             <InvoiceCreatePage
               onInvoiceCreated={() => {
-                setInvoiceCreatedMessage(t("alerts.invoiceSaved"));
+                setFlashMessage(t("alerts.invoiceSaved"));
                 navigate("invoice-list", null, null);
                 window.scrollTo({ top: 0, left: 0, behavior: "auto" });
               }}
@@ -205,7 +209,7 @@ function App() {
               invoiceId={selectedInvoiceId}
               onBack={() => navigate("invoice-list", null, null)}
               onInvoiceDeleted={() => {
-                setInvoiceCreatedMessage(t("alerts.invoiceDeleted"));
+                setFlashMessage(t("alerts.invoiceDeleted"));
                 navigate("invoice-list", null, null);
                 window.scrollTo({ top: 0, left: 0, behavior: "auto" });
               }}
