@@ -76,7 +76,9 @@ const formatUiTotal = (value: number, locale: string) =>
     maximumFractionDigits: 2,
   }).format(value);
 
-export function InvoiceCreatePage({ onInvoiceCreated }: InvoiceCreatePageProps) {
+export function InvoiceCreatePage({
+  onInvoiceCreated,
+}: InvoiceCreatePageProps) {
   const { t, locale } = useI18n();
   const searchParams =
     typeof window === "undefined"

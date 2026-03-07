@@ -320,7 +320,8 @@
       "todayDateFailed": "Chyba při získání dnešního data",
       "invoiceDuplicateValidation": "Chyba validace při duplikaci faktury",
       "invoiceDuplicateFailed": "Chyba při duplikaci faktury",
-      "invoiceDuplicated": "Faktura byla úspěšně duplikována!"
+      "invoiceDuplicated": "Faktura byla úspěšně duplikována!",
+      "invoiceDeleted": "Faktura byla úspěšně smazána."
     },
     "pdf": {
       "invoiceTitle": "Faktura {number}",
@@ -675,7 +676,8 @@
       "todayDateFailed": "Error getting today’s date",
       "invoiceDuplicateValidation": "Validation error while duplicating invoice",
       "invoiceDuplicateFailed": "Error duplicating invoice",
-      "invoiceDuplicated": "Invoice duplicated successfully!"
+      "invoiceDuplicated": "Invoice duplicated successfully!",
+      "invoiceDeleted": "Invoice deleted successfully."
     },
     "pdf": {
       "invoiceTitle": "Invoice {number}",

@@ -61,6 +61,7 @@ type UserProfileRow = {
 type InvoiceDetailPageProps = {
   invoiceId: string;
   onBack: () => void;
+  onInvoiceDeleted: () => void;
 };
 
 const InvoiceId = Evolu.id("Invoice");
@@ -283,6 +284,7 @@ const pdfStyles = StyleSheet.create({
 export function InvoiceDetailPage({
   invoiceId,
   onBack,
+  onInvoiceDeleted,
 }: InvoiceDetailPageProps) {
   const { t, locale } = useI18n();
   const evolu = useEvolu();
@@ -1297,7 +1299,7 @@ export function InvoiceDetailPage({
         alert(t("alerts.invoiceDeleteFailed"));
         return;
       }
-      onBack();
+      onInvoiceDeleted();
     } catch (error) {
       console.error("Error deleting invoice:", error);
       alert(t("alerts.invoiceDeleteFailed"));
