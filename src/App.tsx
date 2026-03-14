@@ -2,6 +2,9 @@ import { Suspense, useState, useEffect } from "react";
 import { ClientDetailPage } from "./components/ClientDetailPage";
 import { ClientsListPage } from "./components/ClientsListPage";
 import { ClientsPage } from "./components/ClientsPage";
+import { ExpenseCreatePage } from "./components/ExpenseCreatePage";
+import { ExpenseDetailPage } from "./components/ExpenseDetailPage";
+import { ExpensesListPage } from "./components/ExpensesListPage";
 import { InvoiceCreatePage } from "./components/InvoiceCreatePage";
 import { InvoiceDetailPage } from "./components/InvoiceDetailPage";
 import { InvoiceListPage } from "./components/InvoiceListPage";
@@ -17,12 +20,18 @@ function App() {
     | "clients"
     | "clients-list"
     | "client-detail"
+    | "expense-create"
+    | "expenses-list"
+    | "expense-detail"
     | "invoice-create"
     | "invoice-list"
     | "invoice-detail"
   >("invoice-list");
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(
+    null,
+  );
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(
     null,
   );
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
@@ -32,17 +41,24 @@ function App() {
     clientId: string | null = null,
     invoiceId: string | null = null,
     replace = false,
+    expenseId: string | null = null,
   ) => {
-    if (newPage !== "invoice-list" && newPage !== "clients-list") {
+    if (
+      newPage !== "invoice-list" &&
+      newPage !== "clients-list" &&
+      newPage !== "expenses-list"
+    ) {
       setFlashMessage(null);
     }
     setPage(newPage);
     setSelectedClientId(clientId);
     setSelectedInvoiceId(invoiceId);
+    setSelectedExpenseId(expenseId);
     const state = {
       page: newPage,
       selectedClientId: clientId,
       selectedInvoiceId: invoiceId,
+      selectedExpenseId: expenseId,
     };
     try {
       if (replace) window.history.replaceState(state, "");
@@ -92,14 +108,16 @@ function App() {
       page?: typeof page;
       selectedClientId?: string | null;
       selectedInvoiceId?: string | null;
+      selectedExpenseId?: string | null;
     } | null;
     if (s && s.page) {
       setPage(s.page as any);
       setSelectedClientId(s.selectedClientId ?? null);
       setSelectedInvoiceId(s.selectedInvoiceId ?? null);
+      setSelectedExpenseId(s.selectedExpenseId ?? null);
     } else {
       // ensure there's at least one history entry representing current app state
-      navigate(page, selectedClientId, selectedInvoiceId, true);
+      navigate(page, selectedClientId, selectedInvoiceId, true, selectedExpenseId);
     }
 
     const onPop = (ev: PopStateEvent) => {
@@ -107,15 +125,18 @@ function App() {
         page?: typeof page;
         selectedClientId?: string | null;
         selectedInvoiceId?: string | null;
+        selectedExpenseId?: string | null;
       } | null;
       if (state && state.page) {
         setPage(state.page as any);
         setSelectedClientId(state.selectedClientId ?? null);
         setSelectedInvoiceId(state.selectedInvoiceId ?? null);
+        setSelectedExpenseId(state.selectedExpenseId ?? null);
       } else {
         setPage("invoice-list");
         setSelectedClientId(null);
         setSelectedInvoiceId(null);
+        setSelectedExpenseId(null);
       }
     };
 
@@ -150,6 +171,18 @@ function App() {
                   }`}
                 >
                   {t("app.nav.clients")}
+                </button>
+                <button
+                  onClick={() => navigate("expenses-list", null, null)}
+                  className={`tab-button ${
+                    page === "expenses-list" ||
+                    page === "expense-create" ||
+                    page === "expense-detail"
+                      ? "tab-button-active"
+                      : "tab-button-inactive"
+                  }`}
+                >
+                  {t("app.nav.expenses")}
                 </button>
                 <button
                   onClick={() => navigate("settings", null, null)}
@@ -202,11 +235,26 @@ function App() {
                 window.scrollTo({ top: 0, left: 0, behavior: "auto" });
               }}
             />
+          ) : page === "expense-create" ? (
+            <ExpenseCreatePage
+              onExpenseCreated={() => {
+                setFlashMessage(t("alerts.expenseCreated"));
+                navigate("expenses-list", null, null);
+                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+              }}
+            />
           ) : page === "invoice-list" ? (
             <InvoiceListPage
               onCreateInvoice={() => navigate("invoice-create", null, null)}
               onViewDetails={(invoiceId) =>
                 navigate("invoice-detail", null, invoiceId)
+              }
+            />
+          ) : page === "expenses-list" ? (
+            <ExpensesListPage
+              onCreateExpense={() => navigate("expense-create", null, null)}
+              onViewDetails={(expenseId) =>
+                navigate("expense-detail", null, null, false, expenseId)
               }
             />
           ) : page === "invoice-detail" && selectedInvoiceId ? (
@@ -223,6 +271,23 @@ function App() {
                 navigate("invoice-list", null, null);
                 window.scrollTo({ top: 0, left: 0, behavior: "auto" });
               }}
+            />
+          ) : page === "expense-detail" && selectedExpenseId ? (
+            <ExpenseDetailPage
+              expenseId={selectedExpenseId}
+              onBack={() => navigate("expenses-list", null, null)}
+              onExpenseDeleted={() => {
+                setFlashMessage(t("alerts.expenseDeleted"));
+                navigate("expenses-list", null, null);
+                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+              }}
+            />
+          ) : page === "expense-detail" ? (
+            <ExpensesListPage
+              onCreateExpense={() => navigate("expense-create", null, null)}
+              onViewDetails={(expenseId) =>
+                navigate("expense-detail", null, null, false, expenseId)
+              }
             />
           ) : page === "clients-list" ? (
             <ClientsListPage

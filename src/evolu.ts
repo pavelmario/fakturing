@@ -71,6 +71,15 @@ export const Schema = {
     items: Evolu.Json,
     deleted: Evolu.nullOr(Evolu.SqliteBoolean),
   },
+  expense: {
+    id: Evolu.id("Expense"),
+    amount: Evolu.NonNegativeNumber,
+    expenseType: Evolu.NonEmptyTrimmedString100,
+    paymentMethod: Evolu.NonEmptyTrimmedString100,
+    receiptNumber: Evolu.nullOr(Evolu.TrimmedString100),
+    expenseDate: Evolu.DateIso,
+    deleted: Evolu.nullOr(Evolu.SqliteBoolean),
+  },
 };
 
 export type UserProfileInput = {
