@@ -5,6 +5,7 @@
       "nav": {
         "invoices": "🧾 Faktury",
         "clients": "👤 Klienti",
+        "expenses": "💸 Náklady",
         "settings": "⚙️ Nastavení"
       },
       "donate": {
@@ -88,6 +89,49 @@
       "currencyFallback": "0,00 Kč",
       "alertPaymentDateError": "Nelze nastavit datum platby",
       "alertPaymentUpdateError": "Chyba při aktualizaci data platby"
+    },
+    "expenses": {
+      "paymentMethodCash": "hotově",
+      "paymentMethodBank": "převodem",
+      "paymentMethodCard": "kartou"
+    },
+    "expensesList": {
+      "sectionTitle": "Přehled",
+      "title": "Náklady",
+      "create": "Přidat náklad",
+      "filters": "Filtry",
+      "searchLabel": "Hledání",
+      "searchPlaceholder": "Hledat podle typu, čísla dokladu nebo způsobu platby",
+      "typeFilterLabel": "Typ nákladu",
+      "typeFilterAll": "všechny typy",
+      "paymentMethodFilterLabel": "Způsob platby",
+      "paymentMethodFilterAll": "všechny způsoby",
+      "emptyNone": "Zatím nebyl přidán žádný náklad.",
+      "emptyNoMatch": "Žádný náklad neodpovídá filtrům.",
+      "detail": "Detail nákladu",
+      "unknownType": "Neznámý typ"
+    },
+    "expenseCreate": {
+      "sectionTitle": "Nový",
+      "title": "Náklad",
+      "amountLabel": "Částka *",
+      "expenseTypeLabel": "Typ nákladu *",
+      "paymentMethodLabel": "Způsob platby",
+      "receiptNumberLabel": "Číslo dokladu",
+      "expenseDateLabel": "Datum nákladu *",
+      "save": "Uložit náklad",
+      "saving": "Ukládám..."
+    },
+    "expenseDetail": {
+      "title": "Detail nákladu",
+      "notFound": "Náklad nenalezen.",
+      "amountLabel": "Částka *",
+      "expenseTypeLabel": "Typ nákladu *",
+      "paymentMethodLabel": "Způsob platby",
+      "receiptNumberLabel": "Číslo dokladu",
+      "expenseDateLabel": "Datum nákladu *",
+      "deleteConfirm": "Smazat tento náklad? Tuto akci nelze vrátit zpět.",
+      "deleting": "Mažu..."
     },
     "invoiceCreate": {
       "sectionTitle": "Nová",
@@ -322,7 +366,17 @@
       "invoiceDuplicateValidation": "Chyba validace při duplikaci faktury",
       "invoiceDuplicateFailed": "Chyba při duplikaci faktury",
       "invoiceDuplicated": "Faktura byla úspěšně duplikována!",
-      "invoiceDeleted": "Faktura byla úspěšně smazána."
+      "invoiceDeleted": "Faktura byla úspěšně smazána.",
+      "expenseTypeRequired": "Vyplňte typ nákladu",
+      "expenseDateRequired": "Vyplňte datum nákladu",
+      "expenseAmountInvalid": "Částka nákladu musí být nezáporné číslo",
+      "expenseDateInvalid": "Neplatné datum nákladu",
+      "expenseSaveValidation": "Chyba validace při ukládání nákladu",
+      "expenseSaveFailed": "Chyba při ukládání nákladu",
+      "expenseDeleteFailed": "Chyba při mazání nákladu",
+      "expenseCreated": "Náklad byl úspěšně uložen!",
+      "expenseUpdated": "Náklad byl úspěšně aktualizován!",
+      "expenseDeleted": "Náklad byl úspěšně smazán."
     },
     "pdf": {
       "invoiceTitle": "Faktura {number}",
@@ -362,6 +416,7 @@
       "nav": {
         "invoices": "🧾 Invoices",
         "clients": "👤 Clients",
+        "expenses": "💸 Expenses",
         "settings": "⚙️ Settings"
       },
       "donate": {
@@ -445,6 +500,49 @@
       "currencyFallback": "CZK 0.00",
       "alertPaymentDateError": "Unable to set payment date",
       "alertPaymentUpdateError": "Error updating payment date"
+    },
+    "expenses": {
+      "paymentMethodCash": "cash",
+      "paymentMethodBank": "bank transfer",
+      "paymentMethodCard": "card"
+    },
+    "expensesList": {
+      "sectionTitle": "Overview",
+      "title": "Expenses",
+      "create": "Add expense",
+      "filters": "Filters",
+      "searchLabel": "Search",
+      "searchPlaceholder": "Search by type, receipt number, or payment method",
+      "typeFilterLabel": "Expense type",
+      "typeFilterAll": "all types",
+      "paymentMethodFilterLabel": "Payment method",
+      "paymentMethodFilterAll": "all methods",
+      "emptyNone": "No expenses have been added yet.",
+      "emptyNoMatch": "No expenses match the selected filters.",
+      "detail": "Expense detail",
+      "unknownType": "Unknown type"
+    },
+    "expenseCreate": {
+      "sectionTitle": "New",
+      "title": "Expense",
+      "amountLabel": "Amount *",
+      "expenseTypeLabel": "Expense type *",
+      "paymentMethodLabel": "Payment method",
+      "receiptNumberLabel": "Receipt number",
+      "expenseDateLabel": "Expense date *",
+      "save": "Save expense",
+      "saving": "Saving..."
+    },
+    "expenseDetail": {
+      "title": "Expense detail",
+      "notFound": "Expense not found.",
+      "amountLabel": "Amount *",
+      "expenseTypeLabel": "Expense type *",
+      "paymentMethodLabel": "Payment method",
+      "receiptNumberLabel": "Receipt number",
+      "expenseDateLabel": "Expense date *",
+      "deleteConfirm": "Delete this expense? This action cannot be undone.",
+      "deleting": "Deleting..."
     },
     "invoiceCreate": {
       "sectionTitle": "New",
@@ -679,7 +777,17 @@
       "invoiceDuplicateValidation": "Validation error while duplicating invoice",
       "invoiceDuplicateFailed": "Error duplicating invoice",
       "invoiceDuplicated": "Invoice duplicated successfully!",
-      "invoiceDeleted": "Invoice deleted successfully."
+      "invoiceDeleted": "Invoice deleted successfully.",
+      "expenseTypeRequired": "Enter the expense type",
+      "expenseDateRequired": "Enter the expense date",
+      "expenseAmountInvalid": "Expense amount must be a non-negative number",
+      "expenseDateInvalid": "Invalid expense date",
+      "expenseSaveValidation": "Validation error while saving expense",
+      "expenseSaveFailed": "Error saving expense",
+      "expenseDeleteFailed": "Error deleting expense",
+      "expenseCreated": "Expense saved successfully!",
+      "expenseUpdated": "Expense updated successfully!",
+      "expenseDeleted": "Expense deleted successfully."
     },
     "pdf": {
       "invoiceTitle": "Invoice {number}",
