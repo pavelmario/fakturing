@@ -6,6 +6,7 @@ import { InvoiceCreatePage } from "./components/InvoiceCreatePage";
 import { InvoiceDetailPage } from "./components/InvoiceDetailPage";
 import { InvoiceListPage } from "./components/InvoiceListPage";
 import { SettingsPage } from "./components/SettingsPage";
+import { RelayStatusIndicator } from "./components/RelayStatusIndicator";
 import { useI18n } from "./i18n";
 import "./index.css";
 
@@ -258,6 +259,7 @@ function App() {
             </small>
           </p>
         </div>
+        <RelayStatusIndicator />
       </div>
     </Suspense>
   );
