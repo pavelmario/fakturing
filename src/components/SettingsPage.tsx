@@ -35,6 +35,7 @@ export function SettingsPage({
   const [iban, setIban] = useState<string>("");
   const [invoiceFooterText, setInvoiceFooterText] = useState<string>("");
   const [discreteMode, setDiscreteMode] = useState<boolean>(false);
+  const [expenses, setExpenses] = useState<boolean>(false);
   const [language, setLanguage] = useState<"cz" | "en">("cz");
   const { t, locale } = useI18n(language);
   const [poRequired, setPoRequired] = useState<boolean>(false);
@@ -58,6 +59,7 @@ export function SettingsPage({
     iban?: string;
     invoiceFooterText?: string;
     discreteMode?: boolean;
+    expenses?: boolean;
     poRequired?: boolean;
     mempoolUrl?: string;
     invoiceNamingFormat?: string;
@@ -219,6 +221,7 @@ export function SettingsPage({
       iban: profile.iban ?? undefined,
       invoiceFooterText: profile.invoiceFooterText ?? undefined,
       discreteMode: profile.discreteMode === Evolu.sqliteTrue,
+      expenses: profile.expenses === Evolu.sqliteTrue,
       poRequired: profile.poRequired === Evolu.sqliteTrue,
       mempoolUrl: profile.mempoolUrl ?? "https://mempool.space/",
       invoiceNamingFormat:
@@ -241,6 +244,7 @@ export function SettingsPage({
     setIban(profile.iban ?? "");
     setInvoiceFooterText(profile.invoiceFooterText ?? "");
     setDiscreteMode(profile.discreteMode === Evolu.sqliteTrue);
+    setExpenses(profile.expenses === Evolu.sqliteTrue);
     setPoRequired(profile.poRequired === Evolu.sqliteTrue);
     setMempoolUrl(profile.mempoolUrl ?? "https://mempool.space/");
     setInvoiceNamingFormat(
@@ -388,6 +392,9 @@ export function SettingsPage({
           discreteMode: parseCsvBoolean(row.discreteMode)
             ? Evolu.sqliteTrue
             : Evolu.sqliteFalse,
+          expenses: parseCsvBoolean(row.expenses)
+            ? Evolu.sqliteTrue
+            : Evolu.sqliteFalse,
           poRequired: parseCsvBoolean(row.poRequired)
             ? Evolu.sqliteTrue
             : Evolu.sqliteFalse,
@@ -430,6 +437,7 @@ export function SettingsPage({
         setIban(row.iban ?? "");
         setInvoiceFooterText(row.invoiceFooterText ?? "");
         setDiscreteMode(parseCsvBoolean(row.discreteMode));
+        setExpenses(parseCsvBoolean(row.expenses));
         setPoRequired(parseCsvBoolean(row.poRequired));
         setMempoolUrl(row.mempoolUrl?.trim() || "https://mempool.space/");
         setInvoiceNamingFormat(
@@ -690,6 +698,7 @@ export function SettingsPage({
         iban: toNullable(iban),
         invoiceFooterText: toNullable(invoiceFooterText),
         discreteMode: discreteMode ? Evolu.sqliteTrue : Evolu.sqliteFalse,
+        expenses: expenses ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         poRequired: poRequired ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         mempoolUrl: toNullable(mempoolUrl),
         invoiceNamingFormat: toNullable(invoiceNamingFormat),
@@ -767,6 +776,7 @@ export function SettingsPage({
     setBankAccount("");
     setSwift("");
     setIban("");
+    setExpenses(false);
     setSavedData(null);
     setLastSyncTime("");
     alert(t("alerts.dataCleared"));
@@ -855,6 +865,7 @@ export function SettingsPage({
       "iban",
       "invoiceFooterText",
       "discreteMode",
+      "expenses",
       "language",
       "poRequired",
       "mempoolUrl",
@@ -1346,6 +1357,15 @@ export function SettingsPage({
                     className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                   />
                   {t("settings.discreteMode")}
+                </label>
+                <label className="settings-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={expenses}
+                    onChange={(e) => setExpenses(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  {t("settings.expenses")}
                 </label>
                 <label className="settings-checkbox-label">
                   <input
