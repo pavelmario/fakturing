@@ -12,10 +12,10 @@ type ExpenseDetailPageProps = {
 
 type ExpenseRow = {
   id: string;
-  amount: number | null;
-  expenseType: string | null;
-  paymentMethod: string | null;
-  receiptNumber: string | null;
+  amountWithoutVat: number | null;
+  vatRate: number | null;
+  amountWithVat: number | null;
+  description: string | null;
   expenseDate: string | null;
 };
 
@@ -31,7 +31,7 @@ export function ExpenseDetailPage({
   onBack,
   onExpenseDeleted,
 }: ExpenseDetailPageProps) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
 
@@ -42,10 +42,10 @@ export function ExpenseDetailPage({
       : Evolu.createIdFromString<"Expense">("invalid-expense-id");
   }, [expenseId]);
 
-  const [amount, setAmount] = useState("");
-  const [expenseType, setExpenseType] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [receiptNumber, setReceiptNumber] = useState("");
+  const [amountWithoutVat, setAmountWithoutVat] = useState("");
+  const [vatRate, setVatRate] = useState("");
+  const [amountWithVat, setAmountWithVat] = useState("");
+  const [description, setDescription] = useState("");
   const [expenseDate, setExpenseDate] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -71,39 +71,67 @@ export function ExpenseDetailPage({
   const expense = expenseRows[0] ?? null;
 
   const hydrateForm = (source: ExpenseRow | null) => {
-    setAmount(source?.amount != null ? String(source.amount) : "");
-    setExpenseType(source?.expenseType ?? "");
-    setPaymentMethod(source?.paymentMethod ?? "cash");
-    setReceiptNumber(source?.receiptNumber ?? "");
+    setAmountWithoutVat(
+      source?.amountWithoutVat != null ? String(source.amountWithoutVat) : "",
+    );
+    setVatRate(source?.vatRate != null ? String(source.vatRate) : "");
+    setAmountWithVat(
+      source?.amountWithVat != null ? String(source.amountWithVat) : "",
+    );
+    setDescription(source?.description ?? "");
     setExpenseDate(toDateInputValue(source?.expenseDate ?? ""));
   };
 
   useEffect(() => {
     hydrateForm(expense);
     setIsEditing(false);
-    setSaveMessage(null);
   }, [expense]);
 
-  const toNullable = (value: string) => {
-    const trimmed = value.trim();
-    return trimmed ? trimmed : null;
+  useEffect(() => {
+    setSaveMessage(null);
+  }, [expenseId]);
+
+  const recalculateAmountWithVat = (
+    nextAmountWithoutVat: string,
+    nextVatRate: string,
+  ) => {
+    if (!nextAmountWithoutVat.trim() || !nextVatRate.trim()) {
+      setAmountWithVat("");
+      return;
+    }
+
+    const amountWithoutVatNumber = Number(nextAmountWithoutVat);
+    const vatRateNumber = Number(nextVatRate);
+
+    if (
+      Number.isNaN(amountWithoutVatNumber) ||
+      Number.isNaN(vatRateNumber) ||
+      amountWithoutVatNumber < 0 ||
+      vatRateNumber < 0
+    ) {
+      setAmountWithVat("");
+      return;
+    }
+
+    const computed =
+      amountWithoutVatNumber + 0.01 * vatRateNumber * amountWithoutVatNumber;
+    setAmountWithVat(computed.toFixed(2));
   };
 
-  const formatAmount = (value: number | null) => {
-    if (value == null || !Number.isFinite(value))
-      return t("common.placeholderDash");
-    return new Intl.NumberFormat(locale, {
-      style: "currency",
-      currency: "CZK",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
+  const handleAmountWithoutVatChange = (value: string) => {
+    setAmountWithoutVat(value);
+    recalculateAmountWithVat(value, vatRate);
+  };
+
+  const handleVatRateChange = (value: string) => {
+    setVatRate(value);
+    recalculateAmountWithVat(amountWithoutVat, value);
   };
 
   const handleSave = async () => {
     if (!expense?.id) return;
 
-    if (!expenseType.trim()) {
+    if (!description.trim()) {
       alert(t("alerts.expenseTypeRequired"));
       return;
     }
@@ -113,9 +141,39 @@ export function ExpenseDetailPage({
       return;
     }
 
-    const amountNumber = Number(amount);
-    if (Number.isNaN(amountNumber) || amountNumber < 0) {
+    if (!amountWithVat.trim()) {
+      alert(t("alerts.expenseAmountWithVatRequired"));
+      return;
+    }
+
+    const amountWithoutVatNumber = amountWithoutVat.trim()
+      ? Number(amountWithoutVat)
+      : null;
+    if (
+      amountWithoutVatNumber != null &&
+      (Number.isNaN(amountWithoutVatNumber) || amountWithoutVatNumber < 0)
+    ) {
       alert(t("alerts.expenseAmountInvalid"));
+      return;
+    }
+
+    const vatRateNumber = vatRate.trim() ? Number(vatRate) : null;
+    if (
+      vatRateNumber != null &&
+      (Number.isNaN(vatRateNumber) || vatRateNumber < 0)
+    ) {
+      alert(t("alerts.expenseVatRateInvalid"));
+      return;
+    }
+
+    const amountWithVatNumber = amountWithVat.trim()
+      ? Number(amountWithVat)
+      : null;
+    if (
+      amountWithVatNumber != null &&
+      (Number.isNaN(amountWithVatNumber) || amountWithVatNumber < 0)
+    ) {
+      alert(t("alerts.expenseAmountWithVatInvalid"));
       return;
     }
 
@@ -126,10 +184,48 @@ export function ExpenseDetailPage({
       return;
     }
 
-    const amountResult = Evolu.NonNegativeNumber.from(amountNumber);
-    if (!amountResult.ok) {
-      console.error("Expense amount error:", amountResult.error);
+    const amountWithoutVatResult =
+      amountWithoutVatNumber == null
+        ? null
+        : Evolu.NonNegativeNumber.from(amountWithoutVatNumber);
+    if (
+      amountWithoutVatNumber != null &&
+      (!amountWithoutVatResult || !amountWithoutVatResult.ok)
+    ) {
+      console.error(
+        "Expense amount without VAT error:",
+        amountWithoutVatResult && amountWithoutVatResult.error,
+      );
       alert(t("alerts.expenseAmountInvalid"));
+      return;
+    }
+
+    const vatRateResult =
+      vatRateNumber == null
+        ? null
+        : Evolu.NonNegativeNumber.from(vatRateNumber);
+    if (vatRateNumber != null && (!vatRateResult || !vatRateResult.ok)) {
+      console.error(
+        "Expense VAT rate error:",
+        vatRateResult && vatRateResult.error,
+      );
+      alert(t("alerts.expenseVatRateInvalid"));
+      return;
+    }
+
+    const amountWithVatResult =
+      amountWithVatNumber == null
+        ? null
+        : Evolu.NonNegativeNumber.from(amountWithVatNumber);
+    if (
+      amountWithVatNumber != null &&
+      (!amountWithVatResult || !amountWithVatResult.ok)
+    ) {
+      console.error(
+        "Expense amount with VAT error:",
+        amountWithVatResult && amountWithVatResult.error,
+      );
+      alert(t("alerts.expenseAmountWithVatInvalid"));
       return;
     }
 
@@ -138,10 +234,14 @@ export function ExpenseDetailPage({
     try {
       const result = evolu.update("expense", {
         id: expense.id,
-        amount: amountResult.value,
-        expenseType: expenseType.trim(),
-        paymentMethod,
-        receiptNumber: toNullable(receiptNumber),
+        amountWithoutVat: amountWithoutVatResult?.ok
+          ? amountWithoutVatResult.value
+          : null,
+        vatRate: vatRateResult?.ok ? vatRateResult.value : null,
+        amountWithVat: amountWithVatResult?.ok
+          ? amountWithVatResult.value
+          : null,
+        description: description.trim(),
         expenseDate: dateResult.value,
       });
 
@@ -230,16 +330,14 @@ export function ExpenseDetailPage({
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="expenseAmount" className="form-label">
-                {t("expenseDetail.amountLabel")}
+              <label htmlFor="expenseDate" className="form-label">
+                {t("expenseDetail.expenseDateLabel")}
               </label>
               <input
-                id="expenseAmount"
-                type="number"
-                min={0}
-                step="0.01"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
+                id="expenseDate"
+                type="date"
+                value={expenseDate}
+                onChange={(event) => setExpenseDate(event.target.value)}
                 disabled={!isEditing}
                 className="form-input"
               />
@@ -252,53 +350,58 @@ export function ExpenseDetailPage({
               <input
                 id="expenseType"
                 type="text"
-                value={expenseType}
-                onChange={(event) => setExpenseType(event.target.value)}
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
                 disabled={!isEditing}
                 className="form-input"
               />
             </div>
 
             <div>
-              <label htmlFor="expensePaymentMethod" className="form-label">
-                {t("expenseDetail.paymentMethodLabel")}
-              </label>
-              <select
-                id="expensePaymentMethod"
-                value={paymentMethod}
-                onChange={(event) => setPaymentMethod(event.target.value)}
-                disabled={!isEditing}
-                className="form-select"
-              >
-                <option value="cash">{t("expenses.paymentMethodCash")}</option>
-                <option value="bank">{t("expenses.paymentMethodBank")}</option>
-                <option value="card">{t("expenses.paymentMethodCard")}</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="expenseReceiptNumber" className="form-label">
-                {t("expenseDetail.receiptNumberLabel")}
+              <label htmlFor="expenseAmount" className="form-label">
+                {t("expenseDetail.amountLabel")}
               </label>
               <input
-                id="expenseReceiptNumber"
-                type="text"
-                value={receiptNumber}
-                onChange={(event) => setReceiptNumber(event.target.value)}
+                id="expenseAmount"
+                type="number"
+                min={0}
+                step="0.01"
+                value={amountWithoutVat}
+                onChange={(event) =>
+                  handleAmountWithoutVatChange(event.target.value)
+                }
                 disabled={!isEditing}
                 className="form-input"
               />
             </div>
 
             <div>
-              <label htmlFor="expenseDate" className="form-label">
-                {t("expenseDetail.expenseDateLabel")}
+              <label htmlFor="expenseVatRate" className="form-label">
+                {t("expenseDetail.vatRateLabel")}
               </label>
               <input
-                id="expenseDate"
-                type="date"
-                value={expenseDate}
-                onChange={(event) => setExpenseDate(event.target.value)}
+                id="expenseVatRate"
+                type="number"
+                min={0}
+                step="0.01"
+                value={vatRate}
+                onChange={(event) => handleVatRateChange(event.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="expenseAmountWithVat" className="form-label">
+                {t("expenseDetail.amountWithVatLabel")}
+              </label>
+              <input
+                id="expenseAmountWithVat"
+                type="number"
+                min={0}
+                step="0.01"
+                value={amountWithVat}
+                onChange={(event) => setAmountWithVat(event.target.value)}
                 disabled={!isEditing}
                 className="form-input"
               />

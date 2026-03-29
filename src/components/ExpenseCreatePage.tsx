@@ -7,14 +7,16 @@ type ExpenseCreatePageProps = {
   onExpenseCreated: () => void;
 };
 
-export function ExpenseCreatePage({ onExpenseCreated }: ExpenseCreatePageProps) {
+export function ExpenseCreatePage({
+  onExpenseCreated,
+}: ExpenseCreatePageProps) {
   const { t } = useI18n();
   const evolu = useEvolu();
 
-  const [amount, setAmount] = useState("");
-  const [expenseType, setExpenseType] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [receiptNumber, setReceiptNumber] = useState("");
+  const [amountWithoutVat, setAmountWithoutVat] = useState("");
+  const [vatRate, setVatRate] = useState("");
+  const [amountWithVat, setAmountWithVat] = useState("");
+  const [description, setDescription] = useState("");
   const [expenseDate, setExpenseDate] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -24,13 +26,45 @@ export function ExpenseCreatePage({ onExpenseCreated }: ExpenseCreatePageProps) 
     setExpenseDate(todayIso);
   }, [expenseDate]);
 
-  const toNullable = (value: string) => {
-    const trimmed = value.trim();
-    return trimmed ? trimmed : null;
+  const recalculateAmountWithVat = (
+    nextAmountWithoutVat: string,
+    nextVatRate: string,
+  ) => {
+    if (!nextAmountWithoutVat.trim() || !nextVatRate.trim()) {
+      setAmountWithVat("");
+      return;
+    }
+
+    const amountWithoutVatNumber = Number(nextAmountWithoutVat);
+    const vatRateNumber = Number(nextVatRate);
+
+    if (
+      Number.isNaN(amountWithoutVatNumber) ||
+      Number.isNaN(vatRateNumber) ||
+      amountWithoutVatNumber < 0 ||
+      vatRateNumber < 0
+    ) {
+      setAmountWithVat("");
+      return;
+    }
+
+    const computed =
+      amountWithoutVatNumber + 0.01 * vatRateNumber * amountWithoutVatNumber;
+    setAmountWithVat(computed.toFixed(2));
+  };
+
+  const handleAmountWithoutVatChange = (value: string) => {
+    setAmountWithoutVat(value);
+    recalculateAmountWithVat(value, vatRate);
+  };
+
+  const handleVatRateChange = (value: string) => {
+    setVatRate(value);
+    recalculateAmountWithVat(amountWithoutVat, value);
   };
 
   const handleSave = async () => {
-    if (!expenseType.trim()) {
+    if (!description.trim()) {
       alert(t("alerts.expenseTypeRequired"));
       return;
     }
@@ -40,9 +74,39 @@ export function ExpenseCreatePage({ onExpenseCreated }: ExpenseCreatePageProps) 
       return;
     }
 
-    const amountNumber = Number(amount);
-    if (Number.isNaN(amountNumber) || amountNumber < 0) {
+    if (!amountWithVat.trim()) {
+      alert(t("alerts.expenseAmountWithVatRequired"));
+      return;
+    }
+
+    const amountWithoutVatNumber = amountWithoutVat.trim()
+      ? Number(amountWithoutVat)
+      : null;
+    if (
+      amountWithoutVatNumber != null &&
+      (Number.isNaN(amountWithoutVatNumber) || amountWithoutVatNumber < 0)
+    ) {
       alert(t("alerts.expenseAmountInvalid"));
+      return;
+    }
+
+    const vatRateNumber = vatRate.trim() ? Number(vatRate) : null;
+    if (
+      vatRateNumber != null &&
+      (Number.isNaN(vatRateNumber) || vatRateNumber < 0)
+    ) {
+      alert(t("alerts.expenseVatRateInvalid"));
+      return;
+    }
+
+    const amountWithVatNumber = amountWithVat.trim()
+      ? Number(amountWithVat)
+      : null;
+    if (
+      amountWithVatNumber != null &&
+      (Number.isNaN(amountWithVatNumber) || amountWithVatNumber < 0)
+    ) {
+      alert(t("alerts.expenseAmountWithVatInvalid"));
       return;
     }
 
@@ -53,25 +117,69 @@ export function ExpenseCreatePage({ onExpenseCreated }: ExpenseCreatePageProps) 
       return;
     }
 
-    const amountResult = Evolu.NonNegativeNumber.from(amountNumber);
-    if (!amountResult.ok) {
-      console.error("Expense amount error:", amountResult.error);
+    const amountWithoutVatResult =
+      amountWithoutVatNumber == null
+        ? null
+        : Evolu.NonNegativeNumber.from(amountWithoutVatNumber);
+    if (
+      amountWithoutVatNumber != null &&
+      (!amountWithoutVatResult || !amountWithoutVatResult.ok)
+    ) {
+      console.error(
+        "Expense amount without VAT error:",
+        amountWithoutVatResult && amountWithoutVatResult.error,
+      );
       alert(t("alerts.expenseAmountInvalid"));
+      return;
+    }
+
+    const vatRateResult =
+      vatRateNumber == null
+        ? null
+        : Evolu.NonNegativeNumber.from(vatRateNumber);
+    if (vatRateNumber != null && (!vatRateResult || !vatRateResult.ok)) {
+      console.error(
+        "Expense VAT rate error:",
+        vatRateResult && vatRateResult.error,
+      );
+      alert(t("alerts.expenseVatRateInvalid"));
+      return;
+    }
+
+    const amountWithVatResult =
+      amountWithVatNumber == null
+        ? null
+        : Evolu.NonNegativeNumber.from(amountWithVatNumber);
+    if (
+      amountWithVatNumber != null &&
+      (!amountWithVatResult || !amountWithVatResult.ok)
+    ) {
+      console.error(
+        "Expense amount with VAT error:",
+        amountWithVatResult && amountWithVatResult.error,
+      );
+      alert(t("alerts.expenseAmountWithVatInvalid"));
       return;
     }
 
     setIsSaving(true);
     try {
       const payload = {
-        amount: amountResult.value,
-        expenseType: expenseType.trim(),
-        paymentMethod,
-        receiptNumber: toNullable(receiptNumber),
+        amountWithoutVat: amountWithoutVatResult?.ok
+          ? amountWithoutVatResult.value
+          : null,
+        vatRate: vatRateResult?.ok ? vatRateResult.value : null,
+        amountWithVat: amountWithVatResult?.ok
+          ? amountWithVatResult.value
+          : null,
+        description: description.trim(),
         expenseDate: dateResult.value,
         deleted: Evolu.sqliteFalse,
       };
 
-      const validation = evolu.insert("expense", payload, { onlyValidate: true });
+      const validation = evolu.insert("expense", payload, {
+        onlyValidate: true,
+      });
       if (!validation.ok) {
         console.error("Validation error:", validation.error);
         alert(t("alerts.expenseSaveValidation"));
@@ -105,63 +213,6 @@ export function ExpenseCreatePage({ onExpenseCreated }: ExpenseCreatePageProps) 
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="expenseAmount" className="form-label">
-                {t("expenseCreate.amountLabel")}
-              </label>
-              <input
-                id="expenseAmount"
-                type="number"
-                min={0}
-                step="0.01"
-                value={amount}
-                onChange={(event) => setAmount(event.target.value)}
-                className="form-input"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="expenseType" className="form-label">
-                {t("expenseCreate.expenseTypeLabel")}
-              </label>
-              <input
-                id="expenseType"
-                type="text"
-                value={expenseType}
-                onChange={(event) => setExpenseType(event.target.value)}
-                className="form-input"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="expensePaymentMethod" className="form-label">
-                {t("expenseCreate.paymentMethodLabel")}
-              </label>
-              <select
-                id="expensePaymentMethod"
-                value={paymentMethod}
-                onChange={(event) => setPaymentMethod(event.target.value)}
-                className="form-select"
-              >
-                <option value="cash">{t("expenses.paymentMethodCash")}</option>
-                <option value="bank">{t("expenses.paymentMethodBank")}</option>
-                <option value="card">{t("expenses.paymentMethodCard")}</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="expenseReceiptNumber" className="form-label">
-                {t("expenseCreate.receiptNumberLabel")}
-              </label>
-              <input
-                id="expenseReceiptNumber"
-                type="text"
-                value={receiptNumber}
-                onChange={(event) => setReceiptNumber(event.target.value)}
-                className="form-input"
-              />
-            </div>
-
-            <div>
               <label htmlFor="expenseDate" className="form-label">
                 {t("expenseCreate.expenseDateLabel")}
               </label>
@@ -173,11 +224,71 @@ export function ExpenseCreatePage({ onExpenseCreated }: ExpenseCreatePageProps) 
                 className="form-input"
               />
             </div>
+
+            <div>
+              <label htmlFor="expenseType" className="form-label">
+                {t("expenseCreate.expenseTypeLabel")}
+              </label>
+              <input
+                id="expenseType"
+                type="text"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                className="form-input"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="expenseAmount" className="form-label">
+                {t("expenseCreate.amountLabel")}
+              </label>
+              <input
+                id="expenseAmount"
+                type="number"
+                min={0}
+                step="0.01"
+                value={amountWithoutVat}
+                onChange={(event) =>
+                  handleAmountWithoutVatChange(event.target.value)
+                }
+                className="form-input"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="expenseVatRate" className="form-label">
+                {t("expenseCreate.vatRateLabel")}
+              </label>
+              <input
+                id="expenseVatRate"
+                type="number"
+                min={0}
+                step="0.01"
+                value={vatRate}
+                onChange={(event) => handleVatRateChange(event.target.value)}
+                className="form-input"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="expenseAmountWithVat" className="form-label">
+                {t("expenseCreate.amountWithVatLabel")}
+              </label>
+              <input
+                id="expenseAmountWithVat"
+                type="number"
+                min={0}
+                step="0.01"
+                value={amountWithVat}
+                onChange={(event) => setAmountWithVat(event.target.value)}
+                className="form-input"
+              />
+            </div>
           </div>
 
           <button
             onClick={handleSave}
-            disabled={isSaving || !expenseType.trim()}
+            disabled={isSaving || !description.trim()}
             className="btn-primary mt-6 w-full"
           >
             {isSaving ? t("expenseCreate.saving") : t("expenseCreate.save")}
