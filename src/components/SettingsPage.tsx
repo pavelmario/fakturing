@@ -862,32 +862,32 @@ export function SettingsPage({
   ];
 
   const clientsExportHeaders = [
-      "id",
-      "name",
-      "email",
-      "phone",
-      "addressLine1",
-      "addressLine2",
-      "companyIdentificationNumber",
-      "vatNumber",
-      "note",
-    ];
+    "id",
+    "name",
+    "email",
+    "phone",
+    "addressLine1",
+    "addressLine2",
+    "companyIdentificationNumber",
+    "vatNumber",
+    "note",
+  ];
 
   const invoicesExportHeaders = [
-      "id",
-      "invoiceNumber",
-      "clientName",
-      "issueDate",
-      "duzp",
-      "paymentDate",
-      "paymentDays",
-      "paymentMethod",
-      "purchaseOrderNumber",
-      "invoicingNote",
-      "btcInvoice",
-      "btcAddress",
-      "items",
-    ];
+    "id",
+    "invoiceNumber",
+    "clientName",
+    "issueDate",
+    "duzp",
+    "paymentDate",
+    "paymentDays",
+    "paymentMethod",
+    "purchaseOrderNumber",
+    "invoicingNote",
+    "btcInvoice",
+    "btcAddress",
+    "items",
+  ];
 
   const handleExportSettingsCsv = () => {
     downloadCsv(
@@ -1534,6 +1534,21 @@ export function SettingsPage({
                     </div>
                   </div>
                 </details>
+                <details className="panel-card mt-2">
+                  <summary className="settings-summary-label">
+                    Danger zone ⚠︎
+                  </summary>
+                  <div className="mt-3">
+                    {savedData && (
+                      <button
+                        onClick={handleClearData}
+                        className="btn-danger w-full"
+                      >
+                        {t("settings.clearData")}
+                      </button>
+                    )}
+                  </div>
+                </details>
               </div>
             </div>
           </div>
@@ -1546,13 +1561,6 @@ export function SettingsPage({
           >
             {isSaving ? t("settings.saving") : t("settings.save")}
           </button>
-
-          {/* Clear Data Button */}
-          {savedData && (
-            <button onClick={handleClearData} className="btn-danger w-full">
-              {t("settings.clearData")}
-            </button>
-          )}
         </div>
       </div>
     </div>
