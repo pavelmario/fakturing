@@ -838,8 +838,30 @@ export function SettingsPage({
     URL.revokeObjectURL(url);
   };
 
-  const handleExportCsv = () => {
-    const clientHeaders = [
+  const settingsExportHeaders = [
+    "id",
+    "name",
+    "email",
+    "phone",
+    "addressLine1",
+    "addressLine2",
+    "companyIdentificationNumber",
+    "vatNumber",
+    "vatPayer",
+    "bankAccount",
+    "swift",
+    "iban",
+    "invoiceFooterText",
+    "discreteMode",
+    "expenses",
+    "language",
+    "poRequired",
+    "mempoolUrl",
+    "invoiceNamingFormat",
+    "updatedAt",
+  ];
+
+  const clientsExportHeaders = [
       "id",
       "name",
       "email",
@@ -850,30 +872,8 @@ export function SettingsPage({
       "vatNumber",
       "note",
     ];
-    const settingsHeaders = [
-      "id",
-      "name",
-      "email",
-      "phone",
-      "addressLine1",
-      "addressLine2",
-      "companyIdentificationNumber",
-      "vatNumber",
-      "vatPayer",
-      "bankAccount",
-      "swift",
-      "iban",
-      "invoiceFooterText",
-      "discreteMode",
-      "expenses",
-      "language",
-      "poRequired",
-      "mempoolUrl",
-      "invoiceNamingFormat",
-      "updatedAt",
-    ];
 
-    const invoiceHeaders = [
+  const invoicesExportHeaders = [
       "id",
       "invoiceNumber",
       "clientName",
@@ -889,19 +889,26 @@ export function SettingsPage({
       "items",
     ];
 
+  const handleExportSettingsCsv = () => {
     downloadCsv(
       "settings.csv",
-      settingsHeaders,
+      settingsExportHeaders,
       profileRows as ReadonlyArray<Record<string, unknown>>,
     );
+  };
+
+  const handleExportClientsCsv = () => {
     downloadCsv(
       "clients.csv",
-      clientHeaders,
+      clientsExportHeaders,
       clients as ReadonlyArray<Record<string, unknown>>,
     );
+  };
+
+  const handleExportInvoicesCsv = () => {
     downloadCsv(
       "invoices.csv",
-      invoiceHeaders,
+      invoicesExportHeaders,
       invoices as ReadonlyArray<Record<string, unknown>>,
     );
   };
@@ -1413,74 +1420,118 @@ export function SettingsPage({
                   <summary className="settings-summary-label">
                     {t("settings.importTitle")}
                   </summary>
-                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                    <input
-                      ref={importSettingsInputRef}
-                      type="file"
-                      accept=".csv,text/csv"
-                      onChange={handleImportSettingsCsv}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => importSettingsInputRef.current?.click()}
-                      className="btn-secondary w-full sm:w-auto"
-                    >
-                      {t("settings.importSettings")}
-                    </button>
-                    <a
-                      href="/settings_import_template.csv"
-                      download
-                      className="btn-ghost w-full sm:w-auto text-center"
-                    >
-                      {t("settings.importSettingsTemplate")}
-                    </a>
-                  </div>
-                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                    <input
-                      ref={importClientsInputRef}
-                      type="file"
-                      accept=".csv,text/csv"
-                      onChange={handleImportClientsCsv}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => importClientsInputRef.current?.click()}
-                      className="btn-secondary w-full sm:w-auto"
-                    >
-                      {t("settings.importClients")}
-                    </button>
-                    <a
-                      href="/clients_import_template.csv"
-                      download
-                      className="btn-ghost w-full sm:w-auto text-center"
-                    >
-                      {t("settings.importClientsTemplate")}
-                    </a>
-                  </div>
-                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                    <input
-                      ref={importInvoicesInputRef}
-                      type="file"
-                      accept=".csv,text/csv"
-                      onChange={handleImportInvoicesCsv}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => importInvoicesInputRef.current?.click()}
-                      className="btn-secondary w-full sm:w-auto"
-                    >
-                      {t("settings.importInvoices")}
-                    </button>
-                    <a
-                      href="/invoices_import_template.csv"
-                      download
-                      className="btn-ghost w-full sm:w-auto text-center"
-                    >
-                      {t("settings.importInvoicesTemplate")}
-                    </a>
+                  <div className="mt-3 space-y-4">
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                        {t("settings.importSettingsHeading")}
+                      </h4>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          ref={importSettingsInputRef}
+                          type="file"
+                          accept=".csv,text/csv"
+                          onChange={handleImportSettingsCsv}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleExportSettingsCsv}
+                          className="btn-primary w-full sm:w-auto"
+                        >
+                          {t("settings.exportSettings")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            importSettingsInputRef.current?.click()
+                          }
+                          className="btn-secondary w-full sm:w-auto"
+                        >
+                          {t("settings.importSettings")}
+                        </button>
+                        <a
+                          href="/settings_import_template.csv"
+                          download
+                          className="btn-ghost w-full sm:w-auto text-center"
+                        >
+                          {t("settings.importSettingsTemplate")}
+                        </a>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                        {t("settings.importClientsHeading")}
+                      </h4>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          ref={importClientsInputRef}
+                          type="file"
+                          accept=".csv,text/csv"
+                          onChange={handleImportClientsCsv}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleExportClientsCsv}
+                          className="btn-primary w-full sm:w-auto"
+                        >
+                          {t("settings.exportClients")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => importClientsInputRef.current?.click()}
+                          className="btn-secondary w-full sm:w-auto"
+                        >
+                          {t("settings.importClients")}
+                        </button>
+                        <a
+                          href="/clients_import_template.csv"
+                          download
+                          className="btn-ghost w-full sm:w-auto text-center"
+                        >
+                          {t("settings.importClientsTemplate")}
+                        </a>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                        {t("settings.importInvoicesHeading")}
+                      </h4>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          ref={importInvoicesInputRef}
+                          type="file"
+                          accept=".csv,text/csv"
+                          onChange={handleImportInvoicesCsv}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleExportInvoicesCsv}
+                          className="btn-primary w-full sm:w-auto"
+                        >
+                          {t("settings.exportInvoices")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            importInvoicesInputRef.current?.click()
+                          }
+                          className="btn-secondary w-full sm:w-auto"
+                        >
+                          {t("settings.importInvoices")}
+                        </button>
+                        <a
+                          href="/invoices_import_template.csv"
+                          download
+                          className="btn-ghost w-full sm:w-auto text-center"
+                        >
+                          {t("settings.importInvoicesTemplate")}
+                        </a>
+                      </div>
+                    </div>
                   </div>
                 </details>
               </div>
@@ -1494,10 +1545,6 @@ export function SettingsPage({
             className="btn-success w-full mb-3"
           >
             {isSaving ? t("settings.saving") : t("settings.save")}
-          </button>
-
-          <button onClick={handleExportCsv} className="btn-primary w-full mb-3">
-            {t("settings.exportCsv")}
           </button>
 
           {/* Clear Data Button */}
