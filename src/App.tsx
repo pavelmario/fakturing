@@ -1,4 +1,6 @@
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, use, useEffect, useMemo, useState } from "react";
+import * as Evolu from "@evolu/common";
+import { useQuery } from "@evolu/react";
 import { ClientDetailPage } from "./components/ClientDetailPage";
 import { ClientsListPage } from "./components/ClientsListPage";
 import { ClientsPage } from "./components/ClientsPage";
@@ -10,11 +12,33 @@ import { InvoiceDetailPage } from "./components/InvoiceDetailPage";
 import { InvoiceListPage } from "./components/InvoiceListPage";
 import { SettingsPage } from "./components/SettingsPage";
 import { RelayStatusIndicator } from "./components/RelayStatusIndicator";
+import { useEvolu } from "./evolu";
 import { useI18n } from "./i18n";
 import "./index.css";
 
 function App() {
   const { t } = useI18n();
+  const evolu = useEvolu();
+  const owner = use(evolu.appOwner);
+
+  const profileQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("userProfile")
+          .select(["expenses"])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .orderBy("updatedAt", "desc")
+          .limit(1),
+      ),
+    [evolu, owner.id],
+  );
+
+  const profileRows = useQuery(profileQuery);
+  const profile = profileRows[0] ?? null;
+  const expensesEnabled = profile?.expenses !== Evolu.sqliteFalse;
+
   const [page, setPage] = useState<
     | "settings"
     | "clients"
@@ -102,6 +126,33 @@ function App() {
     return () => window.clearTimeout(timeout);
   }, [flashMessage]);
 
+  useEffect(() => {
+    const isExpensePage =
+      page === "expenses-list" ||
+      page === "expense-create" ||
+      page === "expense-detail";
+
+    if (expensesEnabled || !isExpensePage) return;
+
+    setPage("invoice-list");
+    setSelectedExpenseId(null);
+    setSelectedClientId(null);
+    setSelectedInvoiceId(null);
+    try {
+      window.history.replaceState(
+        {
+          page: "invoice-list",
+          selectedClientId: null,
+          selectedInvoiceId: null,
+          selectedExpenseId: null,
+        },
+        "",
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [expensesEnabled, page]);
+
   // Restore state from history on mount and listen for back/forward
   useEffect(() => {
     const s = window.history.state as {
@@ -117,7 +168,13 @@ function App() {
       setSelectedExpenseId(s.selectedExpenseId ?? null);
     } else {
       // ensure there's at least one history entry representing current app state
-      navigate(page, selectedClientId, selectedInvoiceId, true, selectedExpenseId);
+      navigate(
+        page,
+        selectedClientId,
+        selectedInvoiceId,
+        true,
+        selectedExpenseId,
+      );
     }
 
     const onPop = (ev: PopStateEvent) => {
@@ -172,18 +229,20 @@ function App() {
                 >
                   {t("app.nav.clients")}
                 </button>
-                <button
-                  onClick={() => navigate("expenses-list", null, null)}
-                  className={`tab-button ${
-                    page === "expenses-list" ||
-                    page === "expense-create" ||
-                    page === "expense-detail"
-                      ? "tab-button-active"
-                      : "tab-button-inactive"
-                  }`}
-                >
-                  {t("app.nav.expenses")}
-                </button>
+                {expensesEnabled ? (
+                  <button
+                    onClick={() => navigate("expenses-list", null, null)}
+                    className={`tab-button ${
+                      page === "expenses-list" ||
+                      page === "expense-create" ||
+                      page === "expense-detail"
+                        ? "tab-button-active"
+                        : "tab-button-inactive"
+                    }`}
+                  >
+                    {t("app.nav.expenses")}
+                  </button>
+                ) : null}
                 <button
                   onClick={() => navigate("settings", null, null)}
                   className={`tab-button ${
@@ -235,7 +294,7 @@ function App() {
                 window.scrollTo({ top: 0, left: 0, behavior: "auto" });
               }}
             />
-          ) : page === "expense-create" ? (
+          ) : expensesEnabled && page === "expense-create" ? (
             <ExpenseCreatePage
               onExpenseCreated={() => {
                 setFlashMessage(t("alerts.expenseCreated"));
@@ -250,7 +309,7 @@ function App() {
                 navigate("invoice-detail", null, invoiceId)
               }
             />
-          ) : page === "expenses-list" ? (
+          ) : expensesEnabled && page === "expenses-list" ? (
             <ExpensesListPage
               onCreateExpense={() => navigate("expense-create", null, null)}
               onViewDetails={(expenseId) =>
@@ -272,7 +331,9 @@ function App() {
                 window.scrollTo({ top: 0, left: 0, behavior: "auto" });
               }}
             />
-          ) : page === "expense-detail" && selectedExpenseId ? (
+          ) : expensesEnabled &&
+            page === "expense-detail" &&
+            selectedExpenseId ? (
             <ExpenseDetailPage
               expenseId={selectedExpenseId}
               onBack={() => navigate("expenses-list", null, null)}
@@ -282,7 +343,7 @@ function App() {
                 window.scrollTo({ top: 0, left: 0, behavior: "auto" });
               }}
             />
-          ) : page === "expense-detail" ? (
+          ) : expensesEnabled && page === "expense-detail" ? (
             <ExpensesListPage
               onCreateExpense={() => navigate("expense-create", null, null)}
               onViewDetails={(expenseId) =>
