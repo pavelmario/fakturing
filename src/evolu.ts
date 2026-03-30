@@ -74,6 +74,8 @@ export const Schema = {
   },
   expense: {
     id: Evolu.id("Expense"),
+    expenseNumber: Evolu.nullOr(Evolu.TrimmedString100),
+    supplierVat: Evolu.nullOr(Evolu.TrimmedString100),
     amountWithoutVat: Evolu.nullOr(Evolu.NonNegativeNumber),
     vatRate: Evolu.nullOr(Evolu.NonNegativeNumber),
     amountWithVat: Evolu.nullOr(Evolu.NonNegativeNumber),

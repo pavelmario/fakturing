@@ -12,6 +12,8 @@ type ExpenseDetailPageProps = {
 
 type ExpenseRow = {
   id: string;
+  expenseNumber: string | null;
+  supplierVat: string | null;
   amountWithoutVat: number | null;
   vatRate: number | null;
   amountWithVat: number | null;
@@ -46,6 +48,8 @@ export function ExpenseDetailPage({
   const [vatRate, setVatRate] = useState("");
   const [amountWithVat, setAmountWithVat] = useState("");
   const [description, setDescription] = useState("");
+  const [expenseNumber, setExpenseNumber] = useState("");
+  const [supplierVat, setSupplierVat] = useState("");
   const [expenseDate, setExpenseDate] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -71,6 +75,8 @@ export function ExpenseDetailPage({
   const expense = expenseRows[0] ?? null;
 
   const hydrateForm = (source: ExpenseRow | null) => {
+    setExpenseNumber(source?.expenseNumber ?? "");
+    setSupplierVat(source?.supplierVat ?? "");
     setAmountWithoutVat(
       source?.amountWithoutVat != null ? String(source.amountWithoutVat) : "",
     );
@@ -126,6 +132,11 @@ export function ExpenseDetailPage({
   const handleVatRateChange = (value: string) => {
     setVatRate(value);
     recalculateAmountWithVat(amountWithoutVat, value);
+  };
+
+  const toNullable = (value: string) => {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
   };
 
   const handleSave = async () => {
@@ -234,6 +245,8 @@ export function ExpenseDetailPage({
     try {
       const result = evolu.update("expense", {
         id: expense.id,
+        expenseNumber: toNullable(expenseNumber),
+        supplierVat: toNullable(supplierVat),
         amountWithoutVat: amountWithoutVatResult?.ok
           ? amountWithoutVatResult.value
           : null,
@@ -402,6 +415,34 @@ export function ExpenseDetailPage({
                 step="0.01"
                 value={amountWithVat}
                 onChange={(event) => setAmountWithVat(event.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="expenseNumber" className="form-label">
+                {t("expenseDetail.expenseNumberLabel")}
+              </label>
+              <input
+                id="expenseNumber"
+                type="text"
+                value={expenseNumber}
+                onChange={(event) => setExpenseNumber(event.target.value)}
+                disabled={!isEditing}
+                className="form-input"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="expenseSupplierVat" className="form-label">
+                {t("expenseDetail.supplierVatLabel")}
+              </label>
+              <input
+                id="expenseSupplierVat"
+                type="text"
+                value={supplierVat}
+                onChange={(event) => setSupplierVat(event.target.value)}
                 disabled={!isEditing}
                 className="form-input"
               />

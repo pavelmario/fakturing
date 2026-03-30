@@ -17,6 +17,8 @@ export function ExpenseCreatePage({
   const [vatRate, setVatRate] = useState("");
   const [amountWithVat, setAmountWithVat] = useState("");
   const [description, setDescription] = useState("");
+  const [expenseNumber, setExpenseNumber] = useState("");
+  const [supplierVat, setSupplierVat] = useState("");
   const [expenseDate, setExpenseDate] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -61,6 +63,11 @@ export function ExpenseCreatePage({
   const handleVatRateChange = (value: string) => {
     setVatRate(value);
     recalculateAmountWithVat(amountWithoutVat, value);
+  };
+
+  const toNullable = (value: string) => {
+    const trimmed = value.trim();
+    return trimmed ? trimmed : null;
   };
 
   const handleSave = async () => {
@@ -165,6 +172,8 @@ export function ExpenseCreatePage({
     setIsSaving(true);
     try {
       const payload = {
+        expenseNumber: toNullable(expenseNumber),
+        supplierVat: toNullable(supplierVat),
         amountWithoutVat: amountWithoutVatResult?.ok
           ? amountWithoutVatResult.value
           : null,
@@ -281,6 +290,32 @@ export function ExpenseCreatePage({
                 step="0.01"
                 value={amountWithVat}
                 onChange={(event) => setAmountWithVat(event.target.value)}
+                className="form-input"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="expenseNumber" className="form-label">
+                {t("expenseCreate.expenseNumberLabel")}
+              </label>
+              <input
+                id="expenseNumber"
+                type="text"
+                value={expenseNumber}
+                onChange={(event) => setExpenseNumber(event.target.value)}
+                className="form-input"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="expenseSupplierVat" className="form-label">
+                {t("expenseCreate.supplierVatLabel")}
+              </label>
+              <input
+                id="expenseSupplierVat"
+                type="text"
+                value={supplierVat}
+                onChange={(event) => setSupplierVat(event.target.value)}
                 className="form-input"
               />
             </div>
