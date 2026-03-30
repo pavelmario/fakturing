@@ -78,6 +78,7 @@ export function SettingsPage({
   const importSettingsInputRef = useRef<HTMLInputElement | null>(null);
   const importClientsInputRef = useRef<HTMLInputElement | null>(null);
   const importInvoicesInputRef = useRef<HTMLInputElement | null>(null);
+  const importExpensesInputRef = useRef<HTMLInputElement | null>(null);
 
   const profileQuery = useMemo(
     () =>
@@ -148,8 +149,32 @@ export function SettingsPage({
     [evolu, owner.id],
   );
 
+  const expensesQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("expense")
+          .select([
+            "id",
+            "expenseNumber",
+            "supplierVat",
+            "amountWithoutVat",
+            "vatRate",
+            "amountWithVat",
+            "description",
+            "expenseDate",
+          ])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue)
+          .orderBy("expenseDate", "desc"),
+      ),
+    [evolu, owner.id],
+  );
+
   const clients = useQuery(clientsQuery);
   const invoices = useQuery(invoicesQuery);
+  const expenseRows = useQuery(expensesQuery);
 
   useEffect(() => {
     const currentUrl = getRelayUrl();
@@ -670,6 +695,139 @@ export function SettingsPage({
     reader.readAsText(file);
   };
 
+  const handleImportExpensesCsv = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const text = String(reader.result ?? "");
+        const lines = text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (lines.length < 2) {
+          alert(t("alerts.csvNoData"));
+          return;
+        }
+
+        const headers = parseCsvLine(lines[0]);
+        const dataRows = lines.slice(1).map((line) => parseCsvLine(line));
+        const formatTypeError = Evolu.createFormatTypeError();
+
+        const toNullable = (value: string | undefined) => {
+          const trimmed = (value ?? "").trim();
+          return trimmed ? trimmed : null;
+        };
+
+        for (const values of dataRows) {
+          const row = headers.reduce<Record<string, string>>(
+            (acc, key, index) => {
+              acc[key] = values[index] ?? "";
+              return acc;
+            },
+            {},
+          );
+
+          const description = row.description?.trim();
+          const expenseDateRaw = row.expenseDate?.trim();
+          if (!description || !expenseDateRaw) continue;
+
+          const expenseDateResult = Evolu.dateToDateIso(
+            new Date(expenseDateRaw),
+          );
+          if (!expenseDateResult.ok) {
+            console.error(
+              "Expense date error:",
+              formatTypeError(expenseDateResult.error),
+            );
+            alert(t("alerts.expensesImportInvalidDate"));
+            return;
+          }
+
+          const parseOptionalNonNegative = (
+            value: string | undefined,
+            errorKey:
+              | "alerts.expensesImportInvalidAmountWithoutVat"
+              | "alerts.expensesImportInvalidVatRate"
+              | "alerts.expensesImportInvalidAmountWithVat",
+          ) => {
+            const trimmed = (value ?? "").trim();
+            if (!trimmed) return null;
+
+            const numberValue = Number(trimmed);
+            if (!Number.isFinite(numberValue)) {
+              alert(t(errorKey));
+              return "error" as const;
+            }
+
+            const result = Evolu.NonNegativeNumber.from(numberValue);
+            if (!result.ok) {
+              console.error(
+                "Amount parse error:",
+                formatTypeError(result.error),
+              );
+              alert(t(errorKey));
+              return "error" as const;
+            }
+
+            return result.value;
+          };
+
+          const amountWithoutVat = parseOptionalNonNegative(
+            row.amountWithoutVat,
+            "alerts.expensesImportInvalidAmountWithoutVat",
+          );
+          if (amountWithoutVat === "error") return;
+
+          const vatRate = parseOptionalNonNegative(
+            row.vatRate,
+            "alerts.expensesImportInvalidVatRate",
+          );
+          if (vatRate === "error") return;
+
+          const amountWithVat = parseOptionalNonNegative(
+            row.amountWithVat,
+            "alerts.expensesImportInvalidAmountWithVat",
+          );
+          if (amountWithVat === "error") return;
+
+          const payload = {
+            expenseNumber: toNullable(row.expenseNumber),
+            supplierVat: toNullable(row.supplierVat),
+            amountWithoutVat,
+            vatRate,
+            amountWithVat,
+            description,
+            expenseDate: expenseDateResult.value,
+            deleted: Evolu.sqliteFalse,
+          };
+
+          const result = evolu.insert("expense", payload);
+          if (!result.ok) {
+            console.error("Validation error:", result.error);
+            alert(t("alerts.expensesImportValidation"));
+            return;
+          }
+        }
+
+        alert(t("alerts.expensesImported"));
+      } catch (error) {
+        console.error("CSV import error:", error);
+        alert(t("alerts.expensesImportFailed"));
+      } finally {
+        if (importExpensesInputRef.current) {
+          importExpensesInputRef.current.value = "";
+        }
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
   // Save data via Evolu (local-first + sync)
   const handleSave = async () => {
     if (!name.trim()) {
@@ -889,6 +1047,17 @@ export function SettingsPage({
     "items",
   ];
 
+  const expensesExportHeaders = [
+    "id",
+    "expenseNumber",
+    "supplierVat",
+    "amountWithoutVat",
+    "vatRate",
+    "amountWithVat",
+    "description",
+    "expenseDate",
+  ];
+
   const handleExportSettingsCsv = () => {
     downloadCsv(
       "settings.csv",
@@ -910,6 +1079,14 @@ export function SettingsPage({
       "invoices.csv",
       invoicesExportHeaders,
       invoices as ReadonlyArray<Record<string, unknown>>,
+    );
+  };
+
+  const handleExportExpensesCsv = () => {
+    downloadCsv(
+      "expenses.csv",
+      expensesExportHeaders,
+      expenseRows as ReadonlyArray<Record<string, unknown>>,
     );
   };
 
@@ -1529,6 +1706,44 @@ export function SettingsPage({
                           className="btn-ghost w-full sm:w-auto text-center"
                         >
                           {t("settings.importInvoicesTemplate")}
+                        </a>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                        {t("settings.importExpensesHeading")}
+                      </h4>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          ref={importExpensesInputRef}
+                          type="file"
+                          accept=".csv,text/csv"
+                          onChange={handleImportExpensesCsv}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleExportExpensesCsv}
+                          className="btn-primary w-full sm:w-auto"
+                        >
+                          {t("settings.exportExpenses")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            importExpensesInputRef.current?.click()
+                          }
+                          className="btn-secondary w-full sm:w-auto"
+                        >
+                          {t("settings.importExpenses")}
+                        </button>
+                        <a
+                          href="/expenses_import_template.csv"
+                          download
+                          className="btn-ghost w-full sm:w-auto text-center"
+                        >
+                          {t("settings.importExpensesTemplate")}
                         </a>
                       </div>
                     </div>

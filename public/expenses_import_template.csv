@@ -1,0 +1,3 @@
+expenseNumber,supplierVat,amountWithoutVat,vatRate,amountWithVat,description,expenseDate
+2026-E001,CZ12345678,12000,21,14520,Software subscription,2026-02-10T00:00:00.000Z
+2026-E002,,3500,0,3500,Travel costs,2026-02-16T00:00:00.000Z
