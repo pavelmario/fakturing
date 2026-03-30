@@ -139,6 +139,10 @@ export function ExpenseDetailPage({
     return trimmed ? trimmed : null;
   };
 
+  const amountWithVatValue = Number(amountWithVat);
+  const showExtendedFields =
+    Number.isFinite(amountWithVatValue) && amountWithVatValue > 10000;
+
   const handleSave = async () => {
     if (!expense?.id) return;
 
@@ -245,8 +249,8 @@ export function ExpenseDetailPage({
     try {
       const result = evolu.update("expense", {
         id: expense.id,
-        expenseNumber: toNullable(expenseNumber),
-        supplierVat: toNullable(supplierVat),
+        expenseNumber: showExtendedFields ? toNullable(expenseNumber) : null,
+        supplierVat: showExtendedFields ? toNullable(supplierVat) : null,
         amountWithoutVat: amountWithoutVatResult?.ok
           ? amountWithoutVatResult.value
           : null,
@@ -420,33 +424,37 @@ export function ExpenseDetailPage({
               />
             </div>
 
-            <div>
-              <label htmlFor="expenseNumber" className="form-label">
-                {t("expenseDetail.expenseNumberLabel")}
-              </label>
-              <input
-                id="expenseNumber"
-                type="text"
-                value={expenseNumber}
-                onChange={(event) => setExpenseNumber(event.target.value)}
-                disabled={!isEditing}
-                className="form-input"
-              />
-            </div>
+            {showExtendedFields ? (
+              <>
+                <div>
+                  <label htmlFor="expenseNumber" className="form-label">
+                    {t("expenseDetail.expenseNumberLabel")}
+                  </label>
+                  <input
+                    id="expenseNumber"
+                    type="text"
+                    value={expenseNumber}
+                    onChange={(event) => setExpenseNumber(event.target.value)}
+                    disabled={!isEditing}
+                    className="form-input"
+                  />
+                </div>
 
-            <div>
-              <label htmlFor="expenseSupplierVat" className="form-label">
-                {t("expenseDetail.supplierVatLabel")}
-              </label>
-              <input
-                id="expenseSupplierVat"
-                type="text"
-                value={supplierVat}
-                onChange={(event) => setSupplierVat(event.target.value)}
-                disabled={!isEditing}
-                className="form-input"
-              />
-            </div>
+                <div>
+                  <label htmlFor="expenseSupplierVat" className="form-label">
+                    {t("expenseDetail.supplierVatLabel")}
+                  </label>
+                  <input
+                    id="expenseSupplierVat"
+                    type="text"
+                    value={supplierVat}
+                    onChange={(event) => setSupplierVat(event.target.value)}
+                    disabled={!isEditing}
+                    className="form-input"
+                  />
+                </div>
+              </>
+            ) : null}
           </div>
 
           <div className="mt-6 flex flex-col sm:flex-row gap-3">
