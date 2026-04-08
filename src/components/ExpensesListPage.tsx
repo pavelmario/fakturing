@@ -258,6 +258,8 @@ export function ExpensesListPage({
       alert(t("expensesList.exportXmlMissingTaxOffice"));
       return;
     }
+    const taxOfficeWorkplaceCode =
+      profile?.taxOfficeWorkplaceCode?.toString().trim() ?? "";
 
     const dic = stripCzPrefix(vatNumber);
     const fullName = profile?.name?.toString().trim() ?? "";
@@ -395,6 +397,9 @@ export function ExpensesListPage({
     const cLine = hasC ? `    <VetaC ${cAttrs.join(" ")} />` : "";
     const vetaPAttrs = [
       `c_ufo="${escapeXmlAttr(taxOfficeCode)}"`,
+      ...(taxOfficeWorkplaceCode
+        ? [`c_pracufo="${escapeXmlAttr(taxOfficeWorkplaceCode)}"`]
+        : []),
       `dic="${escapeXmlAttr(dic)}"`,
       `typ_ds="F"`,
       ...(firstName ? [`jmeno="${escapeXmlAttr(firstName)}"`] : []),
