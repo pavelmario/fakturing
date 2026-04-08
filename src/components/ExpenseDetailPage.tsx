@@ -3,6 +3,7 @@ import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { parseSupplierVatPrefill } from "../supplierVatPrefill";
 
 type ExpenseDetailPageProps = {
   expenseId: string;
@@ -73,6 +74,27 @@ export function ExpenseDetailPage({
 
   const expenseRows = useQuery(expenseQuery) as readonly ExpenseRow[];
   const expense = expenseRows[0] ?? null;
+
+  const profileQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("userProfile")
+          .select(["supplierVatPrefill"])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .orderBy("updatedAt", "desc")
+          .limit(1),
+      ),
+    [evolu, owner.id],
+  );
+  const profileRows = useQuery(profileQuery) as ReadonlyArray<{
+    supplierVatPrefill: string | null;
+  }>;
+  const supplierVatPrefillOptions = useMemo(
+    () => parseSupplierVatPrefill(profileRows[0]?.supplierVatPrefill),
+    [profileRows],
+  );
 
   const hydrateForm = (source: ExpenseRow | null) => {
     setExpenseNumber(source?.expenseNumber ?? "");
@@ -447,11 +469,21 @@ export function ExpenseDetailPage({
                   <input
                     id="expenseSupplierVat"
                     type="text"
+                    list="expenseSupplierVatOptions"
                     value={supplierVat}
                     onChange={(event) => setSupplierVat(event.target.value)}
                     disabled={!isEditing}
                     className="form-input"
                   />
+                  <datalist id="expenseSupplierVatOptions">
+                    {supplierVatPrefillOptions.map((option) => (
+                      <option
+                        key={`${option.vat}|${option.name}`}
+                        value={option.vat}
+                        label={option.name}
+                      />
+                    ))}
+                  </datalist>
                 </div>
               </>
             ) : null}

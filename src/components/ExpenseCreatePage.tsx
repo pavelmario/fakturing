@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
+import { useQuery } from "@evolu/react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { parseSupplierVatPrefill } from "../supplierVatPrefill";
 
 type ExpenseCreatePageProps = {
   onExpenseCreated: () => void;
@@ -12,6 +14,7 @@ export function ExpenseCreatePage({
 }: ExpenseCreatePageProps) {
   const { t } = useI18n();
   const evolu = useEvolu();
+  const owner = use(evolu.appOwner);
 
   const [amountWithoutVat, setAmountWithoutVat] = useState("");
   const [vatRate, setVatRate] = useState("");
@@ -21,6 +24,27 @@ export function ExpenseCreatePage({
   const [supplierVat, setSupplierVat] = useState("");
   const [expenseDate, setExpenseDate] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  const profileQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("userProfile")
+          .select(["supplierVatPrefill"])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .orderBy("updatedAt", "desc")
+          .limit(1),
+      ),
+    [evolu, owner.id],
+  );
+  const profileRows = useQuery(profileQuery) as ReadonlyArray<{
+    supplierVatPrefill: string | null;
+  }>;
+  const supplierVatPrefillOptions = useMemo(
+    () => parseSupplierVatPrefill(profileRows[0]?.supplierVatPrefill),
+    [profileRows],
+  );
 
   useEffect(() => {
     if (expenseDate) return;
@@ -320,10 +344,20 @@ export function ExpenseCreatePage({
                   <input
                     id="expenseSupplierVat"
                     type="text"
+                    list="expenseSupplierVatOptions"
                     value={supplierVat}
                     onChange={(event) => setSupplierVat(event.target.value)}
                     className="form-input"
                   />
+                  <datalist id="expenseSupplierVatOptions">
+                    {supplierVatPrefillOptions.map((option) => (
+                      <option
+                        key={`${option.vat}|${option.name}`}
+                        value={option.vat}
+                        label={option.name}
+                      />
+                    ))}
+                  </datalist>
                 </div>
               </>
             ) : null}

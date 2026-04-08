@@ -36,6 +36,7 @@ export function SettingsPage({
   const [invoiceFooterText, setInvoiceFooterText] = useState<string>("");
   const [discreteMode, setDiscreteMode] = useState<boolean>(false);
   const [expenses, setExpenses] = useState<boolean>(false);
+  const [supplierVatPrefill, setSupplierVatPrefill] = useState<string>("");
   const [language, setLanguage] = useState<"cz" | "en">("cz");
   const { t, locale } = useI18n(language);
   const [poRequired, setPoRequired] = useState<boolean>(false);
@@ -63,6 +64,7 @@ export function SettingsPage({
     invoiceFooterText?: string;
     discreteMode?: boolean;
     expenses?: boolean;
+    supplierVatPrefill?: string;
     poRequired?: boolean;
     mempoolUrl?: string;
     invoiceNamingFormat?: string;
@@ -251,6 +253,7 @@ export function SettingsPage({
       invoiceFooterText: profile.invoiceFooterText ?? undefined,
       discreteMode: profile.discreteMode === Evolu.sqliteTrue,
       expenses: profile.expenses === Evolu.sqliteTrue,
+      supplierVatPrefill: profile.supplierVatPrefill ?? undefined,
       poRequired: profile.poRequired === Evolu.sqliteTrue,
       mempoolUrl: profile.mempoolUrl ?? "https://mempool.space/",
       invoiceNamingFormat:
@@ -275,6 +278,7 @@ export function SettingsPage({
     setInvoiceFooterText(profile.invoiceFooterText ?? "");
     setDiscreteMode(profile.discreteMode === Evolu.sqliteTrue);
     setExpenses(profile.expenses === Evolu.sqliteTrue);
+    setSupplierVatPrefill(profile.supplierVatPrefill ?? "");
     setPoRequired(profile.poRequired === Evolu.sqliteTrue);
     setMempoolUrl(profile.mempoolUrl ?? "https://mempool.space/");
     setInvoiceNamingFormat(
@@ -358,6 +362,56 @@ export function SettingsPage({
     return result;
   };
 
+  const parseCsvRows = (csvText: string): string[][] => {
+    const rows: string[][] = [];
+    let currentRow: string[] = [];
+    let currentCell = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < csvText.length; i += 1) {
+      const char = csvText[i];
+      const nextChar = csvText[i + 1];
+
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          currentCell += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if (char === "," && !inQuotes) {
+        currentRow.push(currentCell);
+        currentCell = "";
+        continue;
+      }
+
+      if ((char === "\n" || char === "\r") && !inQuotes) {
+        if (char === "\r" && nextChar === "\n") {
+          i += 1;
+        }
+        currentRow.push(currentCell);
+        if (currentRow.some((cell) => cell.trim() !== "")) {
+          rows.push(currentRow);
+        }
+        currentRow = [];
+        currentCell = "";
+        continue;
+      }
+
+      currentCell += char;
+    }
+
+    currentRow.push(currentCell);
+    if (currentRow.some((cell) => cell.trim() !== "")) {
+      rows.push(currentRow);
+    }
+
+    return rows;
+  };
+
   const parseCsvBoolean = (value: string | undefined): boolean => {
     if (!value) return false;
     const normalized = value.trim().toLowerCase();
@@ -374,17 +428,14 @@ export function SettingsPage({
     reader.onload = async () => {
       try {
         const text = String(reader.result ?? "");
-        const lines = text
-          .split(/\r?\n/)
-          .map((line) => line.trim())
-          .filter(Boolean);
-        if (lines.length < 2) {
+        const rows = parseCsvRows(text);
+        if (rows.length < 2) {
           alert(t("alerts.csvNoData"));
           return;
         }
 
-        const headers = parseCsvLine(lines[0]);
-        const values = parseCsvLine(lines[1]);
+        const headers = rows[0];
+        const values = rows[1];
         const row = headers.reduce<Record<string, string>>(
           (acc, key, index) => {
             acc[key] = values[index] ?? "";
@@ -427,6 +478,7 @@ export function SettingsPage({
           expenses: parseCsvBoolean(row.expenses)
             ? Evolu.sqliteTrue
             : Evolu.sqliteFalse,
+          supplierVatPrefill: toNullable(row.supplierVatPrefill),
           poRequired: parseCsvBoolean(row.poRequired)
             ? Evolu.sqliteTrue
             : Evolu.sqliteFalse,
@@ -472,6 +524,7 @@ export function SettingsPage({
         setInvoiceFooterText(row.invoiceFooterText ?? "");
         setDiscreteMode(parseCsvBoolean(row.discreteMode));
         setExpenses(parseCsvBoolean(row.expenses));
+        setSupplierVatPrefill(row.supplierVatPrefill?.trim() ?? "");
         setPoRequired(parseCsvBoolean(row.poRequired));
         setMempoolUrl(row.mempoolUrl?.trim() || "https://mempool.space/");
         setInvoiceNamingFormat(
@@ -868,6 +921,7 @@ export function SettingsPage({
         invoiceFooterText: toNullable(invoiceFooterText),
         discreteMode: discreteMode ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         expenses: expenses ? Evolu.sqliteTrue : Evolu.sqliteFalse,
+        supplierVatPrefill: toNullable(supplierVatPrefill),
         poRequired: poRequired ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         mempoolUrl: toNullable(mempoolUrl),
         invoiceNamingFormat: toNullable(invoiceNamingFormat),
@@ -948,6 +1002,7 @@ export function SettingsPage({
     setSwift("");
     setIban("");
     setExpenses(false);
+    setSupplierVatPrefill("");
     setSavedData(null);
     setLastSyncTime("");
     alert(t("alerts.dataCleared"));
@@ -1025,6 +1080,7 @@ export function SettingsPage({
     "invoiceFooterText",
     "discreteMode",
     "expenses",
+    "supplierVatPrefill",
     "language",
     "poRequired",
     "mempoolUrl",
@@ -1594,6 +1650,21 @@ export function SettingsPage({
                   />
                   {t("settings.expenses")}
                 </label>
+                {expenses ? (
+                  <div>
+                    <label htmlFor="supplierVatPrefill" className="form-label">
+                      {t("settings.supplierVatPrefillLabel")}
+                    </label>
+                    <textarea
+                      id="supplierVatPrefill"
+                      value={supplierVatPrefill}
+                      onChange={(e) => setSupplierVatPrefill(e.target.value)}
+                      placeholder={t("settings.supplierVatPrefillPlaceholder")}
+                      rows={5}
+                      className="form-input"
+                    />
+                  </div>
+                ) : null}
                 <label className="settings-checkbox-label">
                   <input
                     type="checkbox"

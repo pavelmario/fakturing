@@ -39,6 +39,7 @@ export const Schema = {
     invoiceFooterText: Evolu.nullOr(Evolu.TrimmedString1000),
     discreteMode: Evolu.nullOr(Evolu.SqliteBoolean),
     expenses: Evolu.nullOr(Evolu.SqliteBoolean),
+    supplierVatPrefill: Evolu.nullOr(Evolu.TrimmedString1000),
     language: Evolu.nullOr(Evolu.TrimmedString100),
     poRequired: Evolu.nullOr(Evolu.SqliteBoolean),
     mempoolUrl: Evolu.nullOr(Evolu.TrimmedString1000),
@@ -102,6 +103,7 @@ export type UserProfileInput = {
   invoiceFooterText?: string;
   discreteMode?: 0 | 1 | null;
   expenses?: 0 | 1 | null;
+  supplierVatPrefill?: string;
   invoiceNamingFormat?: string;
   language?: string;
   poRequired?: 0 | 1 | null;
