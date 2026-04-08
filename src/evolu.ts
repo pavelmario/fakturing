@@ -44,6 +44,7 @@ export const Schema = {
     mempoolUrl: Evolu.nullOr(Evolu.TrimmedString1000),
     invoiceNamingFormat: Evolu.nullOr(Evolu.TrimmedString100),
     taxOfficeCode: Evolu.nullOr(Evolu.TrimmedString100),
+    taxOfficeWorkplaceCode: Evolu.nullOr(Evolu.TrimmedString100),
   },
   client: {
     id: Evolu.id("Client"),
@@ -105,6 +106,8 @@ export type UserProfileInput = {
   language?: string;
   poRequired?: 0 | 1 | null;
   mempoolUrl?: string;
+  taxOfficeCode?: string;
+  taxOfficeWorkplaceCode?: string;
 };
 
 const evolu = createEvolu(evoluReactWebDeps)(Schema, {

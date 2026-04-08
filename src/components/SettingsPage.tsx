@@ -46,6 +46,8 @@ export function SettingsPage({
     "invoice-year-invoice_number",
   );
   const [taxOfficeCode, setTaxOfficeCode] = useState<string>("");
+  const [taxOfficeWorkplaceCode, setTaxOfficeWorkplaceCode] =
+    useState<string>("");
   const [savedData, setSavedData] = useState<{
     name: string;
     email?: string;
@@ -64,6 +66,7 @@ export function SettingsPage({
     poRequired?: boolean;
     mempoolUrl?: string;
     invoiceNamingFormat?: string;
+    taxOfficeWorkplaceCode?: string;
     language?: string;
   } | null>(null);
   const [showMnemonicInput, setShowMnemonicInput] = useState(false);
@@ -253,6 +256,7 @@ export function SettingsPage({
       invoiceNamingFormat:
         profile.invoiceNamingFormat ?? "invoice-year-invoice_number",
       language: profile.language ?? "cz",
+      taxOfficeWorkplaceCode: profile.taxOfficeWorkplaceCode ?? undefined,
     });
     const normalizedLanguage =
       profile.language?.toString().trim().toLowerCase() === "en" ? "en" : "cz";
@@ -277,6 +281,7 @@ export function SettingsPage({
       profile.invoiceNamingFormat ?? "invoice-year-invoice_number",
     );
     setTaxOfficeCode(profile.taxOfficeCode ?? "");
+    setTaxOfficeWorkplaceCode(profile.taxOfficeWorkplaceCode ?? "");
   }, [profile]);
 
   useEffect(() => {
@@ -430,6 +435,7 @@ export function SettingsPage({
             toNullable(row.invoiceNamingFormat) ??
             "invoice-year-invoice_number",
           taxOfficeCode: toNullable(row.taxOfficeCode),
+          taxOfficeWorkplaceCode: toNullable(row.taxOfficeWorkplaceCode),
           language: row.language?.trim().toLowerCase() === "en" ? "en" : "cz",
         };
 
@@ -472,6 +478,7 @@ export function SettingsPage({
           row.invoiceNamingFormat?.trim() || "invoice-year-invoice_number",
         );
         setTaxOfficeCode(row.taxOfficeCode?.trim() ?? "");
+        setTaxOfficeWorkplaceCode(row.taxOfficeWorkplaceCode?.trim() ?? "");
         setLanguage(row.language?.trim().toLowerCase() === "en" ? "en" : "cz");
 
         alert(t("alerts.settingsImported"));
@@ -865,6 +872,7 @@ export function SettingsPage({
         mempoolUrl: toNullable(mempoolUrl),
         invoiceNamingFormat: toNullable(invoiceNamingFormat),
         taxOfficeCode: toNullable(taxOfficeCode),
+        taxOfficeWorkplaceCode: toNullable(taxOfficeWorkplaceCode),
         language: (language || "cz").toString().trim().toLowerCase(),
       };
 
@@ -1022,6 +1030,7 @@ export function SettingsPage({
     "mempoolUrl",
     "invoiceNamingFormat",
     "taxOfficeCode",
+    "taxOfficeWorkplaceCode",
     "updatedAt",
   ];
 
@@ -1392,6 +1401,19 @@ export function SettingsPage({
                       type="text"
                       value={taxOfficeCode}
                       onChange={(e) => setTaxOfficeCode(e.target.value)}
+                      placeholder=""
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <label htmlFor="taxOfficeWorkplaceCode" className="form-label">
+                      {t("settings.taxOfficeWorkplaceCodeLabel")}
+                    </label>
+                    <input
+                      id="taxOfficeWorkplaceCode"
+                      type="text"
+                      value={taxOfficeWorkplaceCode}
+                      onChange={(e) => setTaxOfficeWorkplaceCode(e.target.value)}
                       placeholder=""
                       className="form-input"
                     />
