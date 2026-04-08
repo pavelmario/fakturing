@@ -73,6 +73,24 @@ const escapeXmlAttr = (value: string): string =>
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
+const parseObecFromZipCity = (value: string | null | undefined): string => {
+  if (!value) return "";
+
+  let normalized = value.replace(/\u00A0/g, " ").trim();
+  if (!normalized) return "";
+
+  normalized = normalized.replace(/^,?\s*/, "");
+  normalized = normalized.replace(/^\d{3}\s?\d{2}\s*,?\s*/, "");
+  normalized = normalized.replace(/^\d{5}\s*,?\s*/, "");
+  normalized = normalized.trim();
+  if (!normalized) return "";
+
+  const cityPart = normalized.split(/\s*[-–—]\s*/)[0]?.trim() ?? "";
+  if (!cityPart) return "";
+
+  return cityPart.replace(/\s+\d+\s*$/, "").trim();
+};
+
 export function ExpensesListPage({
   onCreateExpense,
   onViewDetails,
@@ -263,6 +281,7 @@ export function ExpensesListPage({
 
     const dic = stripCzPrefix(vatNumber);
     const fullName = profile?.name?.toString().trim() ?? "";
+    const obec = parseObecFromZipCity(profile?.addressLine2?.toString());
     const nameParts = fullName.split(/\s+/).filter(Boolean);
     const firstName = nameParts[0] ?? "";
     const lastName =
@@ -402,6 +421,7 @@ export function ExpensesListPage({
         : []),
       `dic="${escapeXmlAttr(dic)}"`,
       `typ_ds="F"`,
+      ...(obec ? [`naz_obce="${escapeXmlAttr(obec)}"`] : []),
       ...(firstName ? [`jmeno="${escapeXmlAttr(firstName)}"`] : []),
       ...(lastName ? [`prijmeni="${escapeXmlAttr(lastName)}"`] : []),
     ].join(" ");
