@@ -45,6 +45,7 @@ export function SettingsPage({
   const [invoiceNamingFormat, setInvoiceNamingFormat] = useState<string>(
     "invoice-year-invoice_number",
   );
+  const [taxOfficeCode, setTaxOfficeCode] = useState<string>("");
   const [savedData, setSavedData] = useState<{
     name: string;
     email?: string;
@@ -275,6 +276,7 @@ export function SettingsPage({
     setInvoiceNamingFormat(
       profile.invoiceNamingFormat ?? "invoice-year-invoice_number",
     );
+    setTaxOfficeCode(profile.taxOfficeCode ?? "");
   }, [profile]);
 
   useEffect(() => {
@@ -427,6 +429,7 @@ export function SettingsPage({
           invoiceNamingFormat:
             toNullable(row.invoiceNamingFormat) ??
             "invoice-year-invoice_number",
+          taxOfficeCode: toNullable(row.taxOfficeCode),
           language: row.language?.trim().toLowerCase() === "en" ? "en" : "cz",
         };
 
@@ -468,6 +471,7 @@ export function SettingsPage({
         setInvoiceNamingFormat(
           row.invoiceNamingFormat?.trim() || "invoice-year-invoice_number",
         );
+        setTaxOfficeCode(row.taxOfficeCode?.trim() ?? "");
         setLanguage(row.language?.trim().toLowerCase() === "en" ? "en" : "cz");
 
         alert(t("alerts.settingsImported"));
@@ -860,6 +864,7 @@ export function SettingsPage({
         poRequired: poRequired ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         mempoolUrl: toNullable(mempoolUrl),
         invoiceNamingFormat: toNullable(invoiceNamingFormat),
+        taxOfficeCode: toNullable(taxOfficeCode),
         language: (language || "cz").toString().trim().toLowerCase(),
       };
 
@@ -1016,6 +1021,7 @@ export function SettingsPage({
     "poRequired",
     "mempoolUrl",
     "invoiceNamingFormat",
+    "taxOfficeCode",
     "updatedAt",
   ];
 
@@ -1363,6 +1369,7 @@ export function SettingsPage({
                   {t("settings.vatPayerLabel")}
                 </label>
                 {vatPayer && (
+                  <>
                   <div className="mt-3">
                     <label htmlFor="vat" className="form-label">
                       {t("settings.vatLabel")}
@@ -1376,6 +1383,20 @@ export function SettingsPage({
                       className="form-input"
                     />
                   </div>
+                  <div className="mt-3">
+                    <label htmlFor="taxOfficeCode" className="form-label">
+                      {t("settings.taxOfficeCodeLabel")}
+                    </label>
+                    <input
+                      id="taxOfficeCode"
+                      type="text"
+                      value={taxOfficeCode}
+                      onChange={(e) => setTaxOfficeCode(e.target.value)}
+                      placeholder=""
+                      className="form-input"
+                    />
+                  </div>
+                  </>
                 )}
               </div>
 

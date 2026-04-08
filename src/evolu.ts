@@ -43,6 +43,7 @@ export const Schema = {
     poRequired: Evolu.nullOr(Evolu.SqliteBoolean),
     mempoolUrl: Evolu.nullOr(Evolu.TrimmedString1000),
     invoiceNamingFormat: Evolu.nullOr(Evolu.TrimmedString100),
+    taxOfficeCode: Evolu.nullOr(Evolu.TrimmedString100),
   },
   client: {
     id: Evolu.id("Client"),
