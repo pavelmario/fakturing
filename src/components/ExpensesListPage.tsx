@@ -13,6 +13,9 @@ type ExpenseRow = {
   id: string;
   amountWithoutVat: number | null;
   amountWithVat: number | null;
+  vatRate: number | null;
+  supplierVat: string | null;
+  expenseNumber: string | null;
   description: string | null;
   expenseDate: string | null;
 };
@@ -52,6 +55,24 @@ const formatTotal = (
   }).format(value);
 };
 
+const toDateCz = (iso: string): string => {
+  const d = new Date(iso);
+  const day = d.getDate();
+  const month = d.getMonth() + 1;
+  const year = d.getFullYear();
+  return `${day}.${month}.${year}`;
+};
+
+const stripCzPrefix = (vat: string): string =>
+  vat.replace(/^CZ/i, "").trim();
+
+const escapeXmlAttr = (value: string): string =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
 export function ExpensesListPage({
   onCreateExpense,
   onViewDetails,
@@ -78,6 +99,9 @@ export function ExpensesListPage({
             "id",
             "amountWithoutVat",
             "amountWithVat",
+            "vatRate",
+            "supplierVat",
+            "expenseNumber",
             "description",
             "expenseDate",
           ])
@@ -89,7 +113,23 @@ export function ExpensesListPage({
     [evolu, owner.id],
   );
 
+  const profileQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("userProfile")
+          .selectAll()
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .orderBy("updatedAt", "desc")
+          .limit(1),
+      ),
+    [evolu, owner.id],
+  );
+
   const expenses = useQuery(expensesQuery) as readonly ExpenseRow[];
+  const profileRows = useQuery(profileQuery);
+  const profile = profileRows[0] ?? null;
 
   const normalizedSearch = search.trim().toLowerCase();
 
@@ -201,6 +241,191 @@ export function ExpensesListPage({
     );
   }, [expenses]);
 
+  const handleExportKontrolniHlaseni = () => {
+    if (!dateFrom || !dateTo) {
+      alert(t("expensesList.exportXmlMissingDates"));
+      return;
+    }
+
+    const vatNumber = profile?.vatNumber?.toString().trim() ?? "";
+    if (!vatNumber) {
+      alert(t("expensesList.exportXmlMissingVat"));
+      return;
+    }
+
+    const taxOfficeCode = profile?.taxOfficeCode?.toString().trim() ?? "";
+    if (!taxOfficeCode) {
+      alert(t("expensesList.exportXmlMissingTaxOffice"));
+      return;
+    }
+
+    const dic = stripCzPrefix(vatNumber);
+    const fullName = profile?.name?.toString().trim() ?? "";
+    const nameParts = fullName.split(/\s+/).filter(Boolean);
+    const firstName = nameParts[0] ?? "";
+    const lastName =
+      nameParts.length > 1 ? nameParts.slice(1).join(" ") : firstName;
+    const periodDate = new Date(dateFrom);
+    const rok = periodDate.getFullYear();
+    const mesic = periodDate.getMonth() + 1;
+    const today = toDateCz(new Date().toISOString().slice(0, 10));
+
+    const above10k = filteredExpenses.filter(
+      (e) => Number(e.amountWithVat ?? 0) > 10000,
+    );
+    const atOrBelow10k = filteredExpenses.filter(
+      (e) => Number(e.amountWithVat ?? 0) <= 10000,
+    );
+
+    const missingInfo = above10k.some(
+      (e) => !e.supplierVat?.toString().trim() || !e.expenseNumber?.toString().trim(),
+    );
+    if (missingInfo) {
+      alert(t("expensesList.exportXmlMissingSupplierInfo"));
+      return;
+    }
+
+    const round2 = (value: number) => Math.round(value * 100) / 100;
+
+    const normalizeVatRate = (vatRate: number): 21 | 12 | 10 => {
+      if (!Number.isFinite(vatRate) || vatRate <= 0) return 21;
+      const candidates = [vatRate, vatRate * 10, vatRate * 100];
+      const allowedRates: Array<21 | 12 | 10> = [21, 12, 10];
+
+      let bestRate: 21 | 12 | 10 = 21;
+      let bestDiff = Number.POSITIVE_INFINITY;
+
+      for (const candidate of candidates) {
+        for (const allowedRate of allowedRates) {
+          const diff = Math.abs(candidate - allowedRate);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestRate = allowedRate;
+          }
+        }
+      }
+
+      return bestRate;
+    };
+
+    const computeVatSplit = (expense: ExpenseRow) => {
+      const amountWithVat = Number(expense.amountWithVat ?? 0);
+      const amountWithoutVat = Number(expense.amountWithoutVat ?? Number.NaN);
+      const normalizedVatRate = normalizeVatRate(Number(expense.vatRate ?? 21));
+      const rateBand = normalizedVatRate === 21 ? 21 : 12;
+
+      if (Number.isFinite(amountWithoutVat) && amountWithoutVat >= 0) {
+        const zaklDane = round2(amountWithoutVat);
+        const dan = round2((zaklDane * rateBand) / 100);
+        return { zaklDane, dan, rateBand };
+      }
+
+      const zaklDane = round2(amountWithVat / (1 + rateBand / 100));
+      const dan = round2(amountWithVat - zaklDane);
+      return { zaklDane, dan, rateBand };
+    };
+
+    const b2Lines: string[] = [];
+    const b2Sums = { zakl_dane1: 0, dan1: 0, zakl_dane2: 0, dan2: 0 };
+    for (let i = 0; i < above10k.length; i++) {
+      const e = above10k[i];
+      const { zaklDane, dan, rateBand } = computeVatSplit(e);
+      const dicDod = stripCzPrefix(e.supplierVat?.toString() ?? "");
+      const cEvidDd = escapeXmlAttr(e.expenseNumber?.toString() ?? "");
+      const dppd = toDateCz(e.expenseDate ?? "");
+
+      const rateAttrs =
+        rateBand === 12
+          ? `zakl_dane2="${zaklDane.toFixed(2)}" dan2="${dan.toFixed(2)}"`
+          : `zakl_dane1="${zaklDane.toFixed(2)}" dan1="${dan.toFixed(2)}"`;
+
+      if (rateBand === 12) {
+        b2Sums.zakl_dane2 += zaklDane;
+        b2Sums.dan2 += dan;
+      } else {
+        b2Sums.zakl_dane1 += zaklDane;
+        b2Sums.dan1 += dan;
+      }
+
+      b2Lines.push(
+        `    <VetaB2 c_radku="${i + 1}" dic_dod="${escapeXmlAttr(dicDod)}" c_evid_dd="${cEvidDd}" dppd="${dppd}" ${rateAttrs} pomer="N" zdph_44="N" />`,
+      );
+    }
+
+    const b3Sums = { zakl_dane1: 0, dan1: 0, zakl_dane2: 0, dan2: 0 };
+    for (const e of atOrBelow10k) {
+      const amountWithVat = Number(e.amountWithVat ?? 0);
+      if (amountWithVat <= 0) continue;
+      const { zaklDane, dan, rateBand } = computeVatSplit(e);
+      if (rateBand === 12) {
+        b3Sums.zakl_dane2 += zaklDane;
+        b3Sums.dan2 += dan;
+      } else {
+        b3Sums.zakl_dane1 += zaklDane;
+        b3Sums.dan1 += dan;
+      }
+    }
+
+    const hasB3 =
+      b3Sums.zakl_dane1 !== 0 ||
+      b3Sums.dan1 !== 0 ||
+      b3Sums.zakl_dane2 !== 0 ||
+      b3Sums.dan2 !== 0;
+
+    const b3Attrs: string[] = [];
+    if (b3Sums.zakl_dane1 !== 0 || b3Sums.dan1 !== 0) {
+      b3Attrs.push(`zakl_dane1="${b3Sums.zakl_dane1.toFixed(2)}"`);
+      b3Attrs.push(`dan1="${b3Sums.dan1.toFixed(2)}"`);
+    }
+    if (b3Sums.zakl_dane2 !== 0 || b3Sums.dan2 !== 0) {
+      b3Attrs.push(`zakl_dane2="${b3Sums.zakl_dane2.toFixed(2)}"`);
+      b3Attrs.push(`dan2="${b3Sums.dan2.toFixed(2)}"`);
+    }
+
+    const b3Line = hasB3
+      ? `    <VetaB3 ${b3Attrs.join(" ")} />`
+      : "";
+
+    const cPln23 = b2Sums.zakl_dane1 + b3Sums.zakl_dane1;
+    const cPln5 = b2Sums.zakl_dane2 + b3Sums.zakl_dane2;
+    const hasC = cPln23 !== 0 || cPln5 !== 0;
+    const cAttrs: string[] = [];
+    if (cPln23 !== 0) cAttrs.push(`pln23="${cPln23.toFixed(2)}"`);
+    if (cPln5 !== 0) cAttrs.push(`pln5="${cPln5.toFixed(2)}"`);
+    const cLine = hasC ? `    <VetaC ${cAttrs.join(" ")} />` : "";
+    const vetaPAttrs = [
+      `c_ufo="${escapeXmlAttr(taxOfficeCode)}"`,
+      `dic="${escapeXmlAttr(dic)}"`,
+      `typ_ds="F"`,
+      ...(firstName ? [`jmeno="${escapeXmlAttr(firstName)}"`] : []),
+      ...(lastName ? [`prijmeni="${escapeXmlAttr(lastName)}"`] : []),
+    ].join(" ");
+
+    const xmlParts = [
+      `<?xml version="1.0" encoding="UTF-8"?>`,
+      `<Pisemnost nazevSW="Fakturing" verzeSW="1.0">`,
+      `  <DPHKH1 verzePis="02.01">`,
+      `    <VetaD dokument="KH1" k_uladis="DPH" rok="${rok}" mesic="${mesic}" khdph_forma="B" d_poddp="${today}" />`,
+      `    <VetaP ${vetaPAttrs} />`,
+      ...b2Lines,
+      ...(b3Line ? [b3Line] : []),
+      ...(cLine ? [cLine] : []),
+      `  </DPHKH1>`,
+      `</Pisemnost>`,
+    ];
+
+    const xml = xmlParts.join("\n");
+    const blob = new Blob([xml], { type: "application/xml;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `kontrolni-hlaseni-${rok}-${String(mesic).padStart(2, "0")}.xml`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="page-shell">
       <div className="page-container-lg">
@@ -210,12 +435,20 @@ export function ExpensesListPage({
               <p className="section-title">{t("expensesList.sectionTitle")}</p>
               <h1 className="page-title">{t("expensesList.title")}</h1>
             </div>
-            <button
-              onClick={onCreateExpense}
-              className="btn-primary w-full sm:w-auto"
-            >
-              {t("expensesList.create")}
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={handleExportKontrolniHlaseni}
+                className="btn-secondary w-full sm:w-auto"
+              >
+                {t("expensesList.exportXml")}
+              </button>
+              <button
+                onClick={onCreateExpense}
+                className="btn-primary w-full sm:w-auto"
+              >
+                {t("expensesList.create")}
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

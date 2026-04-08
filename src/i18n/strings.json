@@ -118,7 +118,12 @@
       "emptyNoMatch": "Žádný náklad neodpovídá filtrům.",
       "detail": "Detail nákladu",
       "unknownType": "Neznámý popis",
-      "amountWithVat": "Částka s DPH"
+      "amountWithVat": "Částka s DPH",
+      "exportXml": "Export KH DPH (XML)",
+      "exportXmlMissingDates": "Nastavte filtr datumu pro export kontrolního hlášení.",
+      "exportXmlMissingTaxOffice": "Vyplňte číslo finančního úřadu v nastavení.",
+      "exportXmlMissingVat": "Vyplňte DIČ v nastavení.",
+      "exportXmlMissingSupplierInfo": "Některé doklady nad 10 000 Kč nemají vyplněné DIČ dodavatele nebo číslo dokladu."
     },
     "expenseCreate": {
       "sectionTitle": "Nový",
@@ -274,6 +279,7 @@
       "companyIdLabel": "IČO",
       "vatPayerLabel": "Jsem plátce DPH",
       "vatLabel": "DIČ",
+      "taxOfficeCodeLabel": "Číslo finančního úřadu",
       "bankTitle": "Bankovní spojení",
       "bankAccountLabel": "Bankovní účet",
       "swiftLabel": "SWIFT",
@@ -563,7 +569,12 @@
       "emptyNoMatch": "No expenses match the selected filters.",
       "detail": "Expense detail",
       "unknownType": "Unknown description",
-      "amountWithVat": "Amount incl. VAT"
+      "amountWithVat": "Amount incl. VAT",
+      "exportXml": "Export VAT CR (XML)",
+      "exportXmlMissingDates": "Set date filter to export the VAT control report.",
+      "exportXmlMissingTaxOffice": "Set your tax office number in Settings.",
+      "exportXmlMissingVat": "Set your VAT number in Settings.",
+      "exportXmlMissingSupplierInfo": "Some invoices over 10,000 CZK are missing supplier VAT ID or document number."
     },
     "expenseCreate": {
       "sectionTitle": "New",
@@ -719,6 +730,7 @@
       "companyIdLabel": "Company ID",
       "vatPayerLabel": "I am a VAT payer",
       "vatLabel": "VAT ID",
+      "taxOfficeCodeLabel": "Tax office number",
       "bankTitle": "Banking details",
       "bankAccountLabel": "Bank account",
       "swiftLabel": "SWIFT",
