@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { getRelayUrl } from "../evolu";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 
@@ -11,34 +11,31 @@ export function RelayStatusIndicator() {
       : false,
   );
 
-  const connect = useCallback(() => {
-    const relayUrl = getRelayUrl();
-    let ws: WebSocket | null = null;
-
-    try {
-      ws = new WebSocket(relayUrl);
-    } catch {
-      setIsConnected(false);
-      return null;
-    }
-
-    ws.onopen = () => setIsConnected(true);
-    ws.onerror = () => setIsConnected(false);
-    ws.onclose = () => setIsConnected(false);
-
-    return ws;
-  }, []);
-
   useEffect(() => {
     if (!isOnline) {
-      setIsConnected(false);
       return;
     }
 
-    const ws = connect();
-    if (!ws) return;
+    const reconnectDelayMs = 3000;
+    const connectTimeoutMs = 6000;
+    let ws: WebSocket | null = null;
+    let reconnectTimer: number | undefined;
+    let connectTimer: number | undefined;
+    let disposed = false;
 
-    return () => {
+    const clearTimers = () => {
+      if (reconnectTimer !== undefined) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
+      }
+      if (connectTimer !== undefined) {
+        window.clearTimeout(connectTimer);
+        connectTimer = undefined;
+      }
+    };
+
+    const closeSocket = () => {
+      if (!ws) return;
       ws.onopen = null;
       ws.onerror = null;
       ws.onclose = null;
@@ -48,8 +45,69 @@ export function RelayStatusIndicator() {
       ) {
         ws.close();
       }
+      ws = null;
     };
-  }, [isOnline, connect]);
+
+    const scheduleReconnect = () => {
+      if (disposed || reconnectTimer !== undefined) return;
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = undefined;
+        connect();
+      }, reconnectDelayMs);
+    };
+
+    const connect = () => {
+      if (disposed) return;
+
+      closeSocket();
+
+      try {
+        ws = new WebSocket(getRelayUrl());
+      } catch {
+        setIsConnected(false);
+        scheduleReconnect();
+        return;
+      }
+
+      connectTimer = window.setTimeout(() => {
+        if (!ws || ws.readyState !== WebSocket.CONNECTING) return;
+        ws.close();
+      }, connectTimeoutMs);
+
+      ws.onopen = () => {
+        if (disposed) return;
+        if (connectTimer !== undefined) {
+          window.clearTimeout(connectTimer);
+          connectTimer = undefined;
+        }
+        setIsConnected(true);
+      };
+
+      ws.onerror = () => {
+        if (disposed) return;
+        setIsConnected(false);
+      };
+
+      ws.onclose = () => {
+        if (disposed) return;
+        if (connectTimer !== undefined) {
+          window.clearTimeout(connectTimer);
+          connectTimer = undefined;
+        }
+        ws = null;
+        setIsConnected(false);
+        scheduleReconnect();
+      };
+    };
+
+    connect();
+
+    return () => {
+      disposed = true;
+      clearTimers();
+      closeSocket();
+    };
+  }, [isOnline]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -65,6 +123,8 @@ export function RelayStatusIndicator() {
     return () => observer.disconnect();
   }, []);
 
+  const displayConnected = isOnline && isConnected;
+
   return (
     <div className="fixed bottom-4 right-4 z-40">
       <div
@@ -76,7 +136,7 @@ export function RelayStatusIndicator() {
       >
         <span
           className={`inline-block h-2.5 w-2.5 rounded-full ${
-            isConnected
+            displayConnected
               ? isDarkMode
                 ? "bg-emerald-500"
                 : "bg-emerald-600"
@@ -91,7 +151,7 @@ export function RelayStatusIndicator() {
             isDarkMode ? "text-slate-200" : "text-slate-800"
           }`}
         >
-          {isConnected ? "Sync" : "Relay Offline"}
+          {displayConnected ? "Sync" : "Relay Offline"}
         </span>
       </div>
     </div>
