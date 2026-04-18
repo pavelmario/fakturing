@@ -303,7 +303,7 @@
       "themeSwitchToLight": "Přepnout na světlý režim",
       "discreteMode": "Diskrétní režim",
       "expenses": "Evidence nákladů",
-      "supplierVatPrefillLabel": "Supplier VAT prefill",
+      "supplierVatPrefillLabel": "Našeptávač DIČ dodavatelů",
       "supplierVatPrefillPlaceholder": "CZ123456 | Acme, s.r.o.\nCZ654321 | Emca, a.s.",
       "poRequired": "Číslo objednávky na faktuře",
       "mempoolLabel": "🔗 Mempool URL",
