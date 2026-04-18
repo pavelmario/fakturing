@@ -3,6 +3,7 @@ import * as bip39 from "bip39";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { getRelayUrl, setRelayUrl as saveRelayUrl, useEvolu } from "../evolu";
+import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { useI18n } from "../i18n";
 
 type SettingsPageProps = {
@@ -16,6 +17,7 @@ export function SettingsPage({
   onToggleTheme,
   onSettingsSaved,
 }: SettingsPageProps) {
+  const isOnline = useOnlineStatus();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
   const currentMnemonic = owner.mnemonic ?? "";
@@ -194,43 +196,105 @@ export function SettingsPage({
       return;
     }
 
-    let ws: WebSocket | null = null;
-    let didSettle = false;
-
-    setIsRelayConnected(null);
-
-    try {
-      ws = new WebSocket(connectedRelayUrl);
-    } catch (error) {
-      console.error("Neplatná URL relay adresa:", error);
+    if (!isOnline) {
       setIsRelayConnected(false);
       return;
     }
 
-    ws.onopen = () => {
-      didSettle = true;
-      setIsRelayConnected(true);
-    };
+    const reconnectDelayMs = 3000;
+    const connectTimeoutMs = 6000;
+    let ws: WebSocket | null = null;
+    let reconnectTimer: number | undefined;
+    let connectTimer: number | undefined;
+    let disposed = false;
 
-    ws.onerror = () => {
-      didSettle = true;
-      setIsRelayConnected(false);
-    };
-
-    ws.onclose = () => {
-      if (!didSettle) {
-        setIsRelayConnected(false);
-      } else {
-        setIsRelayConnected(false);
+    const clearTimers = () => {
+      if (reconnectTimer !== undefined) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = undefined;
+      }
+      if (connectTimer !== undefined) {
+        window.clearTimeout(connectTimer);
+        connectTimer = undefined;
       }
     };
 
-    return () => {
-      if (ws && ws.readyState === WebSocket.OPEN) {
+    const closeSocket = () => {
+      if (!ws) return;
+      ws.onopen = null;
+      ws.onerror = null;
+      ws.onclose = null;
+      if (
+        ws.readyState === WebSocket.OPEN ||
+        ws.readyState === WebSocket.CONNECTING
+      ) {
         ws.close();
       }
+      ws = null;
     };
-  }, [connectedRelayUrl]);
+
+    const scheduleReconnect = () => {
+      if (disposed || reconnectTimer !== undefined) return;
+      reconnectTimer = window.setTimeout(() => {
+        reconnectTimer = undefined;
+        connect();
+      }, reconnectDelayMs);
+    };
+
+    const connect = () => {
+      if (disposed) return;
+
+      closeSocket();
+      setIsRelayConnected(null);
+
+      try {
+        ws = new WebSocket(connectedRelayUrl);
+      } catch (error) {
+        console.error("Neplatná URL relay adresa:", error);
+        setIsRelayConnected(false);
+        scheduleReconnect();
+        return;
+      }
+
+      connectTimer = window.setTimeout(() => {
+        if (!ws || ws.readyState !== WebSocket.CONNECTING) return;
+        ws.close();
+      }, connectTimeoutMs);
+
+      ws.onopen = () => {
+        if (disposed) return;
+        if (connectTimer !== undefined) {
+          window.clearTimeout(connectTimer);
+          connectTimer = undefined;
+        }
+        setIsRelayConnected(true);
+      };
+
+      ws.onerror = () => {
+        if (disposed) return;
+        setIsRelayConnected(false);
+      };
+
+      ws.onclose = () => {
+        if (disposed) return;
+        if (connectTimer !== undefined) {
+          window.clearTimeout(connectTimer);
+          connectTimer = undefined;
+        }
+        ws = null;
+        setIsRelayConnected(false);
+        scheduleReconnect();
+      };
+    };
+
+    connect();
+
+    return () => {
+      disposed = true;
+      clearTimers();
+      closeSocket();
+    };
+  }, [connectedRelayUrl, isOnline]);
 
   useEffect(() => {
     if (!profile) {
@@ -1435,45 +1499,50 @@ export function SettingsPage({
                 </label>
                 {vatPayer && (
                   <>
-                  <div className="mt-3">
-                    <label htmlFor="vat" className="form-label">
-                      {t("settings.vatLabel")}
-                    </label>
-                    <input
-                      id="vat"
-                      type="text"
-                      value={vatNumber}
-                      onChange={(e) => setVatNumber(e.target.value)}
-                      placeholder=""
-                      className="form-input"
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <label htmlFor="taxOfficeCode" className="form-label">
-                      {t("settings.taxOfficeCodeLabel")}
-                    </label>
-                    <input
-                      id="taxOfficeCode"
-                      type="text"
-                      value={taxOfficeCode}
-                      onChange={(e) => setTaxOfficeCode(e.target.value)}
-                      placeholder=""
-                      className="form-input"
-                    />
-                  </div>
-                  <div className="mt-3">
-                    <label htmlFor="taxOfficeWorkplaceCode" className="form-label">
-                      {t("settings.taxOfficeWorkplaceCodeLabel")}
-                    </label>
-                    <input
-                      id="taxOfficeWorkplaceCode"
-                      type="text"
-                      value={taxOfficeWorkplaceCode}
-                      onChange={(e) => setTaxOfficeWorkplaceCode(e.target.value)}
-                      placeholder=""
-                      className="form-input"
-                    />
-                  </div>
+                    <div className="mt-3">
+                      <label htmlFor="vat" className="form-label">
+                        {t("settings.vatLabel")}
+                      </label>
+                      <input
+                        id="vat"
+                        type="text"
+                        value={vatNumber}
+                        onChange={(e) => setVatNumber(e.target.value)}
+                        placeholder=""
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="mt-3">
+                      <label htmlFor="taxOfficeCode" className="form-label">
+                        {t("settings.taxOfficeCodeLabel")}
+                      </label>
+                      <input
+                        id="taxOfficeCode"
+                        type="text"
+                        value={taxOfficeCode}
+                        onChange={(e) => setTaxOfficeCode(e.target.value)}
+                        placeholder=""
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="mt-3">
+                      <label
+                        htmlFor="taxOfficeWorkplaceCode"
+                        className="form-label"
+                      >
+                        {t("settings.taxOfficeWorkplaceCodeLabel")}
+                      </label>
+                      <input
+                        id="taxOfficeWorkplaceCode"
+                        type="text"
+                        value={taxOfficeWorkplaceCode}
+                        onChange={(e) =>
+                          setTaxOfficeWorkplaceCode(e.target.value)
+                        }
+                        placeholder=""
+                        className="form-input"
+                      />
+                    </div>
                   </>
                 )}
               </div>
