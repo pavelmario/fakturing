@@ -12,6 +12,8 @@ import { InvoiceDetailPage } from "./components/InvoiceDetailPage";
 import { InvoiceListPage } from "./components/InvoiceListPage";
 import { SettingsPage } from "./components/SettingsPage";
 import { RelayStatusIndicator } from "./components/RelayStatusIndicator";
+import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
+import { OfflineBanner } from "./components/OfflineBanner";
 import { useEvolu } from "./evolu";
 import { useI18n } from "./i18n";
 import "./index.css";
@@ -386,6 +388,8 @@ function App() {
           </p>
         </div>
         <RelayStatusIndicator />
+        <PWAUpdatePrompt />
+        <OfflineBanner />
       </div>
     </Suspense>
   );
