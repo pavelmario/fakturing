@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getRelayUrl } from "../evolu";
+import { useOnlineStatus } from "../hooks/useOnlineStatus";
 
 export function RelayStatusIndicator() {
+  const isOnline = useOnlineStatus();
   const [isConnected, setIsConnected] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() =>
     typeof document !== "undefined"
@@ -9,7 +11,7 @@ export function RelayStatusIndicator() {
       : false,
   );
 
-  useEffect(() => {
+  const connect = useCallback(() => {
     const relayUrl = getRelayUrl();
     let ws: WebSocket | null = null;
 
@@ -17,15 +19,26 @@ export function RelayStatusIndicator() {
       ws = new WebSocket(relayUrl);
     } catch {
       setIsConnected(false);
-      return;
+      return null;
     }
 
     ws.onopen = () => setIsConnected(true);
     ws.onerror = () => setIsConnected(false);
     ws.onclose = () => setIsConnected(false);
 
+    return ws;
+  }, []);
+
+  useEffect(() => {
+    if (!isOnline) {
+      setIsConnected(false);
+      return;
+    }
+
+    const ws = connect();
+    if (!ws) return;
+
     return () => {
-      if (!ws) return;
       ws.onopen = null;
       ws.onerror = null;
       ws.onclose = null;
@@ -36,7 +49,7 @@ export function RelayStatusIndicator() {
         ws.close();
       }
     };
-  }, []);
+  }, [isOnline, connect]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -78,7 +91,7 @@ export function RelayStatusIndicator() {
             isDarkMode ? "text-slate-200" : "text-slate-800"
           }`}
         >
-          {isConnected ? "Sync" : "Offline"}
+          {isConnected ? "Sync" : "Relay Offline"}
         </span>
       </div>
     </div>
