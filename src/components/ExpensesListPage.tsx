@@ -175,6 +175,22 @@ export function ExpensesListPage({
     });
   }, [dateFrom, dateTo, expenses, normalizedSearch]);
 
+  const dateRangeExpenses = useMemo(() => {
+    return expenses.filter((expense) => {
+      const expenseDateOnly = toDateOnly(expense.expenseDate);
+
+      if (dateFrom && (!expenseDateOnly || expenseDateOnly < dateFrom)) {
+        return false;
+      }
+
+      if (dateTo && (!expenseDateOnly || expenseDateOnly > dateTo)) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [dateFrom, dateTo, expenses]);
+
   const monthStats = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -291,10 +307,10 @@ export function ExpensesListPage({
     const mesic = periodDate.getMonth() + 1;
     const today = toDateCz(new Date().toISOString().slice(0, 10));
 
-    const above10k = filteredExpenses.filter(
+    const above10k = dateRangeExpenses.filter(
       (e) => Number(e.amountWithVat ?? 0) > 10000,
     );
-    const atOrBelow10k = filteredExpenses.filter(
+    const atOrBelow10k = dateRangeExpenses.filter(
       (e) => Number(e.amountWithVat ?? 0) <= 10000,
     );
 
