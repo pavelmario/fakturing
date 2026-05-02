@@ -1343,7 +1343,7 @@ export function InvoiceDetailPage({
         invoiceNumber: nextInvoiceNumber,
         clientName: safeClientName,
         issueDate: todayIso,
-        duzp: todayIso,
+        duzp: showVat ? todayIso : null,
         paymentDate: null,
         paymentDays: invoice.paymentDays,
         paymentMethod: invoice.paymentMethod ?? "bank",
