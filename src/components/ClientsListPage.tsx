@@ -1,29 +1,63 @@
 import { use, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
+import { ArrowDown, ArrowUp, Plus, Search } from "lucide-react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { clientTotals, emptyTotals, type ClientInvoice } from "../lib/clientStats";
+import { formatDate } from "../lib/invoice";
+import { formatAmount } from "../lib/money";
 
 type ClientsListPageProps = {
   onViewDetails: (clientId: string) => void;
   onCreateClient: () => void;
 };
 
+type SortKey = "name" | "invoiced" | "unpaid" | "lastIssue";
+
+/* One row can hold more than one currency; each is shown on its own line
+   rather than summed into a meaningless figure. */
+const lines = (amounts: Map<string, number>) =>
+  [...amounts.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+
+/* Only for ordering rows — never displayed, so mixing currencies is fine. */
+const sum = (amounts: Map<string, number>) =>
+  [...amounts.values()].reduce((total, value) => total + value, 0);
+
 export function ClientsListPage({
   onViewDetails,
   onCreateClient,
 }: ClientsListPageProps) {
-  const { t } = useI18n();
+  const { t, tp, locale } = useI18n();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
   const [search, setSearch] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey>("lastIssue");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const profileQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("userProfile")
+          .select(["vatPayer", "discreteMode"])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .orderBy("updatedAt", "desc")
+          .limit(1),
+      ),
+    [evolu, owner.id],
+  );
+  const profile = useQuery(profileQuery)[0];
+  const isVatPayer = profile?.vatPayer === Evolu.sqliteTrue;
+  const isDiscreteMode = profile?.discreteMode === Evolu.sqliteTrue;
 
   const clientsQuery = useMemo(
     () =>
       evolu.createQuery((db) =>
         db
           .selectFrom("client")
-          .select(["id", "name", "email", "phone"])
+          .select(["id", "name", "email", "phone", "companyIdentificationNumber"])
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
@@ -31,79 +65,224 @@ export function ClientsListPage({
       ),
     [evolu, owner.id],
   );
-
   const clients = useQuery(clientsQuery);
-  const normalizedSearch = search.trim().toLowerCase();
-  const filteredClients = normalizedSearch
-    ? clients.filter((client) =>
-        (client.name ?? "").toLowerCase().includes(normalizedSearch),
-      )
-    : clients;
+
+  const invoicesQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("invoice")
+          .select([
+            "clientName",
+            "clientId",
+            "currency",
+            "issueDate",
+            "paymentDate",
+            "paymentDays",
+            "items",
+          ])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue),
+      ),
+    [evolu, owner.id],
+  );
+  const invoices = useQuery(invoicesQuery) as readonly ClientInvoice[];
+
+  /* Renamed clients keep their history: totals join by id where an invoice
+     has one, falling back to the stored name for older rows. */
+  const nameById = useMemo(
+    () =>
+      new Map(
+        clients
+          .filter((client) => client.name)
+          .map((client) => [client.id, client.name as string]),
+      ),
+    [clients],
+  );
+
+  const totals = useMemo(
+    () => clientTotals(invoices, isVatPayer, nameById),
+    [invoices, isVatPayer, nameById],
+  );
+
+  const rows = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    const list = clients
+      .map((client) => ({
+        ...client,
+        stats: totals.get(client.name ?? "") ?? emptyTotals(),
+      }))
+      .filter((client) => {
+        if (!needle) return true;
+        return [client.name, client.email, client.companyIdentificationNumber]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(needle);
+      });
+
+    const dir = sortDir === "asc" ? 1 : -1;
+    list.sort((a, b) => {
+      switch (sortKey) {
+        case "invoiced":
+          return dir * (sum(a.stats.invoiced) - sum(b.stats.invoiced));
+        case "unpaid":
+          return dir * (sum(a.stats.unpaid) - sum(b.stats.unpaid));
+        case "lastIssue":
+          return dir * (a.stats.lastIssue - b.stats.lastIssue);
+        default:
+          return dir * (a.name ?? "").localeCompare(b.name ?? "", locale);
+      }
+    });
+    return list;
+  }, [clients, locale, search, sortDir, sortKey, totals]);
+
+  const amount = (value: number) =>
+    isDiscreteMode ? t("common.discreteMask") : formatAmount(value, locale);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "name" ? "asc" : "desc");
+    }
+  };
+
+  const header = (label: string, key: SortKey, align?: "right") => (
+    <th style={align === "right" ? { textAlign: "right" } : undefined}>
+      <button
+        type="button"
+        className="ledger-sort"
+        data-active={sortKey === key}
+        onClick={() => toggleSort(key)}
+      >
+        {align === "right" ? null : label}
+        {sortKey === key && sortDir === "asc" ? <ArrowUp /> : <ArrowDown />}
+        {align === "right" ? label : null}
+      </button>
+    </th>
+  );
 
   return (
     <div className="page-shell">
-      <div className="page-container">
-        <div className="page-card">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-            <div>
-              <p className="section-title">{t("clientsList.sectionTitle")}</p>
-              <h1 className="page-title">{t("clientsList.title")}</h1>
-            </div>
-            <button
-              onClick={onCreateClient}
-              className="btn-primary w-full sm:w-auto"
-            >
-              {t("clientsList.create")}
-            </button>
-          </div>
+      <div className="page-container-lg">
+        <div className="flex items-end justify-between gap-4 mb-5">
+          <h1 className="page-title">{t("clientsList.title")}</h1>
+          <button onClick={onCreateClient} className="btn-primary">
+            <Plus />
+            {t("clientsList.create")}
+          </button>
+        </div>
 
-          <div className="mb-4">
-            <label htmlFor="clientSearch" className="form-label">
-              {t("clientsList.searchLabel")}
-            </label>
+        <div className="filter-bar">
+          <div className="search-field">
+            <Search />
             <input
-              id="clientSearch"
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("clientsList.searchPlaceholder")}
-              className="form-input"
+              aria-label={t("clientsList.searchLabel")}
             />
           </div>
-
-          {filteredClients.length === 0 ? (
-            <div className="empty-state">
-              {clients.length === 0
-                ? t("clientsList.emptyNone")
-                : t("clientsList.emptyNoMatch")}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredClients.map((client) => (
-                <div
-                  key={client.id}
-                  className="list-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-                >
-                  <div>
-                    <div className="text-lg font-semibold client-list-name">
-                      {client.name ?? t("clientsList.unnamed")}
-                    </div>
-                    <div className="text-sm client-list-contact space-y-1 mt-1">
-                      <div>{client.phone || ""}</div>
-                      <div>{client.email || ""}</div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => onViewDetails(client.id)}
-                    className="btn-secondary w-full sm:w-auto"
-                  >
-                    {t("clientsList.viewDetail")}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="filter-bar-tail">
+            <span className="filter-count">
+              {rows.length} {tp("clientsList.clientCount", rows.length)}
+            </span>
+          </div>
         </div>
+
+        {rows.length === 0 ? (
+          <div className="empty-state">
+            {clients.length === 0
+              ? t("clientsList.emptyNone")
+              : t("clientsList.emptyNoMatch")}
+          </div>
+        ) : (
+          <div className="ledger-wrap">
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th className="ledger-rail" style={{ borderBottom: 0 }} />
+                  {header(t("clientsList.colName"), "name")}
+                  <th>{t("clientsForm.companyIdLabel")}</th>
+                  {header(t("clientsList.colLast"), "lastIssue")}
+                  <th className="num-col">{t("clientsList.colCount")}</th>
+                  {header(t("clientsList.colInvoiced"), "invoiced", "right")}
+                  {header(t("clientsList.colUnpaid"), "unpaid", "right")}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((client) => (
+                  <tr
+                    key={client.id}
+                    /* The rail flags clients who owe you money. */
+                    data-status={
+                      client.stats.overdueCount > 0
+                        ? "overdue"
+                        : client.stats.unpaid.size > 0
+                          ? "unpaid"
+                          : "paid"
+                    }
+                    onClick={() => onViewDetails(client.id)}
+                  >
+                    <td className="ledger-rail">
+                      <span />
+                    </td>
+                    <td className="ledger-client">
+                      {client.name ?? t("clientsList.unnamed")}
+                    </td>
+                    <td className="ledger-date">
+                      {client.companyIdentificationNumber ??
+                        t("common.placeholderDash")}
+                    </td>
+                    <td className="ledger-date">
+                      {client.stats.lastIssue
+                        ? formatDate(
+                            new Date(client.stats.lastIssue).toISOString(),
+                            locale,
+                          )
+                        : t("common.placeholderDash")}
+                    </td>
+                    <td className="ledger-amount">{client.stats.count}</td>
+                    <td className="ledger-amount">
+                      {lines(client.stats.invoiced).map(([code, value]) => (
+                        <div key={code}>
+                          {amount(value)}
+                          <span className="cur">{code}</span>
+                        </div>
+                      ))}
+                    </td>
+                    <td className="ledger-amount">
+                      {lines(client.stats.unpaid).length ? (
+                        lines(client.stats.unpaid).map(([code, value]) => (
+                          <div
+                            key={code}
+                            className="lstate"
+                            data-state={
+                              client.stats.overdueCount > 0
+                                ? "overdue"
+                                : "unpaid"
+                            }
+                          >
+                            {amount(value)}
+                            <span className="cur">{code}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <span className="ink-faint">
+                          {t("common.placeholderDash")}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
