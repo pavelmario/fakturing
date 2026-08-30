@@ -427,7 +427,7 @@ export function ClientDetailPage({
                 onRecordPayment={(row) => onViewInvoice(row.id)}
                 onUndoPayment={(row) => onViewInvoice(row.id)}
                 formatAmount={amount}
-                formatMoney={(value) => money(value)}
+                formatMoney={formatMoneyIn}
                 currencies={[...new Set(rows.map((row) => row.currency))]}
               />
             )}

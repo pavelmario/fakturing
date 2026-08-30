@@ -147,8 +147,15 @@ export function InvoiceDetailPage({
 
   const storedItems = useMemo(() => parseItems(invoice?.items), [invoice]);
 
+  /* By id where the invoice has one: clientName is a deliberate snapshot of
+     how the client was addressed at the time, so matching on it loses the
+     address and IČO for the PDF as soon as the client is renamed. */
   const selectedClientRecord =
-    clients.find((client) => client.name === invoice?.clientName) ?? null;
+    (invoice?.clientId
+      ? clients.find((client) => String(client.id) === String(invoice.clientId))
+      : null) ??
+    clients.find((client) => client.name === invoice?.clientName) ??
+    null;
 
   /* Hooks must run before the not-found early return, so this is built from a
      possibly-empty invoice and simply not rendered when there is none. */
@@ -412,6 +419,12 @@ export function InvoiceDetailPage({
       paymentMethod: invoice.paymentMethod ?? "bank",
       items: JSON.stringify(storedItems),
     });
+    /* Without these a duplicated €1 200 invoice came back as 1 200 Kč. */
+    if (invoice.clientId) search.set("clientId", invoice.clientId);
+    if (invoice.currency) search.set("currency", invoice.currency);
+    if (invoice.bankAccountId) {
+      search.set("bankAccountId", invoice.bankAccountId);
+    }
     if (invoice.invoicingNote) {
       search.set("invoicingNote", invoice.invoicingNote);
     }
