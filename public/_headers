@@ -1,0 +1,11 @@
+# Netlify and Cloudflare Pages read this from the publish directory.
+# Vercel reads vercel.json; the Vite dev and preview servers get the same
+# headers from vite.config.ts. Keep the four in step.
+/*
+  # Suite Web's connect popup reports back through window.opener, which
+  # Cross-Origin-Opener-Policy: same-origin would sever. Trezor Connect then
+  # fails as a handshake timeout, with nothing pointing at the header.
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  # frame-src covers two framers: Connect bootstraps its channel to Suite Web
+  # in an iframe, and the invoice PDF preview frames a blob: URL.
+  Content-Security-Policy: frame-src 'self' blob: https://suite.trezor.io

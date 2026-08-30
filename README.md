@@ -126,6 +126,21 @@ Default `faktura-{cislo}`.
 **Relay** defaults to `wss://free.evoluhq.com` and is overridable in settings
 (stored under `invoiceApp_relayUrl`). `npm run relay` starts a local one.
 
+**Security headers** are set in four places that must stay in step:
+`public/_headers` (Netlify, Cloudflare Pages), `vercel.json`, and `server` /
+`preview` in `vite.config.ts`. On any other host, copy the same two headers.
+
+```
+Cross-Origin-Opener-Policy: same-origin-allow-popups
+Content-Security-Policy: frame-src 'self' blob: https://suite.trezor.io
+```
+
+Both exist for the Trezor popup, and both have a trap. `same-origin` would sever
+the popup's `window.opener`; `frame-src` has to keep `blob:` or the invoice PDF
+preview goes blank. Getting either wrong shows up as a handshake timeout when
+the popup opens, not as an obvious header error. Adding
+`Cross-Origin-Embedder-Policy` would break the popup too.
+
 ---
 
 ## Tech stack
@@ -136,7 +151,10 @@ Default `faktura-{cislo}`.
 - **Evolu** (`@evolu/common`, `@evolu/react`, `@evolu/react-web`, `@evolu/web`) —
   local-first CRDT storage with encrypted WebSocket relay sync
 - **`@react-pdf/renderer`** for invoice PDFs, **`qrcode`** for payment QR codes
-- **`@trezor/connect-web`** for hardware-wallet BTC addresses
+- **`@trezor/connect-web`** (Connect 10) for hardware-wallet BTC addresses — the
+  wallet core lives in Trezor Suite, reached over a localhost socket when Suite
+  Desktop is running and through a Suite Web popup otherwise. Needs **Suite
+  26.7.2+** and the security headers below
 - **`bip39`** for the seed phrase, **`lucide-react`** for icons
 - **`vite-plugin-pwa`** — offline shell with an explicit update prompt
 
