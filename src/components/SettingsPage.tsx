@@ -76,6 +76,7 @@ export function SettingsPage({
   /* Which datasets the next export includes. */
   const [exportPick, setExportPick] = useState({
     settings: true,
+    bankAccounts: true,
     clients: true,
     invoices: true,
     expenses: true,
@@ -93,6 +94,7 @@ export function SettingsPage({
   const importClientsInputRef = useRef<HTMLInputElement | null>(null);
   const importInvoicesInputRef = useRef<HTMLInputElement | null>(null);
   const importExpensesInputRef = useRef<HTMLInputElement | null>(null);
+  const importBankAccountsInputRef = useRef<HTMLInputElement | null>(null);
 
   const profileQuery = useMemo(
     () =>
@@ -186,9 +188,35 @@ export function SettingsPage({
     [evolu, owner.id],
   );
 
+  /* Bank accounts moved out of the profile into their own table, so without
+     this the export silently left the user with no payment details — and no
+     payment QR — after a restore. */
+  const bankAccountsQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("bankAccount")
+          .select([
+            "id",
+            "label",
+            "accountNumber",
+            "iban",
+            "swift",
+            "currency",
+            "isDefault",
+          ])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue)
+          .orderBy("label", "asc"),
+      ),
+    [evolu, owner.id],
+  );
+
   const clients = useQuery(clientsQuery);
   const invoices = useQuery(invoicesQuery);
   const expenseRows = useQuery(expensesQuery);
+  const bankAccountRows = useQuery(bankAccountsQuery);
 
   useEffect(() => {
     const currentUrl = getRelayUrl();
@@ -528,9 +556,13 @@ export function SettingsPage({
             ? Evolu.sqliteTrue
             : Evolu.sqliteFalse,
           mempoolUrl: toNullable(row.mempoolUrl) ?? "https://mempool.space/",
-          invoiceNamingFormat:
-            toNullable(row.invoiceNamingFormat) ??
-            "invoice-year-invoice_number",
+          /* Stored as a token template, not the legacy preset name that
+             older exports (and the shipped sample) still carry. */
+          invoiceNamingFormat: normalizeFileNameTemplate(
+            toNullable(row.invoiceNamingFormat),
+          ),
+          invoiceNumberFormat:
+            toNullable(row.invoiceNumberFormat) ?? NUMBER_DEFAULT,
           taxOfficeCode: toNullable(row.taxOfficeCode),
           taxOfficeWorkplaceCode: toNullable(row.taxOfficeWorkplaceCode),
           language: row.language?.trim().toLowerCase() === "en" ? "en" : "cz",
@@ -563,11 +595,12 @@ export function SettingsPage({
         setBillPerUnit(parseCsvBoolean(row.billPerUnit));
         setMempoolUrl(row.mempoolUrl?.trim() || "https://mempool.space/");
         setInvoiceNamingFormat(
-          row.invoiceNamingFormat?.trim() || "invoice-year-invoice_number",
+          normalizeFileNameTemplate(row.invoiceNamingFormat?.trim()),
         );
+        setInvoiceNumberFormat(row.invoiceNumberFormat?.trim() || NUMBER_DEFAULT);
         setLanguage(row.language?.trim().toLowerCase() === "en" ? "en" : "cz");
 
-        notify(t("alerts.settingsImported"), "error");
+        notify(t("alerts.settingsImported"), "success");
       } catch (error) {
         console.error("CSV import error:", error);
         notify(t("alerts.csvImportFailed"), "error");
@@ -578,6 +611,76 @@ export function SettingsPage({
       }
     };
 
+    reader.readAsText(file);
+  };
+
+  const handleImportBankAccountsCsv = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const text = String(reader.result ?? "");
+        const lines = text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean);
+        if (lines.length < 2) {
+          notify(t("alerts.csvNoData"), "error");
+          return;
+        }
+
+        const headers = parseCsvLine(lines[0]);
+        const dataRows = lines.slice(1).map((line) => parseCsvLine(line));
+
+        const toNullable = (value: string | undefined) => {
+          const trimmed = (value ?? "").trim();
+          return trimmed ? trimmed : null;
+        };
+
+        for (const values of dataRows) {
+          const row = headers.reduce<Record<string, string>>(
+            (acc, key, index) => {
+              acc[key] = values[index] ?? "";
+              return acc;
+            },
+            {},
+          );
+
+          const label = row.label?.trim();
+          if (!label) continue;
+
+          const result = evolu.insert("bankAccount", {
+            label,
+            accountNumber: toNullable(row.accountNumber),
+            iban: toNullable(row.iban),
+            swift: toNullable(row.swift),
+            currency: toNullable(row.currency),
+            isDefault: parseCsvBoolean(row.isDefault)
+              ? Evolu.sqliteTrue
+              : Evolu.sqliteFalse,
+            deleted: Evolu.sqliteFalse,
+          });
+          if (!result.ok) {
+            console.error("Validation error:", result.error);
+            notify(t("alerts.bankAccountsImportValidation"), "error");
+            return;
+          }
+        }
+
+        notify(t("alerts.bankAccountsImported"), "success");
+      } catch (error) {
+        console.error("CSV import error:", error);
+        notify(t("alerts.csvImportFailed"), "error");
+      } finally {
+        if (importBankAccountsInputRef.current) {
+          importBankAccountsInputRef.current.value = "";
+        }
+      }
+    };
     reader.readAsText(file);
   };
 
@@ -642,7 +745,7 @@ export function SettingsPage({
           }
         }
 
-        notify(t("alerts.clientsImported"), "error");
+        notify(t("alerts.clientsImported"), "success");
       } catch (error) {
         console.error("CSV import error:", error);
         notify(t("alerts.clientsImportFailed"), "error");
@@ -755,6 +858,11 @@ export function SettingsPage({
           const payload = {
             invoiceNumber,
             clientName,
+            /* Round-tripping without these dropped every foreign-currency
+               invoice back to CZK and detached it from its client. */
+            clientId: toNullable(row.clientId),
+            currency: toNullable(row.currency),
+            bankAccountId: toNullable(row.bankAccountId),
             issueDate: issueDateResult.value,
             duzp: duzpResult?.ok ? duzpResult.value : null,
             paymentDate: paymentDateResult?.ok ? paymentDateResult.value : null,
@@ -778,7 +886,7 @@ export function SettingsPage({
           }
         }
 
-        notify(t("alerts.invoicesImported"), "error");
+        notify(t("alerts.invoicesImported"), "success");
       } catch (error) {
         console.error("CSV import error:", error);
         notify(t("alerts.invoicesImportFailed"), "error");
@@ -911,7 +1019,7 @@ export function SettingsPage({
           }
         }
 
-        notify(t("alerts.expensesImported"), "error");
+        notify(t("alerts.expensesImported"), "success");
       } catch (error) {
         console.error("CSV import error:", error);
         notify(t("alerts.expensesImportFailed"), "error");
@@ -1110,6 +1218,9 @@ export function SettingsPage({
     "id",
     "invoiceNumber",
     "clientName",
+    "clientId",
+    "currency",
+    "bankAccountId",
     "issueDate",
     "duzp",
     "paymentDate",
@@ -1120,6 +1231,16 @@ export function SettingsPage({
     "btcInvoice",
     "btcAddress",
     "items",
+  ];
+
+  const bankAccountsExportHeaders = [
+    "id",
+    "label",
+    "accountNumber",
+    "iban",
+    "swift",
+    "currency",
+    "isDefault",
   ];
 
   const expensesExportHeaders = [
@@ -1154,6 +1275,14 @@ export function SettingsPage({
       "invoices.csv",
       invoicesExportHeaders,
       invoices as ReadonlyArray<Record<string, unknown>>,
+    );
+  };
+
+  const handleExportBankAccountsCsv = () => {
+    downloadCsv(
+      "bank-accounts.csv",
+      bankAccountsExportHeaders,
+      bankAccountRows as ReadonlyArray<Record<string, unknown>>,
     );
   };
 
@@ -1205,7 +1334,7 @@ export function SettingsPage({
     }) !== JSON.stringify(storedValues);
 
   const pickedCount = Object.values(exportPick).filter(Boolean).length;
-  const allPicked = pickedCount === 4;
+  const allPicked = pickedCount === Object.keys(exportPick).length;
 
   const toggle = (
     checked: boolean,
@@ -1572,6 +1701,14 @@ export function SettingsPage({
                   template: "/settings_import_template.csv",
                 },
                 {
+                  key: "bankAccounts" as const,
+                  label: t("settings.importBankAccountsHeading"),
+                  onExport: handleExportBankAccountsCsv,
+                  onImport: handleImportBankAccountsCsv,
+                  ref: importBankAccountsInputRef,
+                  template: "/bank_accounts_import_template.csv",
+                },
+                {
                   key: "clients" as const,
                   label: t("settings.importClientsHeading"),
                   onExport: handleExportClientsCsv,
@@ -1641,6 +1778,7 @@ export function SettingsPage({
                   /* Each dataset is its own CSV, so "export selected" simply
                      runs the ones you ticked. */
                   if (exportPick.settings) handleExportSettingsCsv();
+                  if (exportPick.bankAccounts) handleExportBankAccountsCsv();
                   if (exportPick.clients) handleExportClientsCsv();
                   if (exportPick.invoices) handleExportInvoicesCsv();
                   if (exportPick.expenses) handleExportExpensesCsv();
@@ -1654,6 +1792,7 @@ export function SettingsPage({
                 onClick={() =>
                   setExportPick({
                     settings: allPicked ? false : true,
+                    bankAccounts: allPicked ? false : true,
                     clients: allPicked ? false : true,
                     invoices: allPicked ? false : true,
                     expenses: allPicked ? false : true,
