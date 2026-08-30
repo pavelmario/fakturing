@@ -1,34 +1,38 @@
-import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { use, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
-import TrezorConnect from "@trezor/connect-web";
+import { PDFDownloadLink } from "@react-pdf/renderer";
+import { ArrowDownToLine, Download, X } from "lucide-react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { useConfirm, useNotify } from "../lib/confirmContext";
+import { InvoiceComposer } from "./invoices/InvoiceComposer";
+import { InvoiceSummary } from "./invoices/InvoiceSummary";
+import { InvoicePdfPreview } from "./invoices/InvoicePdfPreview";
+import { useInvoicePdfDocument } from "../lib/useInvoicePdfDocument";
+import { buildInvoiceFileName } from "../lib/invoiceFileName";
+import { formatInvoiceNumber, nextSequence } from "../lib/invoiceNumber";
+import { emptyItem, type InvoiceItemForm } from "../lib/invoiceItemForm";
+import { formatDate, parseItems, usesQuantity } from "../lib/invoice";
+import { useInvoiceForm, todayIso } from "../lib/useInvoiceForm";
+import { DEFAULT_CURRENCY, formatAmount, formatMoney } from "../lib/money";
+import type { BankAccountRow } from "../lib/bankAccounts";
 
-type InvoiceItemForm = {
-  amount: string;
-  unit: string;
-  description: string;
-  unitPrice: string;
-  vat: string;
-};
-
-type InvoiceNumberRow = {
+type InvoiceRow = {
   id: string;
   invoiceNumber: string | null;
+  clientName: string | null;
+  issueDate: string | null;
+  paymentDays: number | null;
+  paymentMethod: string | null;
+  invoicingNote: string | null;
+  btcInvoice: number | null;
+  items: unknown;
 };
 
 type InvoiceCreatePageProps = {
   onInvoiceCreated: () => void;
 };
-
-const emptyItem = (): InvoiceItemForm => ({
-  amount: "",
-  unit: "",
-  description: "",
-  unitPrice: "",
-  vat: "",
-});
 
 const parseBooleanParam = (value: string | null): boolean | null => {
   if (!value) return null;
@@ -68,104 +72,44 @@ const parseItemsParam = (value: string | null): InvoiceItemForm[] | null => {
   }
 };
 
-const formatUiTotal = (value: number, locale: string) =>
-  new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "CZK",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+/** Most frequent value, used to inherit the unit you actually type. */
+const mode = (values: string[]): string => {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  let best = "";
+  let bestCount = 0;
+  for (const [value, count] of counts) {
+    if (count > bestCount) {
+      best = value;
+      bestCount = count;
+    }
+  }
+  return best;
+};
 
 export function InvoiceCreatePage({
   onInvoiceCreated,
 }: InvoiceCreatePageProps) {
   const { t, locale } = useI18n();
-  const searchParams =
-    typeof window === "undefined"
-      ? new URLSearchParams("")
-      : new URLSearchParams(window.location.search);
-  const getParam = (key: string) => searchParams.get(key);
-
-  const initialInvoiceNumber =
-    getParam("invoiceNumber") ?? getParam("number") ?? "";
-  const initialClientName = getParam("clientName") ?? getParam("client") ?? "";
-  const initialIssueDate = getParam("issueDate") ?? getParam("date") ?? "";
-  const initialPaymentDays = getParam("paymentDays") ?? "";
-  const initialPurchaseOrderNumber =
-    getParam("purchaseOrderNumber") ?? getParam("po") ?? "";
-  const initialInvoicingNote = getParam("invoicingNote") ?? "";
-  const initialPaymentMethod = (() => {
-    const raw = getParam("paymentMethod") ?? getParam("payment") ?? "";
-    const value = raw ? raw.trim().toLowerCase() : "";
-    return value === "cash" || value === "bank" ? value : "bank";
-  })();
-  const initialBtcInvoice =
-    parseBooleanParam(getParam("btcInvoice") ?? getParam("bitcoin")) ?? false;
-  const initialBtcAddress = getParam("btcAddress") ?? "";
-  const initialVatParam = getParam("vat") ?? getParam("vatPercent") ?? "";
-  const initialUnitParam = getParam("unit") ?? getParam("itemUnit") ?? "";
-  const parsedItems = parseItemsParam(getParam("items"));
-  const initialItems = (() => {
-    if (parsedItems) {
-      return parsedItems.map((it) => ({
-        amount: it.amount ?? "",
-        unit: it.unit || initialUnitParam || "",
-        description: it.description ?? "",
-        unitPrice: it.unitPrice ?? "",
-        vat: it.vat || initialVatParam || "",
-      }));
-    }
-
-    const item = emptyItem();
-    if (initialVatParam) item.vat = initialVatParam;
-    if (initialUnitParam) item.unit = initialUnitParam;
-    return [item];
-  })();
-
+  const confirmDialog = useConfirm();
+  const notify = useNotify();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
 
-  const [invoiceNumber, setInvoiceNumber] = useState(initialInvoiceNumber);
-  const [invoiceNumberTouched, setInvoiceNumberTouched] = useState(
-    Boolean(initialInvoiceNumber),
-  );
-  const [clientName, setClientName] = useState(initialClientName);
-  const [issueDate, setIssueDate] = useState(initialIssueDate);
-  const [paymentDays, setPaymentDays] = useState(initialPaymentDays || "14");
-  const [paymentMethod, setPaymentMethod] = useState(initialPaymentMethod);
-  const [purchaseOrderNumber, setPurchaseOrderNumber] = useState(
-    initialPurchaseOrderNumber,
-  );
-  const [invoicingNote, setInvoicingNote] = useState(initialInvoicingNote);
-  const [btcInvoice, setBtcInvoice] = useState(initialBtcInvoice);
-  const [btcAddress, setBtcAddress] = useState(initialBtcAddress);
-  const [isTrezorLoading, setIsTrezorLoading] = useState(false);
-  const [items, setItems] = useState<InvoiceItemForm[]>(initialItems);
-  const [isSaving, setIsSaving] = useState(false);
-  const trezorInitializedRef = useRef(false);
-
-  const clientsQuery = useMemo(
-    () =>
-      evolu.createQuery((db) =>
-        db
-          .selectFrom("client")
-          .select(["id", "name"])
-          .where("ownerId", "=", owner.id)
-          .where("isDeleted", "is not", Evolu.sqliteTrue)
-          .where("deleted", "is not", Evolu.sqliteTrue)
-          .orderBy("name", "asc"),
-      ),
-    [evolu, owner.id],
-  );
-
-  const clients = useQuery(clientsQuery);
+  const params =
+    typeof window === "undefined"
+      ? new URLSearchParams("")
+      : new URLSearchParams(window.location.search);
+  const param = (key: string) => params.get(key);
 
   const profileQuery = useMemo(
     () =>
       evolu.createQuery((db) =>
         db
           .selectFrom("userProfile")
-          .select(["vatPayer", "poRequired"])
+          .selectAll()
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .orderBy("updatedAt", "desc")
@@ -173,321 +117,317 @@ export function InvoiceCreatePage({
       ),
     [evolu, owner.id],
   );
-
-  const profileRows = useQuery(profileQuery);
-  const profile = profileRows[0];
+  const profile = useQuery(profileQuery)[0];
   const isVatPayer = profile?.vatPayer === Evolu.sqliteTrue;
   const isPoRequired = profile?.poRequired === Evolu.sqliteTrue;
+  const billPerUnitDefault = profile?.billPerUnit === Evolu.sqliteTrue;
 
-  const invoiceTotal = items.reduce((sum, item) => {
-    const amount = Number(item.amount) || 0;
-    const unitPrice = Number(item.unitPrice) || 0;
-    return sum + amount * unitPrice;
-  }, 0);
-
-  const currentYear = new Date().getFullYear();
-  const yearPrefix = `${currentYear}-`;
-  const yearPrefixPattern = useMemo(
-    () => Evolu.NonEmptyTrimmedString100.orThrow(`${yearPrefix}%`),
-    [yearPrefix],
+  const form = useInvoiceForm(
+    {
+      clientName: param("clientName") ?? param("client") ?? "",
+      currency: param("currency") ?? "",
+      invoiceNumber: param("invoiceNumber") ?? param("number") ?? "",
+      issueDate: param("issueDate") ?? param("date") ?? todayIso(),
+      paymentDays: param("paymentDays") ?? "",
+      paymentMethod: (() => {
+        const raw = (
+          param("paymentMethod") ??
+          param("payment") ??
+          ""
+        ).toLowerCase();
+        return raw === "cash" || raw === "bank" ? raw : "";
+      })(),
+      purchaseOrderNumber: param("purchaseOrderNumber") ?? param("po") ?? "",
+      invoicingNote: param("invoicingNote") ?? "",
+      btcInvoice:
+        parseBooleanParam(param("btcInvoice") ?? param("bitcoin")) ?? false,
+      btcAddress: param("btcAddress") ?? "",
+      items: parseItemsParam(param("items")) ?? undefined,
+      perUnit: param("items")
+        ? usesQuantity(parseItemsParam(param("items")) ?? [])
+        : null,
+    },
+    { isVatPayer, billPerUnitDefault, locale, t },
   );
-  const latestInvoiceQuery = useMemo(
+
+  const [noteOpen, setNoteOpen] = useState(Boolean(param("invoicingNote")));
+  const [takenFrom, setTakenFrom] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState<Record<string, unknown> | null>(null);
+
+  const clientsQuery = useMemo(
     () =>
       evolu.createQuery((db) =>
         db
-          .selectFrom("invoice")
-          .select(["invoiceNumber"])
+          .selectFrom("client")
+          .selectAll()
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .where("deleted", "is not", Evolu.sqliteTrue)
-          .where("invoiceNumber", "like", yearPrefixPattern)
-          .orderBy("invoiceNumber", "desc")
-          .limit(1),
+          .orderBy("name", "asc"),
       ),
-    [evolu, owner.id, yearPrefixPattern],
+    [evolu, owner.id],
   );
+  const clients = useQuery(clientsQuery);
 
-  const latestInvoiceRows = useQuery(latestInvoiceQuery);
-  const latestInvoiceNumber = latestInvoiceRows[0]?.invoiceNumber ?? "";
-
-  const trimmedInvoiceNumber = invoiceNumber.trim();
-  const invoiceNumberResult = useMemo(
-    () => Evolu.NonEmptyTrimmedString100.from(trimmedInvoiceNumber),
-    [trimmedInvoiceNumber],
+  const bankAccountsQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("bankAccount")
+          .selectAll()
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue)
+          .orderBy("label", "asc"),
+      ),
+    [evolu, owner.id],
   );
-  const duplicateInvoiceQuery = useMemo(
+  const bankAccountRows = useQuery(bankAccountsQuery) as readonly BankAccountRow[];
+  const bankAccounts = bankAccountRows.map((account) => ({
+    id: account.id,
+    label: account.label ?? "",
+    currency: account.currency ?? "",
+    isDefault: account.isDefault === Evolu.sqliteTrue,
+  }));
+
+  const invoicesQuery = useMemo(
     () =>
       evolu.createQuery((db) =>
         db
           .selectFrom("invoice")
-          .select(["id", "invoiceNumber"])
+          .select([
+            "id",
+            "invoiceNumber",
+            "clientName",
+            "issueDate",
+            "paymentDays",
+            "paymentMethod",
+            "invoicingNote",
+            "btcInvoice",
+            "items",
+          ])
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
-          .where("deleted", "is not", Evolu.sqliteTrue),
+          .where("deleted", "is not", Evolu.sqliteTrue)
+          .orderBy("invoiceNumber", "desc"),
       ),
     [evolu, owner.id],
   );
+  const invoices = useQuery(invoicesQuery) as readonly InvoiceRow[];
+  const lastInvoice = invoices[0] ?? null;
 
-  const duplicateInvoices = useQuery(
-    duplicateInvoiceQuery,
-  ) as readonly InvoiceNumberRow[];
-  const hasDuplicateInvoiceNumber = Boolean(
-    invoiceNumberResult.ok &&
-    duplicateInvoices.some((row) => row.invoiceNumber === trimmedInvoiceNumber),
+  const clientLastInvoice = useMemo(
+    () =>
+      form.values.clientName
+        ? (invoices.find((row) => row.clientName === form.values.clientName) ??
+          null)
+        : null,
+    [form.values.clientName, invoices],
   );
 
-  useEffect(() => {
-    if (issueDate) return;
-    const todayIso = new Date().toISOString().slice(0, 10);
-    setIssueDate(todayIso);
-  }, [issueDate]);
+  /* Defaults inherited from the last invoice, so the fields that never change
+     are not retyped. */
+  const defaults = useMemo(() => {
+    const lastItems = parseItems(lastInvoice?.items);
+    return {
+      paymentDays:
+        lastInvoice?.paymentDays != null
+          ? String(lastInvoice.paymentDays)
+          : "14",
+      paymentMethod: lastInvoice?.paymentMethod ?? "bank",
+      unit: mode(lastItems.map((item) => String(item.unit ?? ""))),
+      vat: isVatPayer
+        ? String(lastItems.find((item) => Number(item.vat) > 0)?.vat ?? 21)
+        : "",
+    };
+  }, [isVatPayer, lastInvoice]);
 
-  useEffect(() => {
-    if (invoiceNumberTouched) return;
-    if (invoiceNumber.trim()) return;
-
-    let nextNumber = 1;
-    if (latestInvoiceNumber.startsWith(yearPrefix)) {
-      const parts = latestInvoiceNumber.split("-");
-      const suffix = parts[parts.length - 1];
-      const parsed = Number.parseInt(suffix, 10);
-      if (!Number.isNaN(parsed) && parsed >= 0) {
-        nextNumber = parsed + 1;
-      }
-    }
-
-    const padded = String(nextNumber).padStart(4, "0");
-    setInvoiceNumber(`${currentYear}-${padded}`);
-  }, [
-    currentYear,
-    invoiceNumber,
-    invoiceNumberTouched,
-    latestInvoiceNumber,
-    yearPrefix,
-  ]);
-
-  const toNullable = (value: string) => {
-    const trimmed = value.trim();
-    return trimmed ? trimmed : null;
+  /* Derived rather than assigned, so the profile and the last invoice can load
+     a tick after the first render without an effect writing over the form. */
+  const effective = {
+    ...form.values,
+    paymentDays: form.values.paymentDays || defaults.paymentDays,
+    paymentMethod: form.values.paymentMethod || defaults.paymentMethod,
   };
 
-  const getTrezorErrorKey = (message?: string) => {
-    const normalized = message?.toLowerCase() ?? "";
-
-    if (normalized.includes("thpstate.deserialize invalid state")) {
-      return "invoiceCreate.trezorThpInvalid";
-    }
-
-    if (
-      normalized.includes("transport is missing") ||
-      normalized.includes("desktop_connectionmissing") ||
-      normalized.includes("browser_localnetworkpermissionmissing") ||
-      normalized.includes("connect-ws")
-    ) {
-      return "invoiceCreate.trezorTransportMissing";
-    }
-
-    return "invoiceCreate.trezorRequestError";
-  };
-
-  const shouldFallbackToPopupMode = (message?: string) => {
-    const normalized = message?.toLowerCase() ?? "";
-    return (
-      normalized.includes("desktop_connectionmissing") ||
-      normalized.includes("browser_localnetworkpermissionmissing") ||
-      normalized.includes("connect-ws")
-    );
-  };
-
-  const ensureTrezorInit = useCallback(
-    async (coreMode: "auto" | "popup") => {
-      if (trezorInitializedRef.current) return true;
-      try {
-        const appUrl =
-          typeof window === "undefined" || !window.location.origin
-            ? "http://localhost"
-            : window.location.origin;
-        await TrezorConnect.init({
-          connectSrc: "https://connect.trezor.io/9/",
-          lazyLoad: true,
-          coreMode,
-          manifest: {
-            email: "pavel.mario43@gmail.com",
-            appName: "Fakturing",
-            appUrl,
-          },
-        });
-        trezorInitializedRef.current = true;
-        return true;
-      } catch (error) {
-        console.error("Trezor init failed", error);
-        alert(t("invoiceCreate.trezorInitError"));
-        return false;
-      }
-    },
-    [t],
-  );
-
-  const handleLoadFromTrezor = useCallback(async () => {
-    const requestAccountInfo = () =>
-      TrezorConnect.getAccountInfo({
-        coin: "btc",
-        details: "tokens",
-        tokens: "derived",
-      });
-
-    setIsTrezorLoading(true);
-    try {
-      const ready = await ensureTrezorInit("auto");
-      if (!ready) return;
-
-      let result = await requestAccountInfo();
-
-      if (!result.success && shouldFallbackToPopupMode(result.payload?.error)) {
-        trezorInitializedRef.current = false;
-        await TrezorConnect.dispose();
-
-        const fallbackReady = await ensureTrezorInit("popup");
-        if (!fallbackReady) return;
-
-        result = await requestAccountInfo();
-      }
-
-      if (!result.success) {
-        console.error("Trezor getAccountInfo error", result.payload?.error);
-        alert(t(getTrezorErrorKey(result.payload?.error)));
-        return;
-      }
-
-      const unused = result.payload.addresses?.unused ?? [];
-      const address = unused.find((entry) => entry?.address)?.address ?? "";
-      if (!address) {
-        alert(t("invoiceCreate.trezorNoUnused"));
-        return;
-      }
-
-      setBtcAddress(address);
-    } catch (error) {
-      console.error("Trezor request failed", error);
-      const message =
-        error instanceof Error
-          ? error.message
-          : typeof error === "string"
-            ? error
-            : "";
-      alert(t(getTrezorErrorKey(message)));
-    } finally {
-      setIsTrezorLoading(false);
-    }
-  }, [ensureTrezorInit, t]);
-
-  const updateItem = (
-    index: number,
-    field: keyof InvoiceItemForm,
-    value: string,
-  ) => {
-    setItems((prev) =>
-      prev.map((item, idx) =>
-        idx === index ? { ...item, [field]: value } : item,
+  /* The pattern from Settings decides the shape; the sequence continues from
+     the highest existing number sharing that pattern's prefix. */
+  const nextNumber = useMemo(() => {
+    const pattern = profile?.invoiceNumberFormat;
+    const issued = new Date(form.values.issueDate || Date.now());
+    const date = Number.isNaN(issued.getTime()) ? new Date() : issued;
+    return formatInvoiceNumber(
+      pattern,
+      nextSequence(
+        pattern,
+        invoices.map((row) => row.invoiceNumber),
+        date,
       ),
+      date,
     );
+  }, [form.values.issueDate, invoices, profile?.invoiceNumberFormat]);
+
+  /* Defaults to the account marked default, so a single-account setup never
+     has to think about it. */
+  const bankAccountId =
+    form.values.bankAccountId ||
+    bankAccounts.find((account) => account.isDefault)?.id ||
+    bankAccounts[0]?.id ||
+    "";
+
+  /* Follows the chosen account's currency unless explicitly set. */
+  const currency =
+    form.values.currency ||
+    bankAccounts.find((account) => account.id === bankAccountId)?.currency ||
+    DEFAULT_CURRENCY;
+
+  const invoiceNumber = form.values.invoiceNumber || nextNumber;
+  const isDuplicateNumber = Boolean(
+    invoiceNumber.trim() &&
+      invoices.some((row) => row.invoiceNumber === invoiceNumber.trim()),
+  );
+
+  /* The first untouched line inherits the unit and rate you normally use. */
+  const seededItems = useMemo(() => {
+    const [first, ...rest] = form.values.items;
+    if (rest.length > 0 || !first || first.description || first.amount) {
+      return form.values.items;
+    }
+    return [
+      {
+        ...first,
+        unit: first.unit || defaults.unit,
+        vat: first.vat || defaults.vat,
+      },
+    ];
+  }, [defaults.unit, defaults.vat, form.values.items]);
+
+  const money = (value: number) => formatMoney(value, locale, currency);
+  const amount = (value: number) => formatAmount(value, locale);
+
+  /**
+   * Reuses the previous invoice as a template: its lines and the terms that go
+   * with them. Number and issue date are not copied (new document → next
+   * number, today), nor the purchase order number, which belongs to one
+   * specific order, nor the bitcoin address — reusing a receive address is
+   * what the Trezor "next unused address" flow exists to avoid.
+   */
+  const useAsTemplate = () => {
+    if (!clientLastInvoice) return;
+    const previous = parseItems(clientLastInvoice.items);
+    form.setValues((prev) => ({
+      ...prev,
+      paymentDays:
+        clientLastInvoice.paymentDays != null
+          ? String(clientLastInvoice.paymentDays)
+          : prev.paymentDays,
+      paymentMethod: clientLastInvoice.paymentMethod ?? prev.paymentMethod,
+      invoicingNote: clientLastInvoice.invoicingNote ?? "",
+      btcInvoice: clientLastInvoice.btcInvoice === Evolu.sqliteTrue,
+      perUnitChoice: usesQuantity(previous),
+      items:
+        previous.length > 0
+          ? previous.map((item) => ({
+              amount: item.amount != null ? String(item.amount) : "",
+              unit: typeof item.unit === "string" ? item.unit : "",
+              description:
+                typeof item.description === "string" ? item.description : "",
+              unitPrice: item.unitPrice != null ? String(item.unitPrice) : "",
+              vat: item.vat != null ? String(item.vat) : "",
+            }))
+          : prev.items,
+    }));
+    if (clientLastInvoice.invoicingNote) setNoteOpen(true);
+    setTakenFrom(clientLastInvoice.invoiceNumber ?? null);
   };
 
-  const addItem = () => setItems((prev) => [...prev, emptyItem()]);
-
-  const removeItem = (index: number) => {
-    setItems((prev) =>
-      prev.length === 1 ? prev : prev.filter((_, idx) => idx !== index),
-    );
+  const startAnother = () => {
+    setSaved(null);
+    setNoteOpen(false);
+    setTakenFrom(null);
+    form.reset({ issueDate: todayIso() });
   };
+
+  const selectedClientRecord =
+    clients.find((client) => client.name === form.values.clientName) ?? null;
+
+  /* Honour the filename template — the create flow used to hardcode this and
+     silently ignore the preference. */
+  const savedFileName = buildInvoiceFileName(profile?.invoiceNamingFormat, {
+    number: String(saved?.invoiceNumber ?? ""),
+    client: String(saved?.clientName ?? ""),
+    supplier: profile?.name ?? "",
+    issueDate: saved?.issueDate ? new Date(String(saved.issueDate)) : null,
+  });
+  const savedDocument = useInvoicePdfDocument(
+    saved ?? {},
+    profile ?? null,
+    selectedClientRecord,
+    isVatPayer,
+    bankAccountRows,
+  );
 
   const handleSave = async () => {
-    if (!trimmedInvoiceNumber) {
-      alert(t("alerts.invoiceNumberRequired"));
-      return;
-    }
-    if (!clientName.trim()) {
-      alert(t("alerts.invoiceClientRequired"));
-      return;
-    }
-    if (!issueDate.trim()) {
-      alert(t("alerts.issueDateRequired"));
-      return;
-    }
-
-    const paymentDaysNumber = Number(paymentDays);
-    if (Number.isNaN(paymentDaysNumber) || paymentDaysNumber < 0) {
-      alert(t("alerts.paymentDaysInvalid"));
+    /* Validate the values that will actually be written — the number and the
+       terms may still be derived defaults rather than typed state. */
+    const found = form.validate({
+      invoiceNumber,
+      paymentDays: effective.paymentDays,
+      paymentMethod: effective.paymentMethod,
+      clientName: effective.clientName,
+      issueDate: effective.issueDate,
+    });
+    if (Object.keys(found).length > 0) return;
+    if (
+      isDuplicateNumber &&
+      !(await confirmDialog({
+        title: t("alerts.duplicateInvoiceConfirm"),
+        confirmLabel: t("invoiceCreate.save"),
+      }))
+    ) {
       return;
     }
 
     const formatTypeError = Evolu.createFormatTypeError();
-    const issueDateResult = Evolu.dateToDateIso(new Date(issueDate));
+    const issueDateResult = Evolu.dateToDateIso(new Date(effective.issueDate));
     if (!issueDateResult.ok) {
-      console.error(
-        "Issue date error:",
-        formatTypeError(issueDateResult.error),
-      );
-      alert(t("alerts.issueDateInvalid"));
+      form.setErrors({ issueDate: t("alerts.issueDateInvalid") });
       return;
     }
-
-    const paymentDaysResult = Evolu.NonNegativeNumber.from(paymentDaysNumber);
+    const paymentDaysResult = Evolu.NonNegativeNumber.from(
+      Number(effective.paymentDays),
+    );
     if (!paymentDaysResult.ok) {
-      console.error(
-        "Payment days error:",
-        formatTypeError(paymentDaysResult.error),
-      );
-      alert(t("alerts.paymentDaysInvalid"));
+      form.setErrors({ paymentDays: t("alerts.paymentDaysInvalid") });
       return;
-    }
-
-    if (hasDuplicateInvoiceNumber) {
-      const confirmed = confirm(t("alerts.duplicateInvoiceConfirm"));
-      if (!confirmed) return;
     }
 
     setIsSaving(true);
     try {
-      const normalizedItems = items
-        .map((item) => ({
-          amount: Number.isFinite(Number(item.amount))
-            ? Number(item.amount)
-            : 0,
-          unit: item.unit.trim(),
-          description: item.description.trim(),
-          unitPrice: Number.isFinite(Number(item.unitPrice))
-            ? Number(item.unitPrice)
-            : 0,
-          vat: Number.isFinite(Number(item.vat)) ? Number(item.vat) : 0,
-        }))
-        .filter(
-          (item) =>
-            item.description ||
-            item.unit ||
-            item.amount ||
-            item.unitPrice ||
-            item.vat,
-        );
-
-      const itemsResult = Evolu.Json.from(JSON.stringify(normalizedItems));
+      const itemsResult = Evolu.Json.from(JSON.stringify(form.normalizedItems));
       if (!itemsResult.ok) {
         console.error("Items error:", formatTypeError(itemsResult.error));
-        alert(t("alerts.invoiceItemsInvalid"));
+        notify(t("alerts.invoiceItemsInvalid"), "error");
         return;
       }
 
       const payload = {
-        invoiceNumber: trimmedInvoiceNumber,
-        clientName: clientName.trim(),
+        invoiceNumber: invoiceNumber.trim(),
+        clientName: effective.clientName.trim(),
         issueDate: issueDateResult.value,
         duzp: isVatPayer ? issueDateResult.value : null,
         paymentDays: paymentDaysResult.value,
-        paymentMethod,
-        purchaseOrderNumber: toNullable(purchaseOrderNumber),
-        invoicingNote: toNullable(invoicingNote),
-        btcInvoice: btcInvoice ? Evolu.sqliteTrue : Evolu.sqliteFalse,
-        btcAddress: toNullable(btcAddress),
+        paymentMethod: effective.paymentMethod,
+        purchaseOrderNumber: effective.purchaseOrderNumber.trim() || null,
+        invoicingNote: effective.invoicingNote.trim() || null,
+        btcInvoice: effective.btcInvoice
+          ? Evolu.sqliteTrue
+          : Evolu.sqliteFalse,
+        btcAddress: effective.btcAddress.trim() || null,
+        bankAccountId: bankAccountId || null,
+        clientId: effective.clientId || null,
+        currency: currency,
         items: itemsResult.value,
         deleted: Evolu.sqliteFalse,
       };
@@ -497,23 +437,19 @@ export function InvoiceCreatePage({
       });
       if (!validation.ok) {
         console.error("Validation error:", formatTypeError(validation.error));
-        console.error("Invoice payload:", payload);
-        alert(t("alerts.invoiceSaveValidation"));
+        notify(t("alerts.invoiceSaveValidation"), "error");
         return;
       }
-
       const result = evolu.insert("invoice", payload);
-
       if (!result.ok) {
-        console.error("Validation error:", formatTypeError(result.error));
-        alert(t("alerts.invoiceSaveValidation"));
+        console.error("Insert error:", formatTypeError(result.error));
+        notify(t("alerts.invoiceSaveValidation"), "error");
         return;
       }
-
-      onInvoiceCreated();
+      setSaved({ ...payload, items: form.normalizedItems });
     } catch (error) {
       console.error("Error saving invoice:", error);
-      alert(t("alerts.invoiceSaveFailed"));
+      notify(t("alerts.invoiceSaveFailed"), "error");
     } finally {
       setIsSaving(false);
     }
@@ -522,334 +458,130 @@ export function InvoiceCreatePage({
   return (
     <div className="page-shell">
       <div className="page-container-lg">
-        <div className="page-card-lg">
-          <div className="mb-6">
-            <p className="section-title">{t("invoiceCreate.sectionTitle")}</p>
-            <h1 className="page-title">{t("invoiceCreate.title")}</h1>
-          </div>
+        <div className="flex items-end justify-between gap-4 mb-5">
+          <h1 className="page-title">{t("invoiceCreate.title")}</h1>
+        </div>
 
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="invoiceNumber" className="form-label">
-                {t("invoiceCreate.invoiceNumberLabel")}
-              </label>
-              <input
-                id="invoiceNumber"
-                type="text"
-                value={invoiceNumber}
-                onChange={(e) => {
-                  setInvoiceNumberTouched(true);
-                  setInvoiceNumber(e.target.value);
-                }}
-                placeholder={t("invoiceCreate.invoiceNumberPlaceholder")}
-                className="form-input"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="clientName" className="form-label">
-                {t("invoiceCreate.clientLabel")}
-              </label>
-              <select
-                id="clientName"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                className="form-select"
-              >
-                <option value="">{t("invoiceCreate.clientPlaceholder")}</option>
-                {clients.map((client) => (
-                  <option
-                    key={client.id}
-                    value={client.name ?? ""}
-                    disabled={!client.name}
-                  >
-                    {client.name ?? t("invoiceCreate.clientUnnamed")}
-                  </option>
-                ))}
-              </select>
-              {clients.length === 0 ? (
-                <p className="text-xs text-slate-500 mt-2">
-                  {t("invoiceCreate.clientsEmpty")}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <input
-                id="btcInvoice"
-                type="checkbox"
-                checked={btcInvoice}
-                onChange={(e) => setBtcInvoice(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label
-                htmlFor="btcInvoice"
-                className="text-sm font-medium invoice-btc-label"
-              >
-                {t("invoiceCreate.btcInvoiceLabel")}
-              </label>
-            </div>
-
-            {btcInvoice ? (
+        {saved ? (
+          <div className="saved">
+            <div className="saved-head">
               <div>
-                <div className="flex items-center justify-between gap-3">
-                  <label htmlFor="btcAddress" className="form-label">
-                    {t("invoiceCreate.btcAddressLabel")}
-                  </label>
-                  {!btcAddress.trim() ? (
-                    <button
-                      type="button"
-                      onClick={handleLoadFromTrezor}
-                      disabled={isTrezorLoading}
-                      className="btn-secondary hidden sm:inline-flex"
-                    >
-                      {isTrezorLoading
-                        ? t("invoiceCreate.trezorLoading")
-                        : t("invoiceCreate.trezorLoad")}
-                    </button>
-                  ) : null}
+                <div className="stat-label">{t("invoiceCreate.savedTitle")}</div>
+                <div className="saved-number mono">
+                  {String(saved.invoiceNumber ?? "")}
                 </div>
-                <input
-                  id="btcAddress"
-                  type="text"
-                  value={btcAddress}
-                  onChange={(e) => setBtcAddress(e.target.value)}
-                  placeholder={t("invoiceCreate.btcAddressPlaceholder")}
-                  className="form-input"
-                />
+                <div className="settings-help-text">
+                  {String(saved.clientName ?? "")}
+                </div>
               </div>
-            ) : null}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="issueDate" className="form-label">
-                  {t("invoiceCreate.issueDateLabel")}
-                </label>
-                <input
-                  id="issueDate"
-                  type="date"
-                  value={issueDate}
-                  onChange={(e) => setIssueDate(e.target.value)}
-                  className="form-input"
-                />
-              </div>
-              <div>
-                <label htmlFor="paymentDays" className="form-label">
-                  {t("invoiceCreate.paymentDaysLabel")}
-                </label>
-                <input
-                  id="paymentDays"
-                  type="number"
-                  min={0}
-                  value={paymentDays}
-                  onChange={(e) => setPaymentDays(e.target.value)}
-                  className="form-input"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="paymentMethod" className="form-label">
-                {t("invoiceCreate.paymentMethodLabel")}
-              </label>
-              <select
-                id="paymentMethod"
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="form-select"
-              >
-                <option value="bank">
-                  {t("invoiceCreate.paymentMethodBank")}
-                </option>
-                <option value="cash">
-                  {t("invoiceCreate.paymentMethodCash")}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="invoicingNote" className="form-label">
-                {t("invoiceCreate.invoicingNoteLabel")}
-              </label>
-              <textarea
-                id="invoicingNote"
-                value={invoicingNote}
-                onChange={(e) => setInvoicingNote(e.target.value)}
-                placeholder={t("invoiceCreate.invoicingNotePlaceholder")}
-                className="form-input"
-                rows={3}
-              />
-            </div>
-            {isPoRequired ? (
-              <div>
-                <label htmlFor="purchaseOrderNumber" className="form-label">
-                  {t("invoiceCreate.purchaseOrderLabel")}
-                </label>
-                <input
-                  id="purchaseOrderNumber"
-                  type="text"
-                  value={purchaseOrderNumber}
-                  onChange={(e) => setPurchaseOrderNumber(e.target.value)}
-                  placeholder={t("invoiceCreate.purchaseOrderPlaceholder")}
-                  className="form-input"
-                />
-              </div>
-            ) : null}
-
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-slate-900">
-                  {t("invoiceCreate.itemsTitle")}
-                </h2>
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="btn-secondary"
+              <div className="saved-actions">
+                <PDFDownloadLink
+                  document={savedDocument}
+                  fileName={savedFileName}
+                  className="btn-primary"
                 >
-                  {t("invoiceCreate.addItem")}
+                  {({ loading }) => (
+                    <>
+                      <Download />
+                      {loading
+                        ? t("invoiceDetail.pdfPreparing")
+                        : t("invoiceDetail.pdfExport")}
+                    </>
+                  )}
+                </PDFDownloadLink>
+                <button className="btn-secondary" onClick={startAnother}>
+                  {t("invoiceCreate.saveAnother")}
+                </button>
+                <button className="btn-secondary" onClick={onInvoiceCreated}>
+                  {t("common.backToList")}
                 </button>
               </div>
-
-              <div className="space-y-4">
-                {items.map((item, index) => (
-                  <div key={index} className="panel-card space-y-3">
-                    <div>
-                      <label
-                        htmlFor={`item-${index}-description`}
-                        className="form-label"
-                      >
-                        {t("invoiceCreate.itemDescription")}
-                      </label>
-                      <input
-                        id={`item-${index}-description`}
-                        type="text"
-                        value={item.description}
-                        onChange={(e) =>
-                          updateItem(index, "description", e.target.value)
-                        }
-                        placeholder={t(
-                          "invoiceCreate.itemDescriptionPlaceholder",
-                        )}
-                        className="form-input"
-                      />
-                    </div>
-
-                    <div
-                      className={`grid grid-cols-1 ${
-                        isVatPayer ? "md:grid-cols-4" : "md:grid-cols-3"
-                      } gap-3`}
-                    >
-                      <div>
-                        <label
-                          htmlFor={`item-${index}-amount`}
-                          className="form-label"
-                        >
-                          {t("invoiceCreate.itemAmount")}
-                        </label>
-                        <input
-                          id={`item-${index}-amount`}
-                          type="number"
-                          min={0}
-                          value={item.amount}
-                          onChange={(e) =>
-                            updateItem(index, "amount", e.target.value)
-                          }
-                          className="form-input"
-                        />
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor={`item-${index}-unit`}
-                          className="form-label"
-                        >
-                          {t("invoiceCreate.itemUnit")}
-                        </label>
-                        <input
-                          id={`item-${index}-unit`}
-                          type="text"
-                          value={item.unit}
-                          onChange={(e) =>
-                            updateItem(index, "unit", e.target.value)
-                          }
-                          placeholder={t("invoiceCreate.itemUnitPlaceholder")}
-                          className="form-input"
-                        />
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor={`item-${index}-unitPrice`}
-                          className="form-label"
-                        >
-                          {t("invoiceCreate.itemUnitPrice")}
-                        </label>
-                        <input
-                          id={`item-${index}-unitPrice`}
-                          type="number"
-                          min={0}
-                          step="0.1"
-                          value={item.unitPrice}
-                          onChange={(e) =>
-                            updateItem(index, "unitPrice", e.target.value)
-                          }
-                          className="form-input"
-                        />
-                      </div>
-
-                      {isVatPayer ? (
-                        <div>
-                          <label
-                            htmlFor={`item-${index}-vat`}
-                            className="form-label"
-                          >
-                            {t("invoiceCreate.itemVat")}
-                          </label>
-                          <input
-                            id={`item-${index}-vat`}
-                            type="number"
-                            min={0}
-                            step="0.1"
-                            value={item.vat}
-                            onChange={(e) =>
-                              updateItem(index, "vat", e.target.value)
-                            }
-                            className="form-input"
-                          />
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        disabled={items.length === 1}
-                        className="btn-danger"
-                      >
-                        {t("invoiceCreate.itemRemove")}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
-
-            <div className="panel-card text-sm invoice-total-text">
-              <span className="font-semibold invoice-total-label">
-                {t("invoiceCreate.totalLabel")}
-              </span>{" "}
-              {formatUiTotal(invoiceTotal, locale)}
-            </div>
+            <InvoicePdfPreview
+              document={savedDocument}
+              title={savedFileName}
+            />
           </div>
-
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="btn-primary mt-6 w-full"
-          >
-            {isSaving ? t("invoiceCreate.saving") : t("invoiceCreate.save")}
-          </button>
-        </div>
+        ) : (
+          <InvoiceComposer
+            form={{
+              ...form,
+              values: {
+                ...effective,
+                items: seededItems,
+                invoiceNumber,
+                bankAccountId,
+                currency,
+              },
+            }}
+            clients={clients}
+            bankAccounts={bankAccounts}
+            isVatPayer={isVatPayer}
+            isPoRequired={isPoRequired}
+            lineDefaults={{ unit: defaults.unit, vat: defaults.vat }}
+            duplicateNumber={isDuplicateNumber}
+            formatAmount={amount}
+            noteOpen={noteOpen}
+            onNoteOpenChange={setNoteOpen}
+            clientSlot={
+              clientLastInvoice && !takenFrom ? (
+                <div className="suggest">
+                  <span>
+                    {t("invoiceCreate.lastInvoiceHint", {
+                      number: clientLastInvoice.invoiceNumber ?? "",
+                      date: formatDate(clientLastInvoice.issueDate, locale),
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={useAsTemplate}
+                  >
+                    <ArrowDownToLine />
+                    {t("invoiceCreate.takeItems")}
+                  </button>
+                </div>
+              ) : takenFrom ? (
+                <div className="suggest" data-taken="true">
+                  <span>
+                    {t("invoiceCreate.takenFrom", { number: takenFrom })}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => {
+                      form.set("items", [emptyItem()]);
+                      setTakenFrom(null);
+                    }}
+                  >
+                    <X />
+                    {t("invoiceCreate.takenClear")}
+                  </button>
+                </div>
+              ) : null
+            }
+            sidebarFooter={
+              <div className="compose-panel compose-sticky">
+                <InvoiceSummary
+                  net={form.net}
+                  vat={form.vat}
+                  gross={form.gross}
+                  isVatPayer={isVatPayer}
+                  formatMoney={money}
+                />
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="btn-primary w-full mt-3"
+                >
+                  {isSaving
+                    ? t("invoiceCreate.saving")
+                    : t("invoiceCreate.save")}
+                </button>
+              </div>
+            }
+          />
+        )}
       </div>
     </div>
   );
