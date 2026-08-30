@@ -1,0 +1,3 @@
+id,label,accountNumber,iban,swift,currency,isDefault
+Gpw0Sjjp4w194fKsec4Zyw,Hlavní účet,1111111111/2121,CZ11111111112121,AABBCZEE,CZK,1
+Hqx1Tkkq5x205gLtfd5Azx,EUR účet,2222222222/2121,CZ22222222222121,AABBCZEE,EUR,0
