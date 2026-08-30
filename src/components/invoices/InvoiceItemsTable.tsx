@@ -70,8 +70,11 @@ export function InvoiceItemsTable({
         <tbody>
           {items.map((item, index) => {
             /* Net, so the column sums to the "základ bez DPH" beside it —
-               VAT is summarised once at the bottom, as on the document. */
-            const lineTotal = num(item.amount, 1) * num(item.unitPrice);
+               VAT is summarised once at the bottom, as on the document.
+               Quantity counts only while billing per unit: with the switch
+               off the saved line is 1 × price, and this cell has to agree. */
+            const lineTotal =
+              (showQuantity ? num(item.amount, 1) : 1) * num(item.unitPrice);
             return (
               <tr key={index}>
                 <td>

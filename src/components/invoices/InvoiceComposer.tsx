@@ -55,7 +55,9 @@ export function InvoiceComposer({
   onNoteOpenChange,
 }: InvoiceComposerProps) {
   const { t } = useI18n();
-  const { values, set, errors } = form;
+  /* Reads the effective values — what will actually be saved — so the fields
+     cannot show one thing while the summary and the record hold another. */
+  const { effective: values, set, errors } = form;
   const trezor = useTrezorAddress(t, (address) => set("btcAddress", address));
 
   const freshItem = () => ({
