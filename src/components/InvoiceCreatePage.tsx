@@ -122,39 +122,6 @@ export function InvoiceCreatePage({
   const isPoRequired = profile?.poRequired === Evolu.sqliteTrue;
   const billPerUnitDefault = profile?.billPerUnit === Evolu.sqliteTrue;
 
-  const form = useInvoiceForm(
-    {
-      clientName: param("clientName") ?? param("client") ?? "",
-      currency: param("currency") ?? "",
-      invoiceNumber: param("invoiceNumber") ?? param("number") ?? "",
-      issueDate: param("issueDate") ?? param("date") ?? todayIso(),
-      paymentDays: param("paymentDays") ?? "",
-      paymentMethod: (() => {
-        const raw = (
-          param("paymentMethod") ??
-          param("payment") ??
-          ""
-        ).toLowerCase();
-        return raw === "cash" || raw === "bank" ? raw : "";
-      })(),
-      purchaseOrderNumber: param("purchaseOrderNumber") ?? param("po") ?? "",
-      invoicingNote: param("invoicingNote") ?? "",
-      btcInvoice:
-        parseBooleanParam(param("btcInvoice") ?? param("bitcoin")) ?? false,
-      btcAddress: param("btcAddress") ?? "",
-      items: parseItemsParam(param("items")) ?? undefined,
-      perUnit: param("items")
-        ? usesQuantity(parseItemsParam(param("items")) ?? [])
-        : null,
-    },
-    { isVatPayer, billPerUnitDefault, locale, t },
-  );
-
-  const [noteOpen, setNoteOpen] = useState(Boolean(param("invoicingNote")));
-  const [takenFrom, setTakenFrom] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saved, setSaved] = useState<Record<string, unknown> | null>(null);
-
   const clientsQuery = useMemo(
     () =>
       evolu.createQuery((db) =>
@@ -217,15 +184,6 @@ export function InvoiceCreatePage({
   const invoices = useQuery(invoicesQuery) as readonly InvoiceRow[];
   const lastInvoice = invoices[0] ?? null;
 
-  const clientLastInvoice = useMemo(
-    () =>
-      form.values.clientName
-        ? (invoices.find((row) => row.clientName === form.values.clientName) ??
-          null)
-        : null,
-    [form.values.clientName, invoices],
-  );
-
   /* Defaults inherited from the last invoice, so the fields that never change
      are not retyped. */
   const defaults = useMemo(() => {
@@ -243,13 +201,62 @@ export function InvoiceCreatePage({
     };
   }, [isVatPayer, lastInvoice]);
 
-  /* Derived rather than assigned, so the profile and the last invoice can load
-     a tick after the first render without an effect writing over the form. */
-  const effective = {
-    ...form.values,
-    paymentDays: form.values.paymentDays || defaults.paymentDays,
-    paymentMethod: form.values.paymentMethod || defaults.paymentMethod,
-  };
+  const [noteOpen, setNoteOpen] = useState(Boolean(param("invoicingNote")));
+  const [takenFrom, setTakenFrom] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saved, setSaved] = useState<Record<string, unknown> | null>(null);
+
+  const form = useInvoiceForm(
+    {
+      clientName: param("clientName") ?? param("client") ?? "",
+      clientId: param("clientId") ?? "",
+      currency: param("currency") ?? "",
+      bankAccountId: param("bankAccountId") ?? "",
+      invoiceNumber: param("invoiceNumber") ?? param("number") ?? "",
+      issueDate: param("issueDate") ?? param("date") ?? todayIso(),
+      paymentDays: param("paymentDays") ?? "",
+      paymentMethod: (() => {
+        const raw = (
+          param("paymentMethod") ??
+          param("payment") ??
+          ""
+        ).toLowerCase();
+        return raw === "cash" || raw === "bank" ? raw : "";
+      })(),
+      purchaseOrderNumber: param("purchaseOrderNumber") ?? param("po") ?? "",
+      invoicingNote: param("invoicingNote") ?? "",
+      btcInvoice:
+        parseBooleanParam(param("btcInvoice") ?? param("bitcoin")) ?? false,
+      btcAddress: param("btcAddress") ?? "",
+      items: parseItemsParam(param("items")) ?? undefined,
+      perUnit: param("items")
+        ? usesQuantity(parseItemsParam(param("items")) ?? [])
+        : null,
+    },
+    {
+      isVatPayer,
+      billPerUnitDefault,
+      locale,
+      t,
+      /* Handed to the hook rather than overlaid on the composer, so the
+         terms and the first line's rate are what actually gets saved. */
+      derived: {
+        paymentDays: defaults.paymentDays,
+        paymentMethod: defaults.paymentMethod,
+        unit: defaults.unit,
+        vat: defaults.vat,
+      },
+    },
+  );
+
+  const clientLastInvoice = useMemo(
+    () =>
+      form.values.clientName
+        ? (invoices.find((row) => row.clientName === form.values.clientName) ??
+          null)
+        : null,
+    [form.values.clientName, invoices],
+  );
 
   /* The pattern from Settings decides the shape; the sequence continues from
      the highest existing number sharing that pattern's prefix. */
@@ -287,21 +294,6 @@ export function InvoiceCreatePage({
     invoiceNumber.trim() &&
       invoices.some((row) => row.invoiceNumber === invoiceNumber.trim()),
   );
-
-  /* The first untouched line inherits the unit and rate you normally use. */
-  const seededItems = useMemo(() => {
-    const [first, ...rest] = form.values.items;
-    if (rest.length > 0 || !first || first.description || first.amount) {
-      return form.values.items;
-    }
-    return [
-      {
-        ...first,
-        unit: first.unit || defaults.unit,
-        vat: first.vat || defaults.vat,
-      },
-    ];
-  }, [defaults.unit, defaults.vat, form.values.items]);
 
   const money = (value: number) => formatMoney(value, locale, currency);
   const amount = (value: number) => formatAmount(value, locale);
@@ -350,7 +342,11 @@ export function InvoiceCreatePage({
   };
 
   const selectedClientRecord =
-    clients.find((client) => client.name === form.values.clientName) ?? null;
+    (form.effective.clientId
+      ? clients.find((client) => client.id === form.effective.clientId)
+      : null) ??
+    clients.find((client) => client.name === form.effective.clientName) ??
+    null;
 
   /* Honour the filename template — the create flow used to hardcode this and
      silently ignore the preference. */
@@ -373,10 +369,10 @@ export function InvoiceCreatePage({
        terms may still be derived defaults rather than typed state. */
     const found = form.validate({
       invoiceNumber,
-      paymentDays: effective.paymentDays,
-      paymentMethod: effective.paymentMethod,
-      clientName: effective.clientName,
-      issueDate: effective.issueDate,
+      paymentDays: form.effective.paymentDays,
+      paymentMethod: form.effective.paymentMethod,
+      clientName: form.effective.clientName,
+      issueDate: form.effective.issueDate,
     });
     if (Object.keys(found).length > 0) return;
     if (
@@ -390,13 +386,13 @@ export function InvoiceCreatePage({
     }
 
     const formatTypeError = Evolu.createFormatTypeError();
-    const issueDateResult = Evolu.dateToDateIso(new Date(effective.issueDate));
+    const issueDateResult = Evolu.dateToDateIso(new Date(form.effective.issueDate));
     if (!issueDateResult.ok) {
       form.setErrors({ issueDate: t("alerts.issueDateInvalid") });
       return;
     }
     const paymentDaysResult = Evolu.NonNegativeNumber.from(
-      Number(effective.paymentDays),
+      Number(form.effective.paymentDays),
     );
     if (!paymentDaysResult.ok) {
       form.setErrors({ paymentDays: t("alerts.paymentDaysInvalid") });
@@ -414,19 +410,19 @@ export function InvoiceCreatePage({
 
       const payload = {
         invoiceNumber: invoiceNumber.trim(),
-        clientName: effective.clientName.trim(),
+        clientName: form.effective.clientName.trim(),
         issueDate: issueDateResult.value,
         duzp: isVatPayer ? issueDateResult.value : null,
         paymentDays: paymentDaysResult.value,
-        paymentMethod: effective.paymentMethod,
-        purchaseOrderNumber: effective.purchaseOrderNumber.trim() || null,
-        invoicingNote: effective.invoicingNote.trim() || null,
-        btcInvoice: effective.btcInvoice
+        paymentMethod: form.effective.paymentMethod,
+        purchaseOrderNumber: form.effective.purchaseOrderNumber.trim() || null,
+        invoicingNote: form.effective.invoicingNote.trim() || null,
+        btcInvoice: form.effective.btcInvoice
           ? Evolu.sqliteTrue
           : Evolu.sqliteFalse,
-        btcAddress: effective.btcAddress.trim() || null,
+        btcAddress: form.effective.btcAddress.trim() || null,
         bankAccountId: bankAccountId || null,
-        clientId: effective.clientId || null,
+        clientId: form.effective.clientId || null,
         currency: currency,
         items: itemsResult.value,
         deleted: Evolu.sqliteFalse,
@@ -504,11 +500,12 @@ export function InvoiceCreatePage({
           </div>
         ) : (
           <InvoiceComposer
+            /* The number and the account are still worked out here — they
+               depend on the whole ledger, not on this form. */
             form={{
               ...form,
-              values: {
-                ...effective,
-                items: seededItems,
+              effective: {
+                ...form.effective,
                 invoiceNumber,
                 bankAccountId,
                 currency,

@@ -45,12 +45,29 @@ const seedState = (seed: InvoiceFormSeed) => ({
 
 export type InvoiceFormValues = ReturnType<typeof seedState>;
 
+/**
+ * Values a page works out rather than the user typing them: the terms carried
+ * over from the last invoice, the unit and rate normally used. They are
+ * applied here, inside the hook, so that what the composer shows, what the
+ * summary totals and what is saved are the same numbers — the create page
+ * used to overlay them on the composer only, and quietly saved an invoice
+ * with no VAT on it while the table displayed 21 %.
+ */
+export type InvoiceFormDerived = {
+  paymentDays?: string;
+  paymentMethod?: string;
+  /** Applied to the first line while it is still untouched. */
+  unit?: string;
+  vat?: string;
+};
+
 type Options = {
   isVatPayer: boolean;
   /** Profile-level default for billing per unit. */
   billPerUnitDefault: boolean;
   locale: string;
   t: (key: string, vars?: Record<string, string | number>) => string;
+  derived?: InvoiceFormDerived;
 };
 
 /**
@@ -62,16 +79,21 @@ type Options = {
  * the PDF. One implementation now, so they cannot disagree.
  */
 export const useInvoiceForm = (seed: InvoiceFormSeed, options: Options) => {
-  const { isVatPayer, billPerUnitDefault, locale, t } = options;
+  const { isVatPayer, billPerUnitDefault, locale, t, derived } = options;
   const [values, setValues] = useState<InvoiceFormValues>(() => seedState(seed));
   const [errors, setErrors] = useState<InvoiceFormErrors>({});
   const [dirty, setDirty] = useState(false);
+  /* Derived line defaults are a seed, not a standing rule: once the user has
+     edited the lines, state is the truth — otherwise clearing a rate would
+     just spring back to the default and the field could never be emptied. */
+  const [itemsTouched, setItemsTouched] = useState(false);
 
   const set = <K extends keyof InvoiceFormValues>(
     key: K,
     value: InvoiceFormValues[K],
   ) => {
     setDirty(true);
+    if (key === "items") setItemsTouched(true);
     setValues((prev) => ({ ...prev, [key]: value }));
     if (key in errors) {
       setErrors((prev) => ({ ...prev, [key as string]: undefined }));
@@ -83,6 +105,7 @@ export const useInvoiceForm = (seed: InvoiceFormSeed, options: Options) => {
     setValues(seedState(next));
     setErrors({});
     setDirty(false);
+    setItemsTouched(false);
   };
 
   const perUnit = values.perUnitChoice ?? billPerUnitDefault;
@@ -93,17 +116,68 @@ export const useInvoiceForm = (seed: InvoiceFormSeed, options: Options) => {
     value: string,
   ) => {
     setDirty(true);
+    setItemsTouched(true);
     setValues((prev) => ({
       ...prev,
-      items: prev.items.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item,
-      ),
+      items: prev.items.map((item, i) => {
+        if (i !== index) return item;
+        /* Write the seeded unit and rate into state as the row is first
+           touched, so what was on screen is what gets saved — and is then
+           ordinary editable state, clearable like any other field. */
+        const seeded = derived
+          ? {
+              ...item,
+              unit: item.unit || derived.unit || "",
+              vat: item.vat || derived.vat || "",
+            }
+          : item;
+        return { ...seeded, [field]: value };
+      }),
     }));
   };
 
+  /**
+   * Until the lines are edited, they show the unit and rate you normally use.
+   * These are real values, not decoration: the summary totals them and they
+   * are what gets saved. Previously they were painted on the table only, so a
+   * VAT payer saw 21 %, a summary reading "DPH 0 Kč", and an invoice with no
+   * VAT on it — and the 21 vanished the moment you typed a description.
+   */
+  const effectiveItems = useMemo(() => {
+    if (itemsTouched || !derived || (!derived.unit && !derived.vat)) {
+      return values.items;
+    }
+    return values.items.map((item) => ({
+      ...item,
+      unit: item.unit || derived.unit || "",
+      vat: item.vat || derived.vat || "",
+    }));
+  }, [derived, itemsTouched, values.items]);
+
+  /** Values as they will be saved: what was typed, over what was derived. */
+  const effective: InvoiceFormValues = useMemo(
+    () => ({
+      ...values,
+      paymentDays: values.paymentDays || derived?.paymentDays || "",
+      paymentMethod: values.paymentMethod || derived?.paymentMethod || "",
+      items: effectiveItems,
+    }),
+    [derived, effectiveItems, values],
+  );
+
   const normalizedItems = useMemo(
     () =>
-      values.items
+      effective.items
+        /* Drop lines the user added and left blank — tested on what was
+           typed, because the mapping below defaults a blank quantity to 1
+           and would make every empty row look filled in. */
+        .filter(
+          (item) =>
+            item.description.trim() ||
+            item.unit.trim() ||
+            item.amount.trim() ||
+            item.unitPrice.trim(),
+        )
         .map((item) => ({
           /* Blank quantity means one; a fixed-price line stores no unit. */
           amount: !perUnit
@@ -119,12 +193,8 @@ export const useInvoiceForm = (seed: InvoiceFormSeed, options: Options) => {
             ? Number(item.unitPrice)
             : 0,
           vat: Number.isFinite(Number(item.vat)) ? Number(item.vat) : 0,
-        }))
-        .filter(
-          (item) =>
-            item.description || item.unit || item.amount || item.unitPrice,
-        ),
-    [perUnit, values.items],
+        })),
+    [effective.items, perUnit],
   );
 
   const net = invoiceNet(normalizedItems);
@@ -132,13 +202,16 @@ export const useInvoiceForm = (seed: InvoiceFormSeed, options: Options) => {
   const gross = net + vat;
 
   const dueDate = useMemo(() => {
-    const issued = new Date(values.issueDate);
-    const days = Number(values.paymentDays);
+    const issued = new Date(effective.issueDate);
+    /* Blank is not zero days: Number("") is 0, which printed today's date as
+       the due date under a field showing 14-day terms. */
+    if (!effective.paymentDays.trim()) return null;
+    const days = Number(effective.paymentDays);
     if (Number.isNaN(issued.getTime()) || !Number.isFinite(days)) return null;
     const due = new Date(issued);
     due.setDate(due.getDate() + days);
     return due;
-  }, [values.issueDate, values.paymentDays]);
+  }, [effective.issueDate, effective.paymentDays]);
 
   const dueDateLabel = dueDate ? formatDate(dueDate.toISOString(), locale) : null;
 
@@ -153,7 +226,7 @@ export const useInvoiceForm = (seed: InvoiceFormSeed, options: Options) => {
   const validate = (
     candidate: Partial<InvoiceFormValues> = {},
   ): InvoiceFormErrors => {
-    const v = { ...values, ...candidate };
+    const v = { ...effective, ...candidate };
     const found: InvoiceFormErrors = {};
     if (!v.invoiceNumber.trim()) {
       found.invoiceNumber = t("alerts.invoiceNumberRequired");
@@ -174,6 +247,7 @@ export const useInvoiceForm = (seed: InvoiceFormSeed, options: Options) => {
 
   return {
     values,
+    effective,
     set,
     setItem,
     setValues,
