@@ -31,6 +31,21 @@ const formatTemplate = (template: string, vars?: TemplateVars): string => {
   );
 };
 
+/**
+ * Czech takes three plural forms where English takes two: 1 faktura,
+ * 2–4 faktury, 5+ faktur. Counts are rendered next to almost every figure in
+ * the app, so getting this wrong is visible everywhere.
+ */
+const pluralForm = (language: Language, count: number): "one" | "few" | "many" => {
+  const n = Math.abs(count);
+  if (language === "cz") {
+    if (n === 1) return "one";
+    if (n >= 2 && n <= 4 && Number.isInteger(n)) return "few";
+    return "many";
+  }
+  return n === 1 ? "one" : "many";
+};
+
 export const createI18n = (language: Language) => {
   const locale = language === "en" ? "en-US" : "cs-CZ";
   const t = (key: string, vars?: TemplateVars): string => {
@@ -38,7 +53,18 @@ export const createI18n = (language: Language) => {
     return formatTemplate(value ?? key, vars);
   };
 
-  return { language, locale, t };
+  /** Resolves `<key>.one` / `.few` / `.many` for the given count. */
+  const tp = (key: string, count: number, vars?: TemplateVars): string => {
+    const form = pluralForm(language, count);
+    const value =
+      getValue(language, `${key}.${form}`) ??
+      getValue(language, `${key}.many`) ??
+      getValue(fallbackLanguage, `${key}.${form}`) ??
+      getValue(fallbackLanguage, `${key}.many`);
+    return formatTemplate(value ?? key, { count, ...vars });
+  };
+
+  return { language, locale, t, tp };
 };
 
 export const useI18n = (overrideLanguage?: Language) => {
