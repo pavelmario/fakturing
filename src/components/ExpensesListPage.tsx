@@ -1,8 +1,12 @@
 import { use, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
+import { ChevronLeft, ChevronRight, FileDown, Plus, Search } from "lucide-react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { formatDate } from "../lib/invoice";
+import { DEFAULT_CURRENCY, formatAmount, formatMoney } from "../lib/money";
+import { useNotify } from "../lib/confirmContext";
 
 type ExpensesListPageProps = {
   onCreateExpense: () => void;
@@ -20,40 +24,8 @@ type ExpenseRow = {
   expenseDate: string | null;
 };
 
-const formatDate = (
-  iso: string | null,
-  locale: string,
-  placeholder: string,
-): string => {
-  if (!iso) return placeholder;
-  const parsed = new Date(iso);
-  if (Number.isNaN(parsed.getTime())) return iso;
-  return parsed.toLocaleDateString(locale);
-};
 
-const formatAmount = (value: number | null, locale: string): string => {
-  if (value == null || !Number.isFinite(value)) return "";
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "CZK",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-};
 
-const formatTotal = (
-  value: number,
-  locale: string,
-  fallback: string,
-): string => {
-  if (!Number.isFinite(value)) return fallback;
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "CZK",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-};
 
 const toDateCz = (iso: string): string => {
   const d = new Date(iso);
@@ -90,46 +62,27 @@ const parseObecFromZipCity = (value: string | null | undefined): string => {
 
   return cityPart.replace(/\s+\d+\s*$/, "").trim();
 };
-
 export function ExpensesListPage({
   onCreateExpense,
   onViewDetails,
 }: ExpensesListPageProps) {
-  const { t, locale } = useI18n();
+  const { t, tp, locale } = useI18n();
+  const notify = useNotify();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
 
   const [search, setSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-
-  const resetDateFilters = () => {
-    setDateFrom("");
-    setDateTo("");
-  };
-
-  const expensesQuery = useMemo(
-    () =>
-      evolu.createQuery((db) =>
-        db
-          .selectFrom("expense")
-          .select([
-            "id",
-            "amountWithoutVat",
-            "amountWithVat",
-            "vatRate",
-            "supplierVat",
-            "expenseNumber",
-            "description",
-            "expenseDate",
-          ])
-          .where("ownerId", "=", owner.id)
-          .where("isDeleted", "is not", Evolu.sqliteTrue)
-          .where("deleted", "is not", Evolu.sqliteTrue)
-          .orderBy("expenseDate", "desc"),
-      ),
-    [evolu, owner.id],
-  );
+  /* Expenses are entered through the month and then filed for a period, so the
+     period is the page's primary control rather than a pair of date fields
+     hidden inside a collapsed filter panel — which is where the control
+     statement export used to get its range from. */
+  const now = new Date();
+  const [period, setPeriod] = useState({
+    year: now.getFullYear(),
+    month: now.getMonth(),
+  });
+  /* null = the whole period; otherwise a plain text search across everything */
+  const [browseAll, setBrowseAll] = useState(false);
 
   const profileQuery = useMemo(
     () =>
@@ -144,152 +97,120 @@ export function ExpensesListPage({
       ),
     [evolu, owner.id],
   );
+  const profile = useQuery(profileQuery)[0] ?? null;
+  const isVatPayer = profile?.vatPayer === Evolu.sqliteTrue;
+  const isDiscreteMode = profile?.discreteMode === Evolu.sqliteTrue;
 
+  const expensesQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("expense")
+          .selectAll()
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue)
+          .orderBy("expenseDate", "desc"),
+      ),
+    [evolu, owner.id],
+  );
   const expenses = useQuery(expensesQuery) as readonly ExpenseRow[];
-  const profileRows = useQuery(profileQuery);
-  const profile = profileRows[0] ?? null;
 
-  const normalizedSearch = search.trim().toLowerCase();
+  const pad = (value: number) => String(value + 1).padStart(2, "0");
+  const lastDay = new Date(period.year, period.month + 1, 0).getDate();
+  /* The export function below reads these two names, unchanged. */
+  const dateFrom = `${period.year}-${pad(period.month)}-01`;
+  const dateTo = `${period.year}-${pad(period.month)}-${String(lastDay).padStart(2, "0")}`;
 
-  const toDateOnly = (value: string | null): string | null => {
-    if (!value) return null;
-    return value.includes("T") ? value.slice(0, 10) : value;
+  const inPeriod = (expense: ExpenseRow) => {
+    if (!expense.expenseDate) return false;
+    const date = new Date(expense.expenseDate);
+    if (Number.isNaN(date.getTime())) return false;
+    return (
+      date.getFullYear() === period.year && date.getMonth() === period.month
+    );
   };
 
-  const filteredExpenses = useMemo(() => {
-    return expenses.filter((expense) => {
-      const expenseDateOnly = toDateOnly(expense.expenseDate);
+  const dateRangeExpenses = useMemo(
+    () => expenses.filter(inPeriod),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [expenses, period.year, period.month],
+  );
 
-      if (dateFrom && (!expenseDateOnly || expenseDateOnly < dateFrom)) {
-        return false;
-      }
-
-      if (dateTo && (!expenseDateOnly || expenseDateOnly > dateTo)) {
-        return false;
-      }
-
-      if (!normalizedSearch) return true;
-
-      const description = expense.description ?? "";
-      return description.toLowerCase().includes(normalizedSearch);
-    });
-  }, [dateFrom, dateTo, expenses, normalizedSearch]);
-
-  const dateRangeExpenses = useMemo(() => {
-    return expenses.filter((expense) => {
-      const expenseDateOnly = toDateOnly(expense.expenseDate);
-
-      if (dateFrom && (!expenseDateOnly || expenseDateOnly < dateFrom)) {
-        return false;
-      }
-
-      if (dateTo && (!expenseDateOnly || expenseDateOnly > dateTo)) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [dateFrom, dateTo, expenses]);
-
-  const monthStats = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-
-    return expenses.reduce(
-      (acc, expense) => {
-        if (!expense.expenseDate) return acc;
-
-        const parsedDate = new Date(expense.expenseDate);
-        if (Number.isNaN(parsedDate.getTime())) return acc;
-        if (
-          parsedDate.getFullYear() !== currentYear ||
-          parsedDate.getMonth() !== currentMonth
-        ) {
-          return acc;
-        }
-
-        acc.count += 1;
-        const amountWithVat = Number(expense.amountWithVat ?? 0);
-        if (Number.isFinite(amountWithVat)) {
-          acc.total += amountWithVat;
-        }
-
-        return acc;
-      },
-      { count: 0, total: 0 },
+  const needle = search.trim().toLowerCase();
+  const visible = useMemo(() => {
+    const base = browseAll || needle ? expenses : dateRangeExpenses;
+    if (!needle) return base;
+    return base.filter((expense) =>
+      [expense.description, expense.expenseNumber, expense.supplierVat]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(needle),
     );
-  }, [expenses]);
+  }, [browseAll, dateRangeExpenses, expenses, needle]);
 
-  const lastMonthStats = useMemo(() => {
-    const now = new Date();
-    const reference = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthYear = reference.getFullYear();
-    const lastMonth = reference.getMonth();
+  const totals = useMemo(() => {
+    let base = 0;
+    let vat = 0;
+    let gross = 0;
+    for (const expense of dateRangeExpenses) {
+      const withVat = Number(expense.amountWithVat ?? 0);
+      const withoutVat = Number(expense.amountWithoutVat ?? 0);
+      gross += Number.isFinite(withVat) ? withVat : 0;
+      base += Number.isFinite(withoutVat) ? withoutVat : 0;
+    }
+    vat = gross - base;
+    return { base, vat, gross, count: dateRangeExpenses.length };
+  }, [dateRangeExpenses]);
 
-    return expenses.reduce(
-      (acc, expense) => {
-        if (!expense.expenseDate) return acc;
-
-        const parsedDate = new Date(expense.expenseDate);
-        if (Number.isNaN(parsedDate.getTime())) return acc;
-        if (
-          parsedDate.getFullYear() !== lastMonthYear ||
-          parsedDate.getMonth() !== lastMonth
-        ) {
-          return acc;
+  const yearTotal = useMemo(
+    () =>
+      expenses.reduce((sum, expense) => {
+        if (!expense.expenseDate) return sum;
+        const date = new Date(expense.expenseDate);
+        if (Number.isNaN(date.getTime()) || date.getFullYear() !== period.year) {
+          return sum;
         }
+        const value = Number(expense.amountWithVat ?? 0);
+        return sum + (Number.isFinite(value) ? value : 0);
+      }, 0),
+    [expenses, period.year],
+  );
 
-        acc.count += 1;
-        const amountWithVat = Number(expense.amountWithVat ?? 0);
-        if (Number.isFinite(amountWithVat)) {
-          acc.total += amountWithVat;
-        }
+  const money = (value: number) =>
+    isDiscreteMode
+      ? t("common.discreteMask")
+      : formatMoney(value, locale, DEFAULT_CURRENCY);
+  const amount = (value: number) =>
+    isDiscreteMode ? t("common.discreteMask") : formatAmount(value, locale);
 
-        return acc;
-      },
-      { count: 0, total: 0 },
-    );
-  }, [expenses]);
+  const shiftPeriod = (delta: number) => {
+    const next = new Date(period.year, period.month + delta, 1);
+    setPeriod({ year: next.getFullYear(), month: next.getMonth() });
+    setBrowseAll(false);
+  };
 
-  const yearStats = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-
-    return expenses.reduce(
-      (acc, expense) => {
-        if (!expense.expenseDate) return acc;
-
-        const parsedDate = new Date(expense.expenseDate);
-        if (Number.isNaN(parsedDate.getTime())) return acc;
-        if (parsedDate.getFullYear() !== currentYear) return acc;
-
-        acc.count += 1;
-        const amountWithVat = Number(expense.amountWithVat ?? 0);
-        if (Number.isFinite(amountWithVat)) {
-          acc.total += amountWithVat;
-        }
-
-        return acc;
-      },
-      { count: 0, total: 0 },
-    );
-  }, [expenses]);
+  const periodLabel = new Date(period.year, period.month, 1).toLocaleDateString(
+    locale,
+    { month: "long", year: "numeric" },
+  );
 
   const handleExportKontrolniHlaseni = () => {
     if (!dateFrom || !dateTo) {
-      alert(t("expensesList.exportXmlMissingDates"));
+      notify(t("expensesList.exportXmlMissingDates"), "error");
       return;
     }
 
     const vatNumber = profile?.vatNumber?.toString().trim() ?? "";
     if (!vatNumber) {
-      alert(t("expensesList.exportXmlMissingVat"));
+      notify(t("expensesList.exportXmlMissingVat"), "error");
       return;
     }
 
     const taxOfficeCode = profile?.taxOfficeCode?.toString().trim() ?? "";
     if (!taxOfficeCode) {
-      alert(t("expensesList.exportXmlMissingTaxOffice"));
+      notify(t("expensesList.exportXmlMissingTaxOffice"), "error");
       return;
     }
     const taxOfficeWorkplaceCode =
@@ -318,7 +239,7 @@ export function ExpensesListPage({
       (e) => !e.supplierVat?.toString().trim() || !e.expenseNumber?.toString().trim(),
     );
     if (missingInfo) {
-      alert(t("expensesList.exportXmlMissingSupplierInfo"));
+      notify(t("expensesList.exportXmlMissingSupplierInfo"), "error");
       return;
     }
 
@@ -470,171 +391,180 @@ export function ExpensesListPage({
   return (
     <div className="page-shell">
       <div className="page-container-lg">
-        <div className="page-card-lg">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-            <div>
-              <p className="section-title">{t("expensesList.sectionTitle")}</p>
-              <h1 className="page-title">{t("expensesList.title")}</h1>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex items-end justify-between gap-4 mb-5">
+          <h1 className="page-title">{t("expensesList.title")}</h1>
+          <button onClick={onCreateExpense} className="btn-primary">
+            <Plus />
+            {t("expensesList.create")}
+          </button>
+        </div>
+
+        {/* ---- The filing period drives the page ---------------------- */}
+        <section className="ystrip mb-4">
+          <div className="ystrip-head">
+            <div className="ystrip-nav">
               <button
-                onClick={handleExportKontrolniHlaseni}
-                className="btn-secondary w-full sm:w-auto"
+                type="button"
+                className="ystrip-arrow"
+                onClick={() => shiftPeriod(-1)}
+                aria-label={t("expensesList.periodPrev")}
               >
+                <ChevronLeft />
+              </button>
+              <span className="period-label">{periodLabel}</span>
+              <button
+                type="button"
+                className="ystrip-arrow"
+                onClick={() => shiftPeriod(1)}
+                aria-label={t("expensesList.periodNext")}
+              >
+                <ChevronRight />
+              </button>
+            </div>
+
+            <div className="ystrip-cell" data-lead="true">
+              <div className="ystrip-cell-label">
+                {t("expensesList.periodTotal")}
+              </div>
+              <div className="ystrip-figure">{money(totals.gross)}</div>
+              <div className="ystrip-cell-meta">
+                <span className="num">{totals.count}</span>{" "}
+                {tp("expensesList.expenseCount", totals.count)}
+              </div>
+            </div>
+
+            {isVatPayer ? (
+              <div className="ystrip-cell">
+                <div className="ystrip-cell-label">
+                  {t("expensesList.periodVat")}
+                </div>
+                <div className="ystrip-figure">{money(totals.vat)}</div>
+                <div className="ystrip-cell-meta">
+                  {t("expensesList.periodBase", { amount: money(totals.base) })}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="ystrip-cell">
+              <div className="ystrip-cell-label">
+                {t("expensesList.yearTotal", { year: period.year })}
+              </div>
+              <div className="ystrip-figure">{money(yearTotal)}</div>
+            </div>
+          </div>
+
+          {isVatPayer ? (
+            <div className="period-actions">
+              <button
+                className="btn-secondary"
+                onClick={handleExportKontrolniHlaseni}
+              >
+                <FileDown />
                 {t("expensesList.exportXml")}
               </button>
-              <button
-                onClick={onCreateExpense}
-                className="btn-primary w-full sm:w-auto"
-              >
-                {t("expensesList.create")}
-              </button>
+              <span className="settings-help-text">
+                {t("expensesList.exportXmlHint", { period: periodLabel })}
+              </span>
             </div>
+          ) : null}
+        </section>
+
+        <div className="filter-bar">
+          <div className="search-field">
+            <Search />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("expensesList.searchPlaceholder")}
+              aria-label={t("expensesList.searchLabel")}
+            />
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div className="stat-card">
-              <div className="section-title">{t("expensesList.statMonth")}</div>
-              <div className="mt-2 text-lg font-semibold stat-count">
-                {formatTotal(
-                  monthStats.total,
-                  locale,
-                  t("expensesList.currencyFallback"),
-                )}
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="section-title">
-                {t("expensesList.statLastMonth")}
-              </div>
-              <div className="mt-2 text-lg font-semibold stat-count">
-                {formatTotal(
-                  lastMonthStats.total,
-                  locale,
-                  t("expensesList.currencyFallback"),
-                )}
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="section-title">{t("expensesList.statYear")}</div>
-              <div className="mt-2 text-lg font-semibold stat-count">
-                {formatTotal(
-                  yearStats.total,
-                  locale,
-                  t("expensesList.currencyFallback"),
-                )}
-              </div>
-            </div>
+          <button
+            type="button"
+            className="fchip"
+            data-on={browseAll || Boolean(needle)}
+            onClick={() => setBrowseAll((on) => !on)}
+          >
+            {t("expensesList.showAll")}
+          </button>
+          <div className="filter-bar-tail">
+            <span className="filter-count">
+              {visible.length} {tp("expensesList.expenseCount", visible.length)}
+            </span>
           </div>
-
-          <details className="panel-card mb-6">
-            <summary className="cursor-pointer text-sm font-semibold filters-summary">
-              {t("expensesList.filters")} 🔎
-            </summary>
-            <div className="mt-4 space-y-4">
-              <div>
-                <label htmlFor="expenseSearch" className="form-label">
-                  {t("expensesList.searchLabel")}
-                </label>
-                <input
-                  id="expenseSearch"
-                  type="search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder={t("expensesList.searchPlaceholder")}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label htmlFor="expenseDateFrom" className="form-label">
-                    {t("expensesList.dateFromLabel")}
-                  </label>
-                  <input
-                    id="expenseDateFrom"
-                    type="date"
-                    value={dateFrom}
-                    onChange={(event) => setDateFrom(event.target.value)}
-                    className="form-input"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="expenseDateTo" className="form-label">
-                    {t("expensesList.dateToLabel")}
-                  </label>
-                  <input
-                    id="expenseDateTo"
-                    type="date"
-                    value={dateTo}
-                    onChange={(event) => setDateTo(event.target.value)}
-                    className="form-input"
-                  />
-                </div>
-
-                <div>
-                  <div
-                    className="hidden md:block form-label invisible"
-                    aria-hidden="true"
-                  >
-                    {t("expensesList.dateToLabel")}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={resetDateFilters}
-                    disabled={!dateFrom && !dateTo}
-                    className="mt-3 w-full text-left text-sm font-medium text-blue-600 underline underline-offset-2 transition hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
-                  >
-                    {t("expensesList.resetDateFilters")}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </details>
-
-          {filteredExpenses.length === 0 ? (
-            <div className="empty-state">
-              {expenses.length === 0
-                ? t("expensesList.emptyNone")
-                : t("expensesList.emptyNoMatch")}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredExpenses.map((expense) => (
-                <div
-                  key={expense.id}
-                  className="list-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-                >
-                  <div>
-                    <div className="text-sm invoice-row-date mb-1">
-                      {formatDate(
-                        expense.expenseDate,
-                        locale,
-                        t("common.placeholderDash"),
-                      )}
-                    </div>
-                    <div className="text-lg font-semibold invoice-row-number">
-                      {expense.description ?? t("expensesList.unknownType")}
-                    </div>
-                    <div className="text-sm font-semibold invoice-row-amount">
-                      {formatAmount(expense.amountWithVat, locale)}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:items-end gap-2">
-                    <button
-                      onClick={() => onViewDetails(expense.id)}
-                      className="btn-secondary w-full sm:w-auto"
-                    >
-                      {t("expensesList.detail")}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
+
+        {visible.length === 0 ? (
+          <div className="empty-state">
+            {expenses.length === 0
+              ? t("expensesList.emptyNone")
+              : t("expensesList.emptyNoMatch")}
+          </div>
+        ) : (
+          <div className="ledger-wrap">
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th className="ledger-rail" style={{ borderBottom: 0 }} />
+                  <th>{t("expensesList.colDate")}</th>
+                  <th>{t("expensesList.colDescription")}</th>
+                  <th>{t("expensesList.colNumber")}</th>
+                  {isVatPayer ? (
+                    <>
+                      <th>{t("expensesList.colSupplier")}</th>
+                      <th className="num-col">{t("expensesList.colBase")}</th>
+                      <th className="num-col">{t("expensesList.colVat")}</th>
+                    </>
+                  ) : null}
+                  <th className="num-col">
+                    {t("expensesList.colTotal")} · {DEFAULT_CURRENCY}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((expense) => {
+                  const gross = Number(expense.amountWithVat ?? 0);
+                  const base = Number(expense.amountWithoutVat ?? 0);
+                  return (
+                    <tr
+                      key={expense.id}
+                      data-status="unpaid"
+                      onClick={() => onViewDetails(expense.id)}
+                    >
+                      <td className="ledger-rail">
+                        <span />
+                      </td>
+                      <td className="ledger-date">
+                        {formatDate(
+                          expense.expenseDate,
+                          locale,
+                          t("common.placeholderDash"),
+                        )}
+                      </td>
+                      <td className="ledger-client">{expense.description}</td>
+                      <td className="ledger-date">
+                        {expense.expenseNumber || t("common.placeholderDash")}
+                      </td>
+                      {isVatPayer ? (
+                        <>
+                          <td className="ledger-date">
+                            {expense.supplierVat || t("common.placeholderDash")}
+                          </td>
+                          <td className="ledger-amount">{amount(base)}</td>
+                          <td className="ledger-amount">
+                            {amount(gross - base)}
+                          </td>
+                        </>
+                      ) : null}
+                      <td className="ledger-amount">{amount(gross)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
