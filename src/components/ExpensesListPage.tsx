@@ -139,7 +139,10 @@ export function ExpensesListPage({
 
   const needle = search.trim().toLowerCase();
   const visible = useMemo(() => {
-    const base = browseAll || needle ? expenses : dateRangeExpenses;
+    /* Search stays inside the chosen period unless "vše" is on. Widening it
+       silently put rows from other months in the table while the panel above
+       kept totalling the period — two different sets, described as one. */
+    const base = browseAll ? expenses : dateRangeExpenses;
     if (!needle) return base;
     return base.filter((expense) =>
       [expense.description, expense.expenseNumber, expense.supplierVat]
@@ -483,7 +486,8 @@ export function ExpensesListPage({
           <button
             type="button"
             className="fchip"
-            data-on={browseAll || Boolean(needle)}
+            data-on={browseAll}
+            aria-pressed={browseAll}
             onClick={() => setBrowseAll((on) => !on)}
           >
             {t("expensesList.showAll")}
