@@ -14,25 +14,43 @@ export const CURRENCIES = ["CZK", "EUR", "USD", "GBP", "PLN"] as const;
 export const supportsCzechQr = (currency: string | null | undefined) =>
   (currency ?? DEFAULT_CURRENCY) === "CZK";
 
+/** Amount without the currency mark — for table columns that carry the
+ *  currency in the header rather than repeating it on every row. */
+export const formatAmount = (value: number, locale: string): string => {
+  if (!Number.isFinite(value)) value = 0;
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+};
+
+/**
+ * Intl throws a RangeError on anything that is not a well-formed ISO 4217
+ * code, which would take down every screen that states an amount — and a bad
+ * code is *stored*, so the ledger would stay broken across reloads. An
+ * unrecognised code is printed beside the number instead.
+ */
+export const isCurrencyCode = (currency: string): boolean => {
+  try {
+    new Intl.NumberFormat("en", { style: "currency", currency });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export const formatMoney = (
   value: number,
   locale: string,
   currency: string = DEFAULT_CURRENCY,
 ): string => {
   if (!Number.isFinite(value)) value = 0;
+  if (!isCurrencyCode(currency)) {
+    return `${formatAmount(value, locale)} ${currency}`.trim();
+  }
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-};
-
-/** Amount without the currency mark — for table columns that carry the
- *  currency in the header rather than repeating it on every row. */
-export const formatAmount = (value: number, locale: string): string => {
-  if (!Number.isFinite(value)) value = 0;
-  return new Intl.NumberFormat(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
@@ -45,6 +63,9 @@ export const formatCompactMoney = (
   currency: string = DEFAULT_CURRENCY,
 ): string => {
   if (!Number.isFinite(value)) value = 0;
+  if (!isCurrencyCode(currency)) {
+    return `${formatAmount(value, locale)} ${currency}`.trim();
+  }
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
