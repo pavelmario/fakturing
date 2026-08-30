@@ -8,6 +8,8 @@ seed phrase *is* the identity.
 
 Czech and English UI, light and dark themes, installable as a PWA, works offline.
 
+![The invoice ledger](docs/screenshots/01-faktury.png)
+
 ---
 
 ## Screens
