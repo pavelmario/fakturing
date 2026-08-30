@@ -50,13 +50,26 @@ const sanitize = (value: string): string =>
     .replace(/-{2,}/g, "-")
     .replace(/^[-.]+|[-.]+$/g, "");
 
+/** Back-compat: the two legacy preset values map onto templates. */
+export const normalizeFileNameTemplate = (
+  stored: string | null | undefined,
+): string => {
+  if (stored === "invoice-year-invoice_number") return FILENAME_DEFAULT;
+  if (stored === "name-year-invoice_number") return "{dodavatel}-{cislo}";
+  return stored ?? FILENAME_DEFAULT;
+};
+
 const pad = (value: number) => String(value).padStart(2, "0");
 
 export const buildInvoiceFileName = (
   template: string | null | undefined,
   parts: FileNameParts,
 ): string => {
-  const pattern = (template ?? "").trim() || FILENAME_DEFAULT;
+  /* Normalised here rather than at the call sites: a legacy profile stores a
+     preset name, not a template, and one forgotten call exported every PDF
+     as "invoice-year-invoice_number.pdf". */
+  const pattern =
+    normalizeFileNameTemplate(template).trim() || FILENAME_DEFAULT;
   const date =
     parts.issueDate && !Number.isNaN(parts.issueDate.getTime())
       ? parts.issueDate
@@ -74,11 +87,3 @@ export const buildInvoiceFileName = (
   return `${name}.pdf`;
 };
 
-/** Back-compat: the two legacy preset values map onto templates. */
-export const normalizeFileNameTemplate = (
-  stored: string | null | undefined,
-): string => {
-  if (stored === "invoice-year-invoice_number") return FILENAME_DEFAULT;
-  if (stored === "name-year-invoice_number") return "{dodavatel}-{cislo}";
-  return stored ?? FILENAME_DEFAULT;
-};
