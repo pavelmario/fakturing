@@ -1,0 +1,19 @@
+/**
+ * The official Trezor symbol (trezor.visualbook.pro/trezor/logos/symbol).
+ *
+ * The brand guidelines forbid recolouring, rotation and proportion changes, so
+ * the path is used as published; only `currentColor` is applied so it can sit
+ * on either theme. Minimum size on screen is 22px per those guidelines — the
+ * button around it is 24px.
+ */
+export function TrezorMark() {
+  return (
+    <svg viewBox="0 0 260.73 378.41" aria-hidden="true" focusable="false">
+      <path
+        d="m222.7,87.82C222.7,39.82,181.05,0,130.35,0S38,39.84,38,87.82v28.07H0v201.9h0l130.35,60.62,130.38-60.66h0V116.75h-38l-.03-28.93Zm-137.62,0c0-22.63,19.92-40.74,45.27-40.74s45.27,18.11,45.27,40.74v28.07h-90.54v-28.07Zm123.13,197.37l-77.86,36.22-77.86-36.22v-121.32h155.72v121.32Z"
+        fill="currentColor"
+        strokeWidth={0}
+      />
+    </svg>
+  );
+}
