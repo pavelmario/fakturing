@@ -280,9 +280,16 @@ async function getFromRelayDb(
 // Fallback in-memory relay store for cross-tab sync in incognito/private mode
 const relayStore = new Map<string, { data: string; timestamp: number }>();
 
-// Debug: expose relay store to window object
+/** Debug helpers hung off `window`, declared rather than cast away. */
+declare global {
+  interface Window {
+    __debugRelayStore?: () => void;
+    __activeMnemonic?: () => string | null;
+  }
+}
+
 if (typeof window !== "undefined") {
-  (window as any).__debugRelayStore = () => {
+  window.__debugRelayStore = () => {
     console.log("=== Fallback Relay Store Debug ===");
     console.log(`Total entries: ${relayStore.size}`);
     relayStore.forEach((value, key) => {
@@ -292,7 +299,7 @@ if (typeof window !== "undefined") {
     });
     console.log("=================================");
   };
-  (window as any).__activeMnemonic = () => activeMnemonic;
+  window.__activeMnemonic = () => activeMnemonic;
 }
 
 function deriveUserId(mnemonic: string): string {
@@ -779,10 +786,10 @@ export function saveUserProfile(
     swift: profile.swift,
     iban: profile.iban,
     invoiceNamingFormat:
-      (profile as any).invoiceNamingFormat ||
+      profile.invoiceNamingFormat ||
       existing?.invoiceNamingFormat ||
       "invoice-year-invoice_number",
-    language: (profile as any).language || existing?.language || "cz",
+    language: profile.language || existing?.language || "cz",
     createdAt: existing?.createdAt || now,
     updatedAt: now,
   };
