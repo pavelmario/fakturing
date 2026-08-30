@@ -1,0 +1,132 @@
+/*
+ * Fakturing design tokens — "Účetní kniha"
+ *
+ * The whole system is ledger paper rendered with engineering precision:
+ * warm paper grounds, hairline rules instead of shadows, near-square corners,
+ * and every figure set in a tabular mono so columns of money align on the
+ * decimal. Amber (the bitcoin orange already in the product) is the single
+ * accent and is reserved for actions — which is why "unpaid" reads as neutral
+ * rather than as a warning. Unpaid is the normal state of an invoice.
+ */
+
+:root {
+  /* Ground & surfaces */
+  --paper: #f2efe7;
+  --surface: #fffefb;
+  --surface-2: #f8f5ed;
+  --surface-3: #efebe0;
+  --surface-hover: #f4f1e8;
+
+  /* Ink */
+  --ink: #17150f;
+  --ink-2: #3d382c;
+  --ink-muted: #6b6455;
+  --ink-faint: #9a9384;
+
+  /* Rules — the structural workhorse; no shadows in this system */
+  --rule: #e2dccd;
+  --rule-strong: #c9c1ae;
+
+  /* Accent: bitcoin amber. Fills use --accent, text uses --accent-text
+     (raw amber fails contrast on paper). */
+  --accent: #f7931a;
+  --accent-hover: #e5850e;
+  --accent-ink: #1a1206;
+  --accent-text: #9c5a04;
+  --accent-soft: #fdf0dc;
+  --accent-rule: #f0cf9c;
+
+  /* Status. Unpaid is deliberately neutral. */
+  --paid: #3f6b34;
+  --paid-soft: #e8efe3;
+  --paid-rule: #b9cfae;
+  --overdue: #a33328;
+  --overdue-soft: #f8e7e4;
+  --overdue-rule: #e0b5ae;
+  --unpaid: var(--ink-muted);
+  --unpaid-soft: var(--surface-3);
+  --unpaid-rule: var(--rule-strong);
+
+  /* Chart fills. Validated with the dataviz palette checker against each
+     mode's surface — dark is its own step, not a lightened flip of light,
+     because fills on a dark ground need more chroma to stay separable from
+     the recessive grey than text does. "Paid" is the subject; "unpaid" is the
+     deliberate de-emphasis grey. */
+  --chart-paid: #3f6b34;
+  --chart-unpaid: #8a8271;
+
+  /* Bitcoin mark keeps its true colour in both themes */
+  --btc: #f7931a;
+
+  /* Type */
+  --font-ui:
+    "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:
+    "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Mono", monospace;
+
+  --fs-xs: 0.6875rem; /* 11 */
+  --fs-sm: 0.75rem; /* 12 */
+  --fs-base: 0.8125rem; /* 13 */
+  --fs-md: 0.9375rem; /* 15 */
+  --fs-lg: 1.1875rem; /* 19 */
+  --fs-xl: 1.625rem; /* 26 */
+  --fs-2xl: 2.125rem; /* 34 */
+
+  /* Radii — near-square. Nothing in this system is a pill except the theme knob. */
+  --r-sm: 3px;
+  --r: 5px;
+  --r-lg: 8px;
+
+  /* Depth is used once, for things that float above the page */
+  --shadow-pop:
+    0 1px 2px rgb(23 21 15 / 0.08), 0 12px 32px -8px rgb(23 21 15 / 0.22);
+  --shadow-sticky: 0 -1px 0 var(--rule), 0 -8px 24px -12px rgb(23 21 15 / 0.15);
+
+  --focus: 0 0 0 2px var(--paper), 0 0 0 4px var(--accent);
+
+  --row-h: 40px;
+
+  color-scheme: light;
+}
+
+.dark {
+  --paper: #131210;
+  --surface: #1b1917;
+  --surface-2: #211f1c;
+  --surface-3: #2a2723;
+  --surface-hover: #232120;
+
+  --ink: #f0ebe0;
+  --ink-2: #d3ccbd;
+  --ink-muted: #a29a8c;
+  --ink-faint: #6f6859;
+
+  --rule: #2e2b26;
+  --rule-strong: #454037;
+
+  --accent: #f7931a;
+  --accent-hover: #ffa73c;
+  --accent-ink: #17120a;
+  --accent-text: #f2a63f;
+  --accent-soft: #2a1f0e;
+  --accent-rule: #5c4318;
+
+  --paid: #85bd6d;
+  --paid-soft: #1c2718;
+  --paid-rule: #35502b;
+  --overdue: #e58c7f;
+  --overdue-soft: #2c1a17;
+  --overdue-rule: #5e332c;
+
+  --chart-paid: #4dab33;
+  --chart-unpaid: #807869;
+  --unpaid: var(--ink-muted);
+  --unpaid-soft: var(--surface-3);
+  --unpaid-rule: var(--rule-strong);
+
+  --shadow-pop:
+    0 1px 2px rgb(0 0 0 / 0.5), 0 12px 32px -8px rgb(0 0 0 / 0.6);
+  --shadow-sticky: 0 -1px 0 var(--rule), 0 -8px 24px -12px rgb(0 0 0 / 0.5);
+
+  color-scheme: dark;
+}
