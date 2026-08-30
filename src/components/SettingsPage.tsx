@@ -3,8 +3,32 @@ import * as bip39 from "bip39";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { getRelayUrl, setRelayUrl as saveRelayUrl, useEvolu } from "../evolu";
+import {
+  Check,
+  Download,
+  Eye,
+  EyeOff,
+  Moon,
+  Sun,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
+import { SelectField } from "./invoices/SelectField";
+import {
+  FILENAME_DEFAULT,
+  FILENAME_TOKENS,
+  buildInvoiceFileName,
+  normalizeFileNameTemplate,
+} from "../lib/invoiceFileName";
+import {
+  NUMBER_DEFAULT,
+  NUMBER_TOKENS,
+  formatInvoiceNumber,
+} from "../lib/invoiceNumber";
 import { useI18n } from "../i18n";
+import { useConfirm, useNotify } from "../lib/confirmContext";
+import { DonatePanel } from "./invoices/DonatePanel";
 
 type SettingsPageProps = {
   theme: "light" | "dark";
@@ -24,56 +48,38 @@ export function SettingsPage({
 
   const [mnemonicInput, setMnemonicInput] = useState<string>("");
   const [name, setName] = useState<string>("");
-  const [email, setEmail] = useState<string>("");
-  const [phone, setPhone] = useState<string>("");
-  const [addressLine1, setAddressLine1] = useState<string>("");
-  const [addressLine2, setAddressLine2] = useState<string>("");
-  const [companyIdentificationNumber, setCompanyIdentificationNumber] =
-    useState<string>("");
-  const [vatNumber, setVatNumber] = useState<string>("");
-  const [vatPayer, setVatPayer] = useState<boolean>(false);
-  const [bankAccount, setBankAccount] = useState<string>("");
-  const [swift, setSwift] = useState<string>("");
-  const [iban, setIban] = useState<string>("");
-  const [invoiceFooterText, setInvoiceFooterText] = useState<string>("");
   const [discreteMode, setDiscreteMode] = useState<boolean>(false);
   const [expenses, setExpenses] = useState<boolean>(false);
   const [supplierVatPrefill, setSupplierVatPrefill] = useState<string>("");
   const [language, setLanguage] = useState<"cz" | "en">("cz");
   const { t, locale } = useI18n(language);
+  const confirmDialog = useConfirm();
+  const notify = useNotify();
   const [poRequired, setPoRequired] = useState<boolean>(false);
+  /* Settings is a very long page and its save button sits at the bottom, so a
+     toggle near the middle looked like it did nothing. Any change now raises
+     a sticky bar that says so and carries Save. */
+
+  const [billPerUnit, setBillPerUnit] = useState<boolean>(false);
   const [mempoolUrl, setMempoolUrl] = useState<string>(
     "https://mempool.space/",
   );
-  const [invoiceNamingFormat, setInvoiceNamingFormat] = useState<string>(
-    "invoice-year-invoice_number",
-  );
-  const [taxOfficeCode, setTaxOfficeCode] = useState<string>("");
-  const [taxOfficeWorkplaceCode, setTaxOfficeWorkplaceCode] =
-    useState<string>("");
-  const [savedData, setSavedData] = useState<{
-    name: string;
-    email?: string;
-    phone?: string;
-    addressLine1?: string;
-    addressLine2?: string;
-    companyIdentificationNumber?: string;
-    vatNumber?: string;
-    vatPayer?: boolean;
-    bankAccount?: string;
-    swift?: string;
-    iban?: string;
-    invoiceFooterText?: string;
-    discreteMode?: boolean;
-    expenses?: boolean;
-    supplierVatPrefill?: string;
-    poRequired?: boolean;
-    mempoolUrl?: string;
-    invoiceNamingFormat?: string;
-    taxOfficeWorkplaceCode?: string;
-    language?: string;
-  } | null>(null);
+  const [invoiceNamingFormat, setInvoiceNamingFormat] =
+    useState<string>(FILENAME_DEFAULT);
+  const [invoiceNumberFormat, setInvoiceNumberFormat] =
+    useState<string>(NUMBER_DEFAULT);
   const [showMnemonicInput, setShowMnemonicInput] = useState(false);
+  /* The backup phrase is the master key to every invoice — it should not be
+     sitting in plain sight on a page you open to change the language. */
+  const [seedRevealed, setSeedRevealed] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  /* Which datasets the next export includes. */
+  const [exportPick, setExportPick] = useState({
+    settings: true,
+    clients: true,
+    invoices: true,
+    expenses: true,
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [isRelayConnected, setIsRelayConnected] = useState<boolean | null>(
     null,
@@ -297,59 +303,27 @@ export function SettingsPage({
   }, [connectedRelayUrl, isOnline]);
 
   useEffect(() => {
-    if (!profile) {
-      setSavedData(null);
-      return;
-    }
-    setSavedData({
-      name: profile.name ?? "",
-      email: profile.email ?? undefined,
-      phone: profile.phone ?? undefined,
-      addressLine1: profile.addressLine1 ?? undefined,
-      addressLine2: profile.addressLine2 ?? undefined,
-      companyIdentificationNumber:
-        profile.companyIdentificationNumber ?? undefined,
-      vatNumber: profile.vatNumber ?? undefined,
-      vatPayer: profile.vatPayer === Evolu.sqliteTrue,
-      bankAccount: profile.bankAccount ?? undefined,
-      swift: profile.swift ?? undefined,
-      iban: profile.iban ?? undefined,
-      invoiceFooterText: profile.invoiceFooterText ?? undefined,
-      discreteMode: profile.discreteMode === Evolu.sqliteTrue,
-      expenses: profile.expenses === Evolu.sqliteTrue,
-      supplierVatPrefill: profile.supplierVatPrefill ?? undefined,
-      poRequired: profile.poRequired === Evolu.sqliteTrue,
-      mempoolUrl: profile.mempoolUrl ?? "https://mempool.space/",
-      invoiceNamingFormat:
-        profile.invoiceNamingFormat ?? "invoice-year-invoice_number",
-      language: profile.language ?? "cz",
-      taxOfficeWorkplaceCode: profile.taxOfficeWorkplaceCode ?? undefined,
-    });
+    if (!profile) return;
     const normalizedLanguage =
       profile.language?.toString().trim().toLowerCase() === "en" ? "en" : "cz";
     setLanguage(normalizedLanguage);
     setName(profile.name ?? "");
-    setEmail(profile.email ?? "");
-    setPhone(profile.phone ?? "");
-    setAddressLine1(profile.addressLine1 ?? "");
-    setAddressLine2(profile.addressLine2 ?? "");
-    setCompanyIdentificationNumber(profile.companyIdentificationNumber ?? "");
-    setVatNumber(profile.vatNumber ?? "");
-    setVatPayer(profile.vatPayer === Evolu.sqliteTrue);
-    setBankAccount(profile.bankAccount ?? "");
-    setSwift(profile.swift ?? "");
-    setIban(profile.iban ?? "");
-    setInvoiceFooterText(profile.invoiceFooterText ?? "");
     setDiscreteMode(profile.discreteMode === Evolu.sqliteTrue);
-    setExpenses(profile.expenses === Evolu.sqliteTrue);
+    /* Never explicitly set → follows VAT payer status, matching what the nav
+       actually does. */
+    setExpenses(
+      profile.expenses == null
+        ? profile.vatPayer === Evolu.sqliteTrue
+        : profile.expenses === Evolu.sqliteTrue,
+    );
     setSupplierVatPrefill(profile.supplierVatPrefill ?? "");
     setPoRequired(profile.poRequired === Evolu.sqliteTrue);
+    setBillPerUnit(profile.billPerUnit === Evolu.sqliteTrue);
     setMempoolUrl(profile.mempoolUrl ?? "https://mempool.space/");
     setInvoiceNamingFormat(
-      profile.invoiceNamingFormat ?? "invoice-year-invoice_number",
+      normalizeFileNameTemplate(profile.invoiceNamingFormat),
     );
-    setTaxOfficeCode(profile.taxOfficeCode ?? "");
-    setTaxOfficeWorkplaceCode(profile.taxOfficeWorkplaceCode ?? "");
+    setInvoiceNumberFormat(profile.invoiceNumberFormat ?? NUMBER_DEFAULT);
   }, [profile]);
 
   useEffect(() => {
@@ -360,7 +334,11 @@ export function SettingsPage({
     setLastSyncTime(new Date(profile.updatedAt).toLocaleString(locale));
   }, [profile?.updatedAt, locale]);
   const handleGenerateMnemonic = async () => {
-    const confirmed = confirm(t("alerts.confirmResetSeed"));
+    const confirmed = await confirmDialog({
+      title: t("alerts.confirmResetSeed"),
+      confirmLabel: t("settings.seedGenerate"),
+      tone: "danger",
+    });
     if (!confirmed) return;
     await evolu.resetAppOwner();
     setShowMnemonicInput(false);
@@ -494,7 +472,7 @@ export function SettingsPage({
         const text = String(reader.result ?? "");
         const rows = parseCsvRows(text);
         if (rows.length < 2) {
-          alert(t("alerts.csvNoData"));
+          notify(t("alerts.csvNoData"), "error");
           return;
         }
 
@@ -510,7 +488,7 @@ export function SettingsPage({
 
         const importedName = row.name?.trim() ?? "";
         if (!importedName) {
-          alert(t("alerts.csvInvalidName"));
+          notify(t("alerts.csvInvalidName"), "error");
           return;
         }
 
@@ -546,6 +524,9 @@ export function SettingsPage({
           poRequired: parseCsvBoolean(row.poRequired)
             ? Evolu.sqliteTrue
             : Evolu.sqliteFalse,
+          billPerUnit: parseCsvBoolean(row.billPerUnit)
+            ? Evolu.sqliteTrue
+            : Evolu.sqliteFalse,
           mempoolUrl: toNullable(row.mempoolUrl) ?? "https://mempool.space/",
           invoiceNamingFormat:
             toNullable(row.invoiceNamingFormat) ??
@@ -562,46 +543,34 @@ export function SettingsPage({
           });
           if (!result.ok) {
             console.error("Validation error:", result.error);
-            alert(t("alerts.settingsImportValidation"));
+            notify(t("alerts.settingsImportValidation"), "error");
             return;
           }
         } else {
           const result = evolu.insert("userProfile", payload);
           if (!result.ok) {
             console.error("Validation error:", result.error);
-            alert(t("alerts.settingsImportValidation"));
+            notify(t("alerts.settingsImportValidation"), "error");
             return;
           }
         }
 
         setName(payload.name);
-        setEmail(row.email ?? "");
-        setPhone(row.phone ?? "");
-        setAddressLine1(row.addressLine1 ?? "");
-        setAddressLine2(row.addressLine2 ?? "");
-        setCompanyIdentificationNumber(row.companyIdentificationNumber ?? "");
-        setVatNumber(row.vatNumber ?? "");
-        setVatPayer(parseCsvBoolean(row.vatPayer));
-        setBankAccount(row.bankAccount ?? "");
-        setSwift(row.swift ?? "");
-        setIban(row.iban ?? "");
-        setInvoiceFooterText(row.invoiceFooterText ?? "");
         setDiscreteMode(parseCsvBoolean(row.discreteMode));
         setExpenses(parseCsvBoolean(row.expenses));
         setSupplierVatPrefill(row.supplierVatPrefill?.trim() ?? "");
         setPoRequired(parseCsvBoolean(row.poRequired));
+        setBillPerUnit(parseCsvBoolean(row.billPerUnit));
         setMempoolUrl(row.mempoolUrl?.trim() || "https://mempool.space/");
         setInvoiceNamingFormat(
           row.invoiceNamingFormat?.trim() || "invoice-year-invoice_number",
         );
-        setTaxOfficeCode(row.taxOfficeCode?.trim() ?? "");
-        setTaxOfficeWorkplaceCode(row.taxOfficeWorkplaceCode?.trim() ?? "");
         setLanguage(row.language?.trim().toLowerCase() === "en" ? "en" : "cz");
 
-        alert(t("alerts.settingsImported"));
+        notify(t("alerts.settingsImported"), "error");
       } catch (error) {
         console.error("CSV import error:", error);
-        alert(t("alerts.csvImportFailed"));
+        notify(t("alerts.csvImportFailed"), "error");
       } finally {
         if (importSettingsInputRef.current) {
           importSettingsInputRef.current.value = "";
@@ -627,7 +596,7 @@ export function SettingsPage({
           .map((line) => line.trim())
           .filter(Boolean);
         if (lines.length < 2) {
-          alert(t("alerts.csvNoData"));
+          notify(t("alerts.csvNoData"), "error");
           return;
         }
 
@@ -668,15 +637,15 @@ export function SettingsPage({
           const result = evolu.insert("client", payload);
           if (!result.ok) {
             console.error("Validation error:", result.error);
-            alert(t("alerts.clientsImportValidation"));
+            notify(t("alerts.clientsImportValidation"), "error");
             return;
           }
         }
 
-        alert(t("alerts.clientsImported"));
+        notify(t("alerts.clientsImported"), "error");
       } catch (error) {
         console.error("CSV import error:", error);
-        alert(t("alerts.clientsImportFailed"));
+        notify(t("alerts.clientsImportFailed"), "error");
       } finally {
         if (importClientsInputRef.current) {
           importClientsInputRef.current.value = "";
@@ -702,7 +671,7 @@ export function SettingsPage({
           .map((line) => line.trim())
           .filter(Boolean);
         if (lines.length < 2) {
-          alert(t("alerts.csvNoData"));
+          notify(t("alerts.csvNoData"), "error");
           return;
         }
 
@@ -735,7 +704,7 @@ export function SettingsPage({
               "Issue date error:",
               formatTypeError(issueDateResult.error),
             );
-            alert(t("alerts.invoicesImportInvalidIssueDate"));
+            notify(t("alerts.invoicesImportInvalidIssueDate"), "error");
             return;
           }
 
@@ -745,7 +714,7 @@ export function SettingsPage({
             : null;
           if (duzpValue && duzpResult && !duzpResult.ok) {
             console.error("Duzp error:", formatTypeError(duzpResult.error));
-            alert(t("alerts.invoicesImportInvalidDuzp"));
+            notify(t("alerts.invoicesImportInvalidDuzp"), "error");
             return;
           }
 
@@ -758,7 +727,7 @@ export function SettingsPage({
               "Payment date error:",
               formatTypeError(paymentDateResult.error),
             );
-            alert(t("alerts.invoicesImportInvalidPaymentDate"));
+            notify(t("alerts.invoicesImportInvalidPaymentDate"), "error");
             return;
           }
 
@@ -771,7 +740,7 @@ export function SettingsPage({
               "Payment days error:",
               formatTypeError(paymentDaysResult.error),
             );
-            alert(t("alerts.invoicesImportInvalidPaymentDays"));
+            notify(t("alerts.invoicesImportInvalidPaymentDays"), "error");
             return;
           }
 
@@ -779,7 +748,7 @@ export function SettingsPage({
           const itemsResult = Evolu.Json.from(itemsRaw);
           if (!itemsResult.ok) {
             console.error("Items error:", formatTypeError(itemsResult.error));
-            alert(t("alerts.invoicesImportInvalidItems"));
+            notify(t("alerts.invoicesImportInvalidItems"), "error");
             return;
           }
 
@@ -804,15 +773,15 @@ export function SettingsPage({
           const result = evolu.insert("invoice", payload);
           if (!result.ok) {
             console.error("Validation error:", result.error);
-            alert(t("alerts.invoicesImportValidation"));
+            notify(t("alerts.invoicesImportValidation"), "error");
             return;
           }
         }
 
-        alert(t("alerts.invoicesImported"));
+        notify(t("alerts.invoicesImported"), "error");
       } catch (error) {
         console.error("CSV import error:", error);
-        alert(t("alerts.invoicesImportFailed"));
+        notify(t("alerts.invoicesImportFailed"), "error");
       } finally {
         if (importInvoicesInputRef.current) {
           importInvoicesInputRef.current.value = "";
@@ -838,7 +807,7 @@ export function SettingsPage({
           .map((line) => line.trim())
           .filter(Boolean);
         if (lines.length < 2) {
-          alert(t("alerts.csvNoData"));
+          notify(t("alerts.csvNoData"), "error");
           return;
         }
 
@@ -872,7 +841,7 @@ export function SettingsPage({
               "Expense date error:",
               formatTypeError(expenseDateResult.error),
             );
-            alert(t("alerts.expensesImportInvalidDate"));
+            notify(t("alerts.expensesImportInvalidDate"), "error");
             return;
           }
 
@@ -888,7 +857,7 @@ export function SettingsPage({
 
             const numberValue = Number(trimmed);
             if (!Number.isFinite(numberValue)) {
-              alert(t(errorKey));
+              notify(t(errorKey), "info");
               return "error" as const;
             }
 
@@ -898,7 +867,7 @@ export function SettingsPage({
                 "Amount parse error:",
                 formatTypeError(result.error),
               );
-              alert(t(errorKey));
+              notify(t(errorKey), "info");
               return "error" as const;
             }
 
@@ -937,15 +906,15 @@ export function SettingsPage({
           const result = evolu.insert("expense", payload);
           if (!result.ok) {
             console.error("Validation error:", result.error);
-            alert(t("alerts.expensesImportValidation"));
+            notify(t("alerts.expensesImportValidation"), "error");
             return;
           }
         }
 
-        alert(t("alerts.expensesImported"));
+        notify(t("alerts.expensesImported"), "error");
       } catch (error) {
         console.error("CSV import error:", error);
-        alert(t("alerts.expensesImportFailed"));
+        notify(t("alerts.expensesImportFailed"), "error");
       } finally {
         if (importExpensesInputRef.current) {
           importExpensesInputRef.current.value = "";
@@ -958,10 +927,7 @@ export function SettingsPage({
 
   // Save data via Evolu (local-first + sync)
   const handleSave = async () => {
-    if (!name.trim()) {
-      alert(t("alerts.nameRequired"));
-      return;
-    }
+    setSaveError(null);
 
     setIsSaving(true);
     try {
@@ -970,60 +936,40 @@ export function SettingsPage({
         return trimmed ? trimmed : null;
       };
 
+      /* Only configuration. The identity fields belong to Profil, and sending
+         them from here would write this page's stale copies over them. */
       const payload = {
-        name: name.trim(),
-        email: toNullable(email),
-        phone: toNullable(phone),
-        addressLine1: toNullable(addressLine1),
-        addressLine2: toNullable(addressLine2),
-        companyIdentificationNumber: toNullable(companyIdentificationNumber),
-        vatNumber: toNullable(vatNumber),
-        vatPayer: vatPayer ? Evolu.sqliteTrue : Evolu.sqliteFalse,
-        bankAccount: toNullable(bankAccount),
-        swift: toNullable(swift),
-        iban: toNullable(iban),
-        invoiceFooterText: toNullable(invoiceFooterText),
         discreteMode: discreteMode ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         expenses: expenses ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         supplierVatPrefill: toNullable(supplierVatPrefill),
         poRequired: poRequired ? Evolu.sqliteTrue : Evolu.sqliteFalse,
+        billPerUnit: billPerUnit ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         mempoolUrl: toNullable(mempoolUrl),
         invoiceNamingFormat: toNullable(invoiceNamingFormat),
-        taxOfficeCode: toNullable(taxOfficeCode),
-        taxOfficeWorkplaceCode: toNullable(taxOfficeWorkplaceCode),
+        invoiceNumberFormat: toNullable(invoiceNumberFormat),
         language: (language || "cz").toString().trim().toLowerCase(),
       };
 
-      if (profile?.id) {
-        const result = evolu.update("userProfile", {
-          id: profile.id,
-          ...payload,
-        });
-        if (!result.ok) {
-          const formatTypeError = Evolu.createFormatTypeError();
-          const formatted = formatTypeError(result.error);
-          console.error("Validation error:", result.error);
-          console.error("Validation details:", formatted);
-          alert(t("alerts.settingsValidationError", { details: formatted }));
-          return;
-        }
-      } else {
-        const result = evolu.insert("userProfile", payload);
-        if (!result.ok) {
-          const formatTypeError = Evolu.createFormatTypeError();
-          const formatted = formatTypeError(result.error);
-          console.error("Validation error:", result.error);
-          console.error("Validation details:", formatted);
-          alert(t("alerts.settingsValidationError", { details: formatted }));
-          return;
-        }
+      /* `name` is required to create a profile, and it belongs to Profil — so
+         this page updates an existing row and never creates one. */
+      if (!profile?.id) {
+        setSaveError(t("settings.profileFirst"));
+        return;
       }
 
-      alert(t("alerts.settingsSaved"));
+      const result = evolu.update("userProfile", { id: profile.id, ...payload });
+      if (!result.ok) {
+        const formatTypeError = Evolu.createFormatTypeError();
+        const formatted = formatTypeError(result.error);
+        console.error("Validation error:", result.error);
+        notify(t("alerts.settingsValidationError", { details: formatted }), "error");
+        return;
+      }
+
       onSettingsSaved();
     } catch (error) {
       console.error("Error saving settings:", error);
-      alert(t("alerts.settingsSaveFailed"));
+      notify(t("alerts.settingsSaveFailed"), "error");
     } finally {
       setIsSaving(false);
     }
@@ -1031,7 +977,13 @@ export function SettingsPage({
 
   // Clear all local data
   const handleClearData = async () => {
-    if (!confirm(t("alerts.confirmClearData"))) {
+    if (
+      !(await confirmDialog({
+        title: t("alerts.confirmClearData"),
+        confirmLabel: t("settings.clearData"),
+        tone: "danger",
+      }))
+    ) {
       return;
     }
 
@@ -1056,32 +1008,18 @@ export function SettingsPage({
     // Reset all form fields
     setMnemonicInput("");
     setName("");
-    setEmail("");
-    setPhone("");
-    setAddressLine1("");
-    setAddressLine2("");
-    setCompanyIdentificationNumber("");
-    setVatNumber("");
-    setBankAccount("");
-    setSwift("");
-    setIban("");
     setExpenses(false);
     setSupplierVatPrefill("");
-    setSavedData(null);
-    setLastSyncTime("");
-    alert(t("alerts.dataCleared"));
   };
 
-  // Save relay URL and reconnect
   const handleSaveRelayUrl = async () => {
     const trimmedUrl = relayUrl.trim();
     if (!trimmedUrl) {
-      alert(t("alerts.relayUrlRequired"));
+      notify(t("alerts.relayUrlRequired"), "error");
       return;
     }
-
     if (!trimmedUrl.startsWith("ws://") && !trimmedUrl.startsWith("wss://")) {
-      alert(t("alerts.relayUrlInvalid"));
+      notify(t("alerts.relayUrlInvalid"), "error");
       return;
     }
 
@@ -1092,7 +1030,7 @@ export function SettingsPage({
       evolu.reloadApp();
     } catch (error) {
       console.error("Error updating relay URL:", error);
-      alert(t("alerts.relayUrlUpdateFailed"));
+      notify(t("alerts.relayUrlUpdateFailed"), "error");
     } finally {
       setIsReconnecting(false);
     }
@@ -1147,8 +1085,10 @@ export function SettingsPage({
     "supplierVatPrefill",
     "language",
     "poRequired",
+    "billPerUnit",
     "mempoolUrl",
     "invoiceNamingFormat",
+    "invoiceNumberFormat",
     "taxOfficeCode",
     "taxOfficeWorkplaceCode",
     "updatedAt",
@@ -1225,741 +1165,528 @@ export function SettingsPage({
     );
   };
 
+  /* What this page owns, as stored. Compared against the live values so that
+     changing something and changing it back is not "unsaved changes" — a flag
+     set on every keystroke could never tell the difference. */
+  const storedValues = useMemo(
+    () => ({
+      language:
+        profile?.language?.toString().trim().toLowerCase() === "en"
+          ? "en"
+          : "cz",
+      discreteMode: profile?.discreteMode === Evolu.sqliteTrue,
+      expenses:
+        profile?.expenses == null
+          ? profile?.vatPayer === Evolu.sqliteTrue
+          : profile.expenses === Evolu.sqliteTrue,
+      supplierVatPrefill: profile?.supplierVatPrefill ?? "",
+      poRequired: profile?.poRequired === Evolu.sqliteTrue,
+      billPerUnit: profile?.billPerUnit === Evolu.sqliteTrue,
+      mempoolUrl: profile?.mempoolUrl ?? "https://mempool.space/",
+      invoiceNamingFormat: normalizeFileNameTemplate(
+        profile?.invoiceNamingFormat,
+      ),
+      invoiceNumberFormat: profile?.invoiceNumberFormat ?? NUMBER_DEFAULT,
+    }),
+    [profile],
+  );
+
+  const dirty =
+    JSON.stringify({
+      language,
+      discreteMode,
+      expenses,
+      supplierVatPrefill,
+      poRequired,
+      billPerUnit,
+      mempoolUrl,
+      invoiceNamingFormat,
+      invoiceNumberFormat,
+    }) !== JSON.stringify(storedValues);
+
+  const pickedCount = Object.values(exportPick).filter(Boolean).length;
+  const allPicked = pickedCount === 4;
+
+  const toggle = (
+    checked: boolean,
+    onChange: (next: boolean) => void,
+    label: string,
+    hint?: string,
+  ) => (
+    <div className="setting-row">
+      <label className="setting-toggle">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <span>{label}</span>
+      </label>
+      {hint ? <p className="field-hint setting-hint">{hint}</p> : null}
+    </div>
+  );
+
   return (
-    <div className="page-shell">
+    <div
+      className="page-shell"
+    >
       <div className="page-container">
-        <div className="page-card">
-          <div className="mb-8">
-            <p className="section-title">{t("settings.sectionTitle")}</p>
-            <h1 className="page-title">{t("settings.title")}</h1>
-          </div>
+        <h1 className="page-title mb-4">{t("settings.title")}</h1>
 
-          {/* Relay Configuration Section */}
-          <div className="mb-8">
-            <h2 className="settings-section-heading">
-              {t("settings.relayTitle")}
-            </h2>
-            <p className="settings-section-description">
-              {t("settings.relayDescription")}
-            </p>
-            <div>
-              <label htmlFor="relayUrl" className="form-label">
-                {t("settings.relayUrlLabel")}
-              </label>
-              <input
-                id="relayUrl"
-                type="text"
-                value={relayUrl}
-                onChange={(e) => setRelayUrlState(e.target.value)}
-                placeholder={t("settings.relayUrlPlaceholder")}
-                className="form-input font-mono text-sm"
-              />
-              <div className="space-y-3">
-                <div
-                  className={`px-3 py-1 rounded-full text-sm font-medium transition ${
-                    isRelayConnected === true
-                      ? "bg-green-100 text-green-800"
-                      : isRelayConnected === false
-                        ? "bg-red-100 text-red-800"
-                        : "bg-yellow-100 text-yellow-800"
-                  }`}
-                >
-                  {isRelayConnected === true
-                    ? t("settings.relayConnected")
-                    : isRelayConnected === false
-                      ? t("settings.relayDisconnected")
-                      : t("settings.relayConnecting")}
-                </div>
-                <p className="settings-help-text mt-1">
-                  {t("settings.relayCurrent", {
-                    url: connectedRelayUrl || t("settings.relayOfflineValue"),
-                  })}
-                </p>
-                <p className="settings-help-text">
-                  {t("settings.relayLastSync", {
-                    time: lastSyncTime || t("settings.relayNeverSynced"),
-                  })}
-                </p>
-                <p className="settings-help-text">
-                  {t("settings.relayDefault")}
-                </p>
-                <p></p>
-              </div>
+        {saveError ? (
+          <div className="alert-warning mb-3">{saveError}</div>
+        ) : null}
 
+        {dirty ? (
+          <div className="editing-bar settings-bar">
+            <span>{t("settings.unsavedChanges")}</span>
+            <div className="editing-bar-actions">
               <button
-                onClick={handleSaveRelayUrl}
-                disabled={isReconnecting || !relayUrl}
-                className="btn-primary w-full"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="btn-primary"
               >
-                {isReconnecting
-                  ? t("settings.relaySaving")
-                  : t("settings.relaySave")}
+                {isSaving ? t("settings.saving") : t("common.save")}
               </button>
             </div>
           </div>
+        ) : null}
 
-          {/* Mnemonic Section */}
-          <div className="mb-8">
-            <h2 className="settings-section-heading">
-              {t("settings.seedTitle")}
-            </h2>
-            <p className="settings-section-description">
-              {t("settings.seedDescription")}
+        <div className="settings-stack">
+          {/* ---- Appearance & language ------------------------------- */}
+          <section className="compose-block">
+            <h2 className="compose-heading">{t("settings.appearanceTitle")}</h2>
+            <div className="compact-grid">
+              <div>
+                <label htmlFor="language" className="form-label">
+                  {t("settings.languageLabel")}
+                </label>
+                <SelectField
+                  id="language"
+                  value={language}
+                  ariaLabel={t("settings.languageLabel")}
+                  options={[
+                    { value: "cz", label: t("settings.languageCz") },
+                    { value: "en", label: t("settings.languageEn") },
+                  ]}
+                  onChange={(next) => {
+                    setLanguage(next as "cz" | "en");
+                  }}
+                />
+              </div>
+              <div>
+                <span className="form-label">{t("settings.themeLabel")}</span>
+                <div className="theme-choice">
+                  <button
+                    type="button"
+                    className="fchip"
+                    data-on={theme === "light"}
+                    aria-pressed={theme === "light"}
+                    onClick={() => theme === "dark" && onToggleTheme()}
+                  >
+                    {theme === "light" ? <Check /> : <Sun />}
+                    {t("settings.themeLight")}
+                  </button>
+                  <button
+                    type="button"
+                    className="fchip"
+                    data-on={theme === "dark"}
+                    aria-pressed={theme === "dark"}
+                    onClick={() => theme === "light" && onToggleTheme()}
+                  >
+                    {theme === "dark" ? <Check /> : <Moon />}
+                    {t("settings.themeDark")}
+                  </button>
+                </div>
+              </div>
+            </div>
+            {toggle(
+              discreteMode,
+              setDiscreteMode,
+              t("settings.discreteMode"),
+              t("settings.discreteModeHint"),
+            )}
+          </section>
+
+          {/* ---- Invoicing ------------------------------------------- */}
+          <section className="compose-block">
+            <h2 className="compose-heading">{t("settings.invoicingTitle")}</h2>
+
+            {toggle(
+              billPerUnit,
+              setBillPerUnit,
+              t("settings.billPerUnit"),
+              t("settings.billPerUnitDescription"),
+            )}
+            {toggle(
+              poRequired,
+              setPoRequired,
+              t("settings.poRequired"),
+              t("settings.poRequiredHint"),
+            )}
+
+            <label htmlFor="invoiceNumberFormat" className="form-label mt-3">
+              {t("settings.invoiceNumberFormatLabel")}
+            </label>
+            <input
+              id="invoiceNumberFormat"
+              type="text"
+              value={invoiceNumberFormat}
+              onChange={(e) => setInvoiceNumberFormat(e.target.value)}
+              placeholder={NUMBER_DEFAULT}
+              className="form-input mono"
+            />
+            <div className="token-help">
+              {NUMBER_TOKENS.map((token) => (
+                <button
+                  key={token}
+                  type="button"
+                  className="token"
+                  onClick={() =>
+                    setInvoiceNumberFormat((current) => `${current}${token}`)
+                  }
+                >
+                  {token}
+                </button>
+              ))}
+            </div>
+            <p className="field-hint">
+              {t("settings.invoiceNumberPreview", {
+                number: formatInvoiceNumber(invoiceNumberFormat, 7),
+              })}
             </p>
 
-            {currentMnemonic ? (
-              <div className="alert-warning mb-4">
-                <p className="text-sm font-semibold text-amber-900">
-                  {t("settings.seedCurrentLabel")}
-                </p>
-                <p className="mt-2 rounded-2xl border border-amber-200/70 bg-white/80 p-3 text-sm font-mono text-slate-700 break-words">
-                  {currentMnemonic}
-                </p>
+            <label htmlFor="invoiceNamingFormat" className="form-label mt-3">
+              {t("settings.invoiceNamingFormatLabel")}
+            </label>
+            <input
+              id="invoiceNamingFormat"
+              type="text"
+              value={invoiceNamingFormat}
+              onChange={(e) => setInvoiceNamingFormat(e.target.value)}
+              placeholder={FILENAME_DEFAULT}
+              className="form-input mono"
+            />
+            <div className="token-help">
+              {FILENAME_TOKENS.map((token) => (
                 <button
-                  onClick={() => setShowMnemonicInput(true)}
-                  className="btn-ghost mt-3"
+                  key={token}
+                  type="button"
+                  className="token"
+                  onClick={() => {
+                    setInvoiceNamingFormat(
+                      (current) => `${current}${token}`,
+                    );
+                  }}
                 >
-                  {t("settings.seedUseDifferent")}
+                  {token}
+                </button>
+              ))}
+            </div>
+            <p className="field-hint">
+              {t("settings.invoiceNamingPreview", {
+                name: buildInvoiceFileName(invoiceNamingFormat, {
+                  number: "2026-0007",
+                  client: "Alza.cz a.s.",
+                  supplier: name,
+                  issueDate: new Date(2026, 7, 1),
+                }),
+              })}
+            </p>
+          </section>
+
+          {/* ---- Expenses -------------------------------------------- */}
+          <section className="compose-block">
+            <h2 className="compose-heading">{t("settings.expensesTitle")}</h2>
+            {toggle(
+              expenses,
+              setExpenses,
+              t("settings.expenses"),
+              t("settings.expensesDescription"),
+            )}
+            {expenses ? (
+              <>
+                <label
+                  htmlFor="supplierVatPrefill"
+                  className="form-label mt-3"
+                >
+                  {t("settings.supplierVatPrefillLabel")}
+                </label>
+                <textarea
+                  id="supplierVatPrefill"
+                  value={supplierVatPrefill}
+                  onChange={(e) => setSupplierVatPrefill(e.target.value)}
+                  placeholder={t("settings.supplierVatPrefillPlaceholder")}
+                  className="form-textarea mono"
+                  rows={3}
+                />
+                <p className="field-hint">
+                  {t("settings.supplierVatPrefillHint")}
+                </p>
+              </>
+            ) : null}
+          </section>
+
+          {/* ---- Evolu: sync + the backup phrase --------------------- */}
+          <section className="compose-block">
+            <h2 className="compose-heading">{t("settings.evoluTitle")}</h2>
+            <h3 className="subhead">{t("settings.relayTitle")}</h3>
+
+            <div className="sync-state" data-state={
+              !isOnline
+                ? "offline"
+                : isRelayConnected === true
+                  ? "on"
+                  : isRelayConnected === false
+                    ? "off"
+                    : "pending"
+            }>
+              <span className="sync-dot" />
+              {!isOnline
+                ? t("settings.relayOfflineValue")
+                : isRelayConnected === true
+                  ? t("settings.relayConnected")
+                  : isRelayConnected === false
+                    ? t("settings.relayDisconnected")
+                    : t("settings.relayConnecting")}
+              <span className="sync-meta">
+                {t("settings.relayLastSync", {
+                  time: lastSyncTime || t("settings.relayNeverSynced"),
+                })}
+              </span>
+            </div>
+
+            <label htmlFor="relayUrl" className="form-label mt-3">
+              {t("settings.relayUrlLabel")}
+            </label>
+            <input
+              id="relayUrl"
+              type="url"
+              value={relayUrl}
+              onChange={(e) => setRelayUrlState(e.target.value)}
+              placeholder={t("settings.relayUrlPlaceholder")}
+              className="form-input mono"
+            />
+            <p className="field-hint">{t("settings.relayDefault")}</p>
+            <button
+              onClick={handleSaveRelayUrl}
+              disabled={isReconnecting}
+              className="btn-secondary mt-2"
+            >
+              {isReconnecting
+                ? t("settings.relaySaving")
+                : t("settings.relaySave")}
+            </button>
+
+            <h3 className="subhead mt-4">{t("settings.seedTitle")}</h3>
+            <p className="field-hint mb-2">{t("settings.seedDescription")}</p>
+
+            {currentMnemonic ? (
+              <div className="seed-box">
+                {seedRevealed ? (
+                  <code className="seed-words">{currentMnemonic}</code>
+                ) : (
+                  <span className="seed-hidden">{t("settings.seedHidden")}</span>
+                )}
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setSeedRevealed((shown) => !shown)}
+                >
+                  {seedRevealed ? <EyeOff /> : <Eye />}
+                  {seedRevealed
+                    ? t("settings.seedHide")
+                    : t("settings.seedReveal")}
                 </button>
               </div>
             ) : null}
 
+            <button
+              type="button"
+              className="btn-ghost mt-2"
+              onClick={() => setShowMnemonicInput((shown) => !shown)}
+            >
+              {t("settings.seedUseDifferent")}
+            </button>
+
             {!currentMnemonic || showMnemonicInput ? (
-              <div className="space-y-4">
-                <button
-                  onClick={handleGenerateMnemonic}
-                  className="btn-primary w-full"
-                >
-                  {t("settings.seedGenerate")}
-                </button>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-200/70"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-3 py-1 rounded-full bg-white/80 text-slate-500">
-                      {t("settings.seedOr")}
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="form-label">
-                    {t("settings.seedEnterLabel")}
-                  </label>
-                  <textarea
-                    value={mnemonicInput}
-                    onChange={handleMnemonicInput}
-                    placeholder={t("settings.seedPlaceholder")}
-                    rows={3}
-                    className="form-textarea font-mono text-sm"
-                  />
-                  {mnemonicError && (
-                    <p className="text-red-600 text-sm mt-2">{mnemonicError}</p>
-                  )}
-                  {!mnemonicError &&
-                    mnemonicInput &&
-                    !isValidMnemonic(mnemonicInput) && (
-                      <p className="text-red-600 text-sm mt-2">
-                        {t("settings.seedInvalid")}
-                      </p>
-                    )}
+              <div className="mt-2">
+                <textarea
+                  value={mnemonicInput}
+                  onChange={handleMnemonicInput}
+                  placeholder={t("settings.seedPlaceholder")}
+                  className="form-textarea mono"
+                  rows={3}
+                />
+                {mnemonicError ? (
+                  <p className="field-error">{mnemonicError}</p>
+                ) : null}
+                <div className="flex flex-wrap gap-2 mt-2">
                   <button
                     onClick={handleRestoreFromMnemonic}
-                    className="btn-success mt-3 w-full"
+                    className="btn-secondary"
                   >
                     {t("settings.seedRestore")}
+                  </button>
+                  <button
+                    onClick={handleGenerateMnemonic}
+                    className="btn-ghost"
+                  >
+                    {t("settings.seedGenerate")}
                   </button>
                 </div>
               </div>
             ) : null}
-          </div>
+          </section>
 
-          {/* Profile Section */}
-          <div className="mb-8">
-            <h2 className="settings-section-heading">
-              {t("settings.profileTitle")}
-            </h2>
+          {/* ---- Bitcoin --------------------------------------------- */}
+          <section className="compose-block">
+            <h2 className="compose-heading">{t("settings.bitcoinTitle")}</h2>
+            <label htmlFor="mempoolUrl" className="form-label">
+              {t("settings.mempoolLabel")}
+            </label>
+            <input
+              id="mempoolUrl"
+              type="url"
+              value={mempoolUrl}
+              onChange={(e) => setMempoolUrl(e.target.value)}
+              placeholder={t("settings.mempoolPlaceholder")}
+              className="form-input mono"
+            />
+            <p className="field-hint">{t("settings.mempoolHint")}</p>
+          </section>
 
-            <div className="space-y-4">
-              {/* Name */}
-              <div>
-                <label htmlFor="name" className="form-label">
-                  {t("settings.nameLabel")}
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder=""
-                  className="form-input"
-                />
-              </div>
+          {/* ---- Data ------------------------------------------------ */}
+          <section className="compose-block">
+            <h2 className="compose-heading">{t("settings.importTitle")}</h2>
+            <p className="field-hint mb-2">{t("settings.importHint")}</p>
 
-              {/* Contact Information */}
-              <div className="border-t border-slate-200/70 pt-4 mt-4">
-                <h3 className="settings-subsection-heading">
-                  {t("settings.contactTitle")}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="email" className="form-label">
-                      {t("settings.emailLabel")}
-                    </label>
-                    <input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder=""
-                      className="form-input"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="phone" className="form-label">
-                      {t("settings.phoneLabel")}
-                    </label>
-                    <input
-                      id="phone"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder=""
-                      className="form-input"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Address */}
-              <div className="border-t border-slate-200/70 pt-4 mt-4">
-                <h3 className="settings-subsection-heading">
-                  {t("settings.addressTitle")}
-                </h3>
-                <div>
-                  <label htmlFor="addressLine1" className="form-label">
-                    {t("settings.addressLine1Label")}
-                  </label>
-                  <input
-                    id="addressLine1"
-                    type="text"
-                    value={addressLine1}
-                    onChange={(e) => setAddressLine1(e.target.value)}
-                    placeholder=""
-                    className="form-input"
-                  />
-                </div>
-                <div className="mt-2">
-                  <label htmlFor="addressLine2" className="form-label">
-                    {t("settings.addressLine2Label")}
-                  </label>
-                  <input
-                    id="addressLine2"
-                    type="text"
-                    value={addressLine2}
-                    onChange={(e) => setAddressLine2(e.target.value)}
-                    placeholder=""
-                    className="form-input"
-                  />
-                </div>
-              </div>
-
-              {/* Company Information */}
-              <div className="border-t border-slate-200/70 pt-4 mt-4">
-                <h3 className="settings-subsection-heading">
-                  {t("settings.companyTitle")}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="companyId" className="form-label">
-                      {t("settings.companyIdLabel")}
-                    </label>
-                    <input
-                      id="companyId"
-                      type="text"
-                      value={companyIdentificationNumber}
-                      onChange={(e) =>
-                        setCompanyIdentificationNumber(e.target.value)
-                      }
-                      placeholder=""
-                      className="form-input"
-                    />
-                  </div>
-                </div>
-                <label className="settings-checkbox-label-spaced">
+            {(
+              [
+                {
+                  key: "settings" as const,
+                  label: t("settings.importSettingsHeading"),
+                  onExport: handleExportSettingsCsv,
+                  onImport: handleImportSettingsCsv,
+                  ref: importSettingsInputRef,
+                  template: "/settings_import_template.csv",
+                },
+                {
+                  key: "clients" as const,
+                  label: t("settings.importClientsHeading"),
+                  onExport: handleExportClientsCsv,
+                  onImport: handleImportClientsCsv,
+                  ref: importClientsInputRef,
+                  template: "/clients_import_template.csv",
+                },
+                {
+                  key: "invoices" as const,
+                  label: t("settings.importInvoicesHeading"),
+                  onExport: handleExportInvoicesCsv,
+                  onImport: handleImportInvoicesCsv,
+                  ref: importInvoicesInputRef,
+                  template: "/invoices_import_template.csv",
+                },
+                {
+                  key: "expenses" as const,
+                  label: t("settings.importExpensesHeading"),
+                  onExport: handleExportExpensesCsv,
+                  onImport: handleImportExpensesCsv,
+                  ref: importExpensesInputRef,
+                  template: "/expenses_import_template.csv",
+                },
+              ]
+            ).map((entry) => (
+              <div key={entry.key} className="data-row">
+                <label className="setting-toggle data-label">
                   <input
                     type="checkbox"
-                    checked={vatPayer}
-                    onChange={(e) => setVatPayer(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    checked={exportPick[entry.key]}
+                    onChange={(e) =>
+                      setExportPick((prev) => ({
+                        ...prev,
+                        [entry.key]: e.target.checked,
+                      }))
+                    }
                   />
-                  {t("settings.vatPayerLabel")}
+                  <span>{entry.label}</span>
                 </label>
-                {vatPayer && (
-                  <>
-                    <div className="mt-3">
-                      <label htmlFor="vat" className="form-label">
-                        {t("settings.vatLabel")}
-                      </label>
-                      <input
-                        id="vat"
-                        type="text"
-                        value={vatNumber}
-                        onChange={(e) => setVatNumber(e.target.value)}
-                        placeholder=""
-                        className="form-input"
-                      />
-                    </div>
-                    <div className="mt-3">
-                      <label htmlFor="taxOfficeCode" className="form-label">
-                        {t("settings.taxOfficeCodeLabel")}
-                      </label>
-                      <input
-                        id="taxOfficeCode"
-                        type="text"
-                        value={taxOfficeCode}
-                        onChange={(e) => setTaxOfficeCode(e.target.value)}
-                        placeholder=""
-                        className="form-input"
-                      />
-                    </div>
-                    <div className="mt-3">
-                      <label
-                        htmlFor="taxOfficeWorkplaceCode"
-                        className="form-label"
-                      >
-                        {t("settings.taxOfficeWorkplaceCodeLabel")}
-                      </label>
-                      <input
-                        id="taxOfficeWorkplaceCode"
-                        type="text"
-                        value={taxOfficeWorkplaceCode}
-                        onChange={(e) =>
-                          setTaxOfficeWorkplaceCode(e.target.value)
-                        }
-                        placeholder=""
-                        className="form-input"
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {/* Banking Information */}
-              <div className="border-t border-slate-200/70 pt-4 mt-4">
-                <h3 className="settings-subsection-heading">
-                  {t("settings.bankTitle")}
-                </h3>
-                <div className="space-y-3">
-                  <div>
-                    <label htmlFor="bankAccount" className="form-label">
-                      {t("settings.bankAccountLabel")}
-                    </label>
-                    <input
-                      id="bankAccount"
-                      type="text"
-                      value={bankAccount}
-                      onChange={(e) => setBankAccount(e.target.value)}
-                      placeholder=""
-                      className="form-input"
-                    />
-                  </div>
-                  <p className="settings-note-text">
-                    ⚠️ {t("settings.bankQrNote")}
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="swift" className="form-label">
-                        {t("settings.swiftLabel")}
-                      </label>
-                      <input
-                        id="swift"
-                        type="text"
-                        value={swift}
-                        onChange={(e) => setSwift(e.target.value)}
-                        placeholder=""
-                        className="form-input"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="iban" className="form-label">
-                        {t("settings.ibanLabel")}
-                      </label>
-                      <input
-                        id="iban"
-                        type="text"
-                        value={iban}
-                        onChange={(e) => setIban(e.target.value)}
-                        placeholder=""
-                        className="form-input"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-slate-200/70 pt-4 mt-4">
-                <h3 className="settings-subsection-heading">
-                  {t("settings.footerTitle")}
-                </h3>
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <label
-                      htmlFor="invoiceFooterText"
-                      className="settings-inline-label"
-                    >
-                      {t("settings.footerLabel")}
-                    </label>
-                  </div>
-                  <textarea
-                    id="invoiceFooterText"
-                    value={invoiceFooterText}
-                    onChange={(e) => setInvoiceFooterText(e.target.value)}
-                    placeholder={t("settings.footerPlaceholder")}
-                    rows={3}
-                    className="form-textarea"
+                <div className="data-actions">
+                  <input
+                    ref={entry.ref}
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={entry.onImport}
+                    className="hidden"
                   />
-                  <details className="mt-3 panel-card">
-                    <summary className="settings-summary-label">
-                      {t("settings.footerExamples")}
-                    </summary>
-                    <div className="settings-details-text">
-                      <p>
-                        <span className="font-semibold">
-                          {t("settings.footerExampleNonVat")}
-                        </span>{" "}
-                        {t("settings.footerExampleNonVatText")}
-                      </p>
-                      <p>
-                        <span className="font-semibold">
-                          {t("settings.footerExampleVat")}
-                        </span>{" "}
-                        {t("settings.footerExampleVatText")}
-                      </p>
-                    </div>
-                  </details>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-slate-200/70 pt-4 mt-4">
-              <h3 className="settings-subsection-heading">
-                {t("settings.otherTitle")}
-              </h3>
-              <div className="flex flex-col gap-2">
-                <div>
-                  <label htmlFor="language" className="form-label">
-                    {t("settings.languageLabel")}
-                  </label>
-                  <select
-                    id="language"
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value as "cz" | "en")}
-                    className="form-select"
+                  <button
+                    className="btn-secondary"
+                    onClick={() => entry.ref.current?.click()}
                   >
-                    <option value="cz">{t("settings.languageCz")}</option>
-                    <option value="en">{t("settings.languageEn")}</option>
-                  </select>
+                    <Upload />
+                    {t("settings.importSettings")}
+                  </button>
+                  <a href={entry.template} download className="btn-ghost">
+                    {t("settings.template")}
+                  </a>
                 </div>
-                <div>
-                  <label className="form-label">
-                    {t("settings.themeLabel")}
-                  </label>
-                  <div className="mt-1 flex items-center gap-3">
-                    <span aria-hidden="true" className="text-lg leading-none">
-                      ☀️
-                    </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={theme === "dark"}
-                      aria-label={
-                        theme === "dark"
-                          ? t("settings.themeSwitchToLight")
-                          : t("settings.themeSwitchToDark")
-                      }
-                      onClick={onToggleTheme}
-                      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
-                        theme === "dark" ? "bg-blue-600" : "bg-slate-300"
-                      }`}
-                      title={
-                        theme === "dark"
-                          ? t("settings.themeSwitchToLight")
-                          : t("settings.themeSwitchToDark")
-                      }
-                    >
-                      <span
-                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
-                          theme === "dark" ? "translate-x-5" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
-                    <span aria-hidden="true" className="text-lg leading-none">
-                      🌙
-                    </span>
-                  </div>
-                </div>
-                <label className="settings-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={discreteMode}
-                    onChange={(e) => setDiscreteMode(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  {t("settings.discreteMode")}
-                </label>
-                <label className="settings-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={expenses}
-                    onChange={(e) => setExpenses(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  {t("settings.expenses")}
-                </label>
-                {expenses ? (
-                  <div>
-                    <label htmlFor="supplierVatPrefill" className="form-label">
-                      {t("settings.supplierVatPrefillLabel")}
-                    </label>
-                    <textarea
-                      id="supplierVatPrefill"
-                      value={supplierVatPrefill}
-                      onChange={(e) => setSupplierVatPrefill(e.target.value)}
-                      placeholder={t("settings.supplierVatPrefillPlaceholder")}
-                      rows={5}
-                      className="form-input"
-                    />
-                  </div>
-                ) : null}
-                <label className="settings-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={poRequired}
-                    onChange={(e) => setPoRequired(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  {t("settings.poRequired")}
-                </label>
-                <div>
-                  <label htmlFor="invoiceNamingFormat" className="form-label">
-                    {t("settings.invoiceNamingFormatLabel")}
-                  </label>
-                  <p className="settings-help-text-with-margin">
-                    {t("settings.invoiceNamingFormatDescription")}
-                  </p>
-                  <select
-                    id="invoiceNamingFormat"
-                    value={invoiceNamingFormat}
-                    onChange={(e) => setInvoiceNamingFormat(e.target.value)}
-                    className="form-select mb-2"
-                  >
-                    <option value="invoice-year-invoice_number">
-                      {t("settings.invoiceNamingFormatOptionInvoice")}
-                    </option>
-                    <option value="name-year-invoice_number">
-                      {t("settings.invoiceNamingFormatOptionName")}
-                    </option>
-                  </select>
-
-                  <label htmlFor="mempoolUrl" className="form-label">
-                    {t("settings.mempoolLabel")}
-                  </label>
-                  <input
-                    id="mempoolUrl"
-                    type="text"
-                    value={mempoolUrl}
-                    onChange={(e) => setMempoolUrl(e.target.value)}
-                    placeholder={t("settings.mempoolPlaceholder")}
-                    className="form-input"
-                  />
-                </div>
-                <details className="panel-card mt-2">
-                  <summary className="settings-summary-label">
-                    {t("settings.importTitle")}
-                  </summary>
-                  <div className="mt-3 space-y-4">
-                    <div>
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                        {t("settings.importSettingsHeading")}
-                      </h4>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          ref={importSettingsInputRef}
-                          type="file"
-                          accept=".csv,text/csv"
-                          onChange={handleImportSettingsCsv}
-                          className="hidden"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleExportSettingsCsv}
-                          className="btn-primary w-full sm:w-auto"
-                        >
-                          {t("settings.exportSettings")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            importSettingsInputRef.current?.click()
-                          }
-                          className="btn-secondary w-full sm:w-auto"
-                        >
-                          {t("settings.importSettings")}
-                        </button>
-                        <a
-                          href="/settings_import_template.csv"
-                          download
-                          className="btn-ghost w-full sm:w-auto text-center"
-                        >
-                          {t("settings.importSettingsTemplate")}
-                        </a>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                        {t("settings.importClientsHeading")}
-                      </h4>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          ref={importClientsInputRef}
-                          type="file"
-                          accept=".csv,text/csv"
-                          onChange={handleImportClientsCsv}
-                          className="hidden"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleExportClientsCsv}
-                          className="btn-primary w-full sm:w-auto"
-                        >
-                          {t("settings.exportClients")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => importClientsInputRef.current?.click()}
-                          className="btn-secondary w-full sm:w-auto"
-                        >
-                          {t("settings.importClients")}
-                        </button>
-                        <a
-                          href="/clients_import_template.csv"
-                          download
-                          className="btn-ghost w-full sm:w-auto text-center"
-                        >
-                          {t("settings.importClientsTemplate")}
-                        </a>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                        {t("settings.importInvoicesHeading")}
-                      </h4>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          ref={importInvoicesInputRef}
-                          type="file"
-                          accept=".csv,text/csv"
-                          onChange={handleImportInvoicesCsv}
-                          className="hidden"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleExportInvoicesCsv}
-                          className="btn-primary w-full sm:w-auto"
-                        >
-                          {t("settings.exportInvoices")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            importInvoicesInputRef.current?.click()
-                          }
-                          className="btn-secondary w-full sm:w-auto"
-                        >
-                          {t("settings.importInvoices")}
-                        </button>
-                        <a
-                          href="/invoices_import_template.csv"
-                          download
-                          className="btn-ghost w-full sm:w-auto text-center"
-                        >
-                          {t("settings.importInvoicesTemplate")}
-                        </a>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                        {t("settings.importExpensesHeading")}
-                      </h4>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <input
-                          ref={importExpensesInputRef}
-                          type="file"
-                          accept=".csv,text/csv"
-                          onChange={handleImportExpensesCsv}
-                          className="hidden"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleExportExpensesCsv}
-                          className="btn-primary w-full sm:w-auto"
-                        >
-                          {t("settings.exportExpenses")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            importExpensesInputRef.current?.click()
-                          }
-                          className="btn-secondary w-full sm:w-auto"
-                        >
-                          {t("settings.importExpenses")}
-                        </button>
-                        <a
-                          href="/expenses_import_template.csv"
-                          download
-                          className="btn-ghost w-full sm:w-auto text-center"
-                        >
-                          {t("settings.importExpensesTemplate")}
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </details>
-                <details className="panel-card mt-2">
-                  <summary className="settings-summary-label">
-                    Danger zone ⚠︎
-                  </summary>
-                  <div className="mt-3">
-                    {savedData && (
-                      <button
-                        onClick={handleClearData}
-                        className="btn-danger w-full"
-                      >
-                        {t("settings.clearData")}
-                      </button>
-                    )}
-                  </div>
-                </details>
               </div>
-            </div>
-          </div>
+            ))}
 
-          {/* Save Button */}
-          <button
-            onClick={handleSave}
-            disabled={isSaving || !name}
-            className="btn-success w-full mb-3"
-          >
-            {isSaving ? t("settings.saving") : t("settings.save")}
-          </button>
+            <div className="data-export">
+              <button
+                className="btn-primary"
+                disabled={pickedCount === 0}
+                onClick={() => {
+                  /* Each dataset is its own CSV, so "export selected" simply
+                     runs the ones you ticked. */
+                  if (exportPick.settings) handleExportSettingsCsv();
+                  if (exportPick.clients) handleExportClientsCsv();
+                  if (exportPick.invoices) handleExportInvoicesCsv();
+                  if (exportPick.expenses) handleExportExpensesCsv();
+                }}
+              >
+                <Download />
+                {t("settings.exportSelected", { count: pickedCount })}
+              </button>
+              <button
+                className="btn-ghost"
+                onClick={() =>
+                  setExportPick({
+                    settings: allPicked ? false : true,
+                    clients: allPicked ? false : true,
+                    invoices: allPicked ? false : true,
+                    expenses: allPicked ? false : true,
+                  })
+                }
+              >
+                {allPicked
+                  ? t("settings.exportNone")
+                  : t("settings.exportAll")}
+              </button>
+            </div>
+          </section>
+
+          {/* ---- Danger zone ----------------------------------------- */}
+          <section className="compose-block danger-block">
+            <h2 className="compose-heading">{t("settings.dangerTitle")}</h2>
+            <p className="field-hint mb-2">{t("settings.dangerHint")}</p>
+            <button onClick={handleClearData} className="btn-danger">
+              <Trash2 />
+              {t("settings.clearData")}
+            </button>
+          </section>
+
+          <DonatePanel />
         </div>
+
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="btn-primary w-full mt-3"
+        >
+          {isSaving ? t("settings.saving") : t("common.save")}
+        </button>
       </div>
     </div>
   );
