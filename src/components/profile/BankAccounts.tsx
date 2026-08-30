@@ -6,6 +6,8 @@ import { useEvolu } from "../../evolu";
 import { useI18n } from "../../i18n";
 import { useConfirm, useNotify } from "../../lib/confirmContext";
 import type { BankAccountRow } from "../../lib/bankAccounts";
+import { SelectField } from "../invoices/SelectField";
+import { CURRENCIES, DEFAULT_CURRENCY, isCurrencyCode } from "../../lib/money";
 
 type Draft = {
   label: string;
@@ -81,6 +83,18 @@ export function BankAccounts({ editable }: BankAccountsProps) {
   const patch = (part: Partial<Draft>) =>
     setDraft((prev) => ({ ...prev, ...part }));
 
+  /* A code saved before this was a picker — or one Intl does not know — stays
+     in the list, so editing an account cannot silently change its currency. */
+  const currencyOptions = useMemo(() => {
+    const current = draft.currency.trim().toUpperCase();
+    const codes: string[] = [...CURRENCIES];
+    if (current && !codes.includes(current)) codes.push(current);
+    return codes.map((code) => ({
+      value: code,
+      label: isCurrencyCode(code) ? code : `${code} — ?`,
+    }));
+  }, [draft.currency]);
+
   const save = () => {
     if (!draft.label.trim()) return;
     const toNull = (value: string) => value.trim() || null;
@@ -144,11 +158,14 @@ export function BankAccounts({ editable }: BankAccountsProps) {
         </div>
         <div>
           <label className="form-label">{t("profile.bankCurrencyLabel")}</label>
-          <input
-            type="text"
-            value={draft.currency}
-            onChange={(e) => patch({ currency: e.target.value.toUpperCase() })}
-            className="form-input mono"
+          {/* A picker, not free text: this value becomes the invoice's
+              currency and is handed to Intl, which rejects anything that is
+              not an ISO 4217 code. A code already stored stays selectable. */}
+          <SelectField
+            value={draft.currency || DEFAULT_CURRENCY}
+            options={currencyOptions}
+            onChange={(next) => patch({ currency: next })}
+            ariaLabel={t("profile.bankCurrencyLabel")}
           />
         </div>
       </div>
