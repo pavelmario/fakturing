@@ -1,6 +1,21 @@
-import { Suspense, use, useEffect, useMemo, useState } from "react";
+import { Suspense, use, useMemo } from "react";
+import {
+  Navigate,
+  NavLink,
+  Route,
+  Routes,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
+import {
+  Receipt,
+  Settings2,
+  TrendingDown,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { ClientDetailPage } from "./components/ClientDetailPage";
 import { ClientsListPage } from "./components/ClientsListPage";
 import { ClientsPage } from "./components/ClientsPage";
@@ -11,24 +26,111 @@ import { InvoiceCreatePage } from "./components/InvoiceCreatePage";
 import { InvoiceDetailPage } from "./components/InvoiceDetailPage";
 import { InvoiceListPage } from "./components/InvoiceListPage";
 import { SettingsPage } from "./components/SettingsPage";
-import { RelayStatusIndicator } from "./components/RelayStatusIndicator";
+import { ProfilePage } from "./components/ProfilePage";
 import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
 import { OfflineBanner } from "./components/OfflineBanner";
 import { useEvolu } from "./evolu";
 import { useI18n } from "./i18n";
+import { useLegacyBankAccountMigration } from "./lib/useLegacyBankAccountMigration";
+import { useClientIdBackfill } from "./lib/useClientIdBackfill";
+import { useTheme } from "./lib/useTheme";
 import "./index.css";
+
+/** Wrappers exist so the pages keep their plain callback props. */
+function InvoicesRoute() {
+  const navigate = useNavigate();
+  return (
+    <InvoiceListPage
+      onCreateInvoice={() => navigate("/faktury/nova")}
+      onViewDetails={(id) => navigate(`/faktury/${id}`)}
+      onOpenProfile={() => navigate("/profil")}
+    />
+  );
+}
+
+function InvoiceCreateRoute() {
+  const navigate = useNavigate();
+  return <InvoiceCreatePage onInvoiceCreated={() => navigate("/")} />;
+}
+
+function InvoiceDetailRoute() {
+  const navigate = useNavigate();
+  const { invoiceId = "" } = useParams();
+  return (
+    <InvoiceDetailPage
+      key={invoiceId}
+      invoiceId={invoiceId}
+      onBack={() => navigate("/")}
+      onInvoiceDeleted={() => navigate("/")}
+      onDuplicate={(search) => navigate(`/faktury/nova?${search}`)}
+    />
+  );
+}
+
+function ClientsRoute() {
+  const navigate = useNavigate();
+  return (
+    <ClientsListPage
+      onViewDetails={(id) => navigate(`/klienti/${id}`)}
+      onCreateClient={() => navigate("/klienti/novy")}
+    />
+  );
+}
+
+function ClientDetailRoute() {
+  const navigate = useNavigate();
+  const { clientId = "" } = useParams();
+  return (
+    <ClientDetailPage
+      key={clientId}
+      clientId={clientId}
+      onBack={() => navigate("/klienti")}
+      onClientDeleted={() => navigate("/klienti")}
+      onViewInvoice={(id) => navigate(`/faktury/${id}`)}
+      onCreateInvoice={(search) => navigate(`/faktury/nova?${search}`)}
+    />
+  );
+}
+
+function ExpensesRoute() {
+  const navigate = useNavigate();
+  return (
+    <ExpensesListPage
+      onCreateExpense={() => navigate("/naklady/novy")}
+      onViewDetails={(id) => navigate(`/naklady/${id}`)}
+    />
+  );
+}
+
+function ExpenseDetailRoute() {
+  const navigate = useNavigate();
+  const { expenseId = "" } = useParams();
+  return (
+    <ExpenseDetailPage
+      key={expenseId}
+      expenseId={expenseId}
+      onBack={() => navigate("/naklady")}
+      onExpenseDeleted={() => navigate("/naklady")}
+    />
+  );
+}
 
 function App() {
   const { t } = useI18n();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
+  const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
+
+  useLegacyBankAccountMigration();
+  useClientIdBackfill();
 
   const profileQuery = useMemo(
     () =>
       evolu.createQuery((db) =>
         db
           .selectFrom("userProfile")
-          .select(["expenses"])
+          .select(["expenses", "vatPayer"])
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
           .orderBy("updatedAt", "desc")
@@ -37,362 +139,106 @@ function App() {
     [evolu, owner.id],
   );
 
-  const profileRows = useQuery(profileQuery);
-  const profile = profileRows[0] ?? null;
-  const expensesEnabled = profile?.expenses !== Evolu.sqliteFalse;
+  const profile = useQuery(profileQuery)[0] ?? null;
+  /* Expense tracking exists for VAT machinery, so being a VAT payer turns it
+     on. It stays an explicit toggle for anyone who wants it regardless. */
+  const expensesEnabled =
+    profile?.expenses == null
+      ? profile?.vatPayer === Evolu.sqliteTrue
+      : profile.expenses === Evolu.sqliteTrue;
 
-  const [page, setPage] = useState<
-    | "settings"
-    | "clients"
-    | "clients-list"
-    | "client-detail"
-    | "expense-create"
-    | "expenses-list"
-    | "expense-detail"
-    | "invoice-create"
-    | "invoice-list"
-    | "invoice-detail"
-  >("invoice-list");
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(
-    null,
-  );
-  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(
-    null,
-  );
-  const [flashMessage, setFlashMessage] = useState<string | null>(null);
-
-  const navigate = (
-    newPage: typeof page,
-    clientId: string | null = null,
-    invoiceId: string | null = null,
-    replace = false,
-    expenseId: string | null = null,
-  ) => {
-    if (
-      newPage !== "invoice-list" &&
-      newPage !== "clients-list" &&
-      newPage !== "expenses-list"
-    ) {
-      setFlashMessage(null);
-    }
-    setPage(newPage);
-    setSelectedClientId(clientId);
-    setSelectedInvoiceId(invoiceId);
-    setSelectedExpenseId(expenseId);
-    const state = {
-      page: newPage,
-      selectedClientId: clientId,
-      selectedInvoiceId: invoiceId,
-      selectedExpenseId: expenseId,
-    };
-    try {
-      if (replace) window.history.replaceState(state, "");
-      else window.history.pushState(state, "");
-    } catch {
-      /* ignore (some environments may restrict history) */
-    }
-  };
-
-  // Theme (light / dark) persisted in localStorage and applied as `dark` class
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    try {
-      const saved = localStorage.getItem("theme");
-      if (saved === "light" || saved === "dark") return saved;
-      return window.matchMedia &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-    } catch {
-      return "light";
-    }
-  });
-
-  useEffect(() => {
-    try {
-      if (theme === "dark") document.documentElement.classList.add("dark");
-      else document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", theme);
-    } catch {
-      /* ignore */
-    }
-  }, [theme]);
-
-  useEffect(() => {
-    if (!flashMessage) return;
-
-    const timeout = window.setTimeout(() => {
-      setFlashMessage(null);
-    }, 3000);
-
-    return () => window.clearTimeout(timeout);
-  }, [flashMessage]);
-
-  useEffect(() => {
-    const isExpensePage =
-      page === "expenses-list" ||
-      page === "expense-create" ||
-      page === "expense-detail";
-
-    if (expensesEnabled || !isExpensePage) return;
-
-    setPage("invoice-list");
-    setSelectedExpenseId(null);
-    setSelectedClientId(null);
-    setSelectedInvoiceId(null);
-    try {
-      window.history.replaceState(
-        {
-          page: "invoice-list",
-          selectedClientId: null,
-          selectedInvoiceId: null,
-          selectedExpenseId: null,
-        },
-        "",
-      );
-    } catch {
-      /* ignore */
-    }
-  }, [expensesEnabled, page]);
-
-  // Restore state from history on mount and listen for back/forward
-  useEffect(() => {
-    const s = window.history.state as {
-      page?: typeof page;
-      selectedClientId?: string | null;
-      selectedInvoiceId?: string | null;
-      selectedExpenseId?: string | null;
-    } | null;
-    if (s && s.page) {
-      setPage(s.page as any);
-      setSelectedClientId(s.selectedClientId ?? null);
-      setSelectedInvoiceId(s.selectedInvoiceId ?? null);
-      setSelectedExpenseId(s.selectedExpenseId ?? null);
-    } else {
-      // ensure there's at least one history entry representing current app state
-      navigate(
-        page,
-        selectedClientId,
-        selectedInvoiceId,
-        true,
-        selectedExpenseId,
-      );
-    }
-
-    const onPop = (ev: PopStateEvent) => {
-      const state = ev.state as {
-        page?: typeof page;
-        selectedClientId?: string | null;
-        selectedInvoiceId?: string | null;
-        selectedExpenseId?: string | null;
-      } | null;
-      if (state && state.page) {
-        setPage(state.page as any);
-        setSelectedClientId(state.selectedClientId ?? null);
-        setSelectedInvoiceId(state.selectedInvoiceId ?? null);
-        setSelectedExpenseId(state.selectedExpenseId ?? null);
-      } else {
-        setPage("invoice-list");
-        setSelectedClientId(null);
-        setSelectedInvoiceId(null);
-        setSelectedExpenseId(null);
+  const tab = (to: string, icon: React.ReactNode, label: string, end = false) => (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        `tab-button ${isActive ? "tab-button-active" : "tab-button-inactive"}`
       }
-    };
-
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    >
+      {icon}
+      {label}
+    </NavLink>
+  );
 
   return (
     <Suspense fallback={<div className="app-loading">{t("app.loading")}</div>}>
       <div className="app-shell">
-        <div className="fixed inset-x-0 top-4 z-20 px-4 sm:px-6">
+        <div className="fixed inset-x-0 top-3 z-20 px-4 sm:px-6">
           <div className="app-nav">
-            <div className="app-tabs flex items-center justify-center">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => navigate("invoice-list", null, null)}
-                  className={`tab-button ${
-                    page === "invoice-list"
-                      ? "tab-button-active"
-                      : "tab-button-inactive"
-                  }`}
-                >
-                  {t("app.nav.invoices")}
-                </button>
-                <button
-                  onClick={() => navigate("clients-list", null, null)}
-                  className={`tab-button ${
-                    page === "clients-list" || page === "client-detail"
-                      ? "tab-button-active"
-                      : "tab-button-inactive"
-                  }`}
-                >
-                  {t("app.nav.clients")}
-                </button>
-                {expensesEnabled ? (
-                  <button
-                    onClick={() => navigate("expenses-list", null, null)}
-                    className={`tab-button ${
-                      page === "expenses-list" ||
-                      page === "expense-create" ||
-                      page === "expense-detail"
-                        ? "tab-button-active"
-                        : "tab-button-inactive"
-                    }`}
-                  >
-                    {t("app.nav.expenses")}
-                  </button>
-                ) : null}
-                <button
-                  onClick={() => navigate("settings", null, null)}
-                  className={`tab-button ${
-                    page === "settings"
-                      ? "tab-button-active"
-                      : "tab-button-inactive"
-                  }`}
-                >
-                  {t("app.nav.settings")}
-                </button>
-              </div>
+            <div className="app-tabs">
+              <span className="app-brand">{t("app.brand")}</span>
+              <span className="app-brand-rule" />
+              {tab("/", <Receipt />, t("app.nav.invoices"))}
+              {tab("/klienti", <Users />, t("app.nav.clients"))}
+              {expensesEnabled
+                ? tab("/naklady", <TrendingDown />, t("app.nav.expenses"))
+                : null}
+              <span className="ml-auto" />
+              {tab("/profil", <UserRound />, t("app.nav.profile"))}
+              {tab("/nastaveni", <Settings2 />, t("app.nav.settings"))}
             </div>
           </div>
-
-          {flashMessage ? (
-            <div className="absolute inset-x-0 top-full z-20 mt-4">
-              <div className="mx-auto max-w-4xl">
-                <div className="alert-success">{flashMessage}</div>
-              </div>
-            </div>
-          ) : null}
         </div>
 
-        <div className="mt-28">
-          {page === "settings" ? (
-            <SettingsPage
-              theme={theme}
-              onToggleTheme={() =>
-                setTheme((current) => (current === "dark" ? "light" : "dark"))
-              }
-              onSettingsSaved={() => {
-                navigate("invoice-list", null, null);
-                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-              }}
+        <div className="mt-20">
+          <Routes>
+            <Route path="/" element={<InvoicesRoute />} />
+            <Route path="/faktury/nova" element={<InvoiceCreateRoute />} />
+            <Route path="/faktury/:invoiceId" element={<InvoiceDetailRoute />} />
+
+            <Route path="/klienti" element={<ClientsRoute />} />
+            <Route
+              path="/klienti/novy"
+              element={<ClientsPageRoute />}
             />
-          ) : page === "clients" ? (
-            <ClientsPage
-              onClientCreated={() => {
-                setFlashMessage(t("alerts.clientSaved"));
-                navigate("clients-list", null, null);
-                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-              }}
+            <Route path="/klienti/:clientId" element={<ClientDetailRoute />} />
+
+            {expensesEnabled ? (
+              <>
+                <Route path="/naklady" element={<ExpensesRoute />} />
+                <Route
+                  path="/naklady/novy"
+                  element={<ExpenseCreateRoute />}
+                />
+                <Route
+                  path="/naklady/:expenseId"
+                  element={<ExpenseDetailRoute />}
+                />
+              </>
+            ) : null}
+
+            <Route
+              path="/profil"
+              element={<ProfilePage onSaved={() => undefined} />}
             />
-          ) : page === "invoice-create" ? (
-            <InvoiceCreatePage
-              onInvoiceCreated={() => {
-                setFlashMessage(t("alerts.invoiceSaved"));
-                navigate("invoice-list", null, null);
-                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-              }}
-            />
-          ) : expensesEnabled && page === "expense-create" ? (
-            <ExpenseCreatePage
-              onExpenseCreated={() => {
-                setFlashMessage(t("alerts.expenseCreated"));
-                navigate("expenses-list", null, null);
-                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-              }}
-            />
-          ) : page === "invoice-list" ? (
-            <InvoiceListPage
-              onCreateInvoice={() => navigate("invoice-create", null, null)}
-              onViewDetails={(invoiceId) =>
-                navigate("invoice-detail", null, invoiceId)
+            <Route
+              path="/nastaveni"
+              element={
+                <SettingsPage
+                  theme={theme}
+                  onToggleTheme={toggleTheme}
+                  onSettingsSaved={() => undefined}
+                />
               }
             />
-          ) : expensesEnabled && page === "expenses-list" ? (
-            <ExpensesListPage
-              onCreateExpense={() => navigate("expense-create", null, null)}
-              onViewDetails={(expenseId) =>
-                navigate("expense-detail", null, null, false, expenseId)
-              }
-            />
-          ) : page === "invoice-detail" && selectedInvoiceId ? (
-            <InvoiceDetailPage
-              invoiceId={selectedInvoiceId}
-              onBack={() => navigate("invoice-list", null, null)}
-              onInvoiceDeleted={() => {
-                setFlashMessage(t("alerts.invoiceDeleted"));
-                navigate("invoice-list", null, null);
-                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-              }}
-              onInvoiceDuplicated={() => {
-                setFlashMessage(t("alerts.invoiceDuplicated"));
-                navigate("invoice-list", null, null);
-                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-              }}
-            />
-          ) : expensesEnabled &&
-            page === "expense-detail" &&
-            selectedExpenseId ? (
-            <ExpenseDetailPage
-              expenseId={selectedExpenseId}
-              onBack={() => navigate("expenses-list", null, null)}
-              onExpenseDeleted={() => {
-                setFlashMessage(t("alerts.expenseDeleted"));
-                navigate("expenses-list", null, null);
-                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-              }}
-            />
-          ) : expensesEnabled && page === "expense-detail" ? (
-            <ExpensesListPage
-              onCreateExpense={() => navigate("expense-create", null, null)}
-              onViewDetails={(expenseId) =>
-                navigate("expense-detail", null, null, false, expenseId)
-              }
-            />
-          ) : page === "clients-list" ? (
-            <ClientsListPage
-              onViewDetails={(clientId) =>
-                navigate("client-detail", clientId, null)
-              }
-              onCreateClient={() => navigate("clients", null, null)}
-            />
-          ) : selectedClientId ? (
-            <ClientDetailPage
-              clientId={selectedClientId}
-              onBack={() => navigate("clients-list", null, null)}
-              onClientDeleted={() => {
-                setFlashMessage(t("alerts.clientDeleted"));
-                navigate("clients-list", null, null);
-                window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-              }}
-            />
-          ) : (
-            <ClientsListPage
-              onViewDetails={(clientId) =>
-                navigate("client-detail", clientId, null)
-              }
-              onCreateClient={() => navigate("clients", null, null)}
-            />
-          )}
-          <p className="text-center text-slate-500">
-            {t("app.donate.title")}
-            <br></br>
-            <small>
-              poorjames425@walletofsatoshi.com
-              <br></br>
-              bc1q5jl6nyavkkl37gqkjuh307ckmlh3merh6lp4ua
-            </small>
-          </p>
+
+            {/* Unknown or disabled paths fall back rather than blanking. */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </div>
-        <RelayStatusIndicator />
         <PWAUpdatePrompt />
         <OfflineBanner />
       </div>
     </Suspense>
   );
+
+  function ClientsPageRoute() {
+    return <ClientsPage onClientCreated={() => navigate("/klienti")} />;
+  }
+
+  function ExpenseCreateRoute() {
+    return <ExpenseCreatePage onExpenseCreated={() => navigate("/naklady")} />;
+  }
 }
 
 export default App;
