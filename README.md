@@ -196,8 +196,6 @@ src/
 ## Known gaps
 
 - **No invoice drafts** — an interrupted invoice is lost.
-- `src/db.ts`, `src/encryption.ts` and `src/App.css` are unused leftovers from the
-  pre-Evolu prototype.
 
 ## License
 
