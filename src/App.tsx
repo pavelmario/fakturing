@@ -53,6 +53,16 @@ function InvoiceCreateRoute() {
   return <InvoiceCreatePage onInvoiceCreated={() => navigate("/")} />;
 }
 
+function ClientsPageRoute() {
+  const navigate = useNavigate();
+  return <ClientsPage onClientCreated={() => navigate("/klienti")} />;
+}
+
+function ExpenseCreateRoute() {
+  const navigate = useNavigate();
+  return <ExpenseCreatePage onExpenseCreated={() => navigate("/naklady")} />;
+}
+
 function InvoiceDetailRoute() {
   const navigate = useNavigate();
   const { invoiceId = "" } = useParams();
@@ -119,7 +129,6 @@ function App() {
   const { t } = useI18n();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
-  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
 
   useLegacyBankAccountMigration();
@@ -231,14 +240,6 @@ function App() {
       </div>
     </Suspense>
   );
-
-  function ClientsPageRoute() {
-    return <ClientsPage onClientCreated={() => navigate("/klienti")} />;
-  }
-
-  function ExpenseCreateRoute() {
-    return <ExpenseCreatePage onExpenseCreated={() => navigate("/naklady")} />;
-  }
 }
 
 export default App;
