@@ -7,6 +7,7 @@ import { useI18n } from "../i18n";
 import { formatDate } from "../lib/invoice";
 import { DEFAULT_CURRENCY, formatAmount, formatMoney } from "../lib/money";
 import { useNotify } from "../lib/confirmContext";
+import { useCompactLayout } from "../lib/useCompactLayout";
 
 type ExpensesListPageProps = {
   onCreateExpense: () => void;
@@ -70,6 +71,7 @@ export function ExpensesListPage({
   const notify = useNotify();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
+  const compact = useCompactLayout();
 
   const [search, setSearch] = useState("");
   /* Expenses are entered through the month and then filed for a period, so the
@@ -509,6 +511,7 @@ export function ExpensesListPage({
           </div>
         ) : (
           <>
+            {compact ? null : (
             <div className="ledger-wrap">
             <table className="ledger">
               <thead>
@@ -571,10 +574,12 @@ export function ExpensesListPage({
               </tbody>
             </table>
             </div>
+            )}
 
             {/* A VAT payer's row carries eight columns; on a phone the same
                 document becomes a card — the document on the first two lines,
                 the two VAT figures on a third. */}
+            {compact ? (
             <ul className="lcards">
               {visible.map((expense) => {
                 const gross = Number(expense.amountWithVat ?? 0);
@@ -626,6 +631,7 @@ export function ExpensesListPage({
                 );
               })}
             </ul>
+            ) : null}
           </>
         )}
       </div>

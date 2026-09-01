@@ -8,6 +8,7 @@ import { useI18n } from "../i18n";
 import { clientTotals, emptyTotals, type ClientInvoice } from "../lib/clientStats";
 import { formatDate } from "../lib/invoice";
 import { formatAmount } from "../lib/money";
+import { useCompactLayout } from "../lib/useCompactLayout";
 
 type ClientsListPageProps = {
   onViewDetails: (clientId: string) => void;
@@ -32,6 +33,7 @@ export function ClientsListPage({
   const { t, tp, locale } = useI18n();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
+  const compact = useCompactLayout();
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("lastIssue");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -225,13 +227,16 @@ export function ClientsListPage({
           </div>
         ) : (
           <>
-            <SortChips
-              keys={sortKeys}
-              activeKey={sortKey}
-              dir={sortDir}
-              onPick={toggleSort}
-            />
+            {compact ? (
+              <SortChips
+                keys={sortKeys}
+                activeKey={sortKey}
+                dir={sortDir}
+                onPick={toggleSort}
+              />
+            ) : null}
 
+            {compact ? null : (
             <div className="ledger-wrap">
             <table className="ledger">
               <thead>
@@ -306,9 +311,11 @@ export function ClientsListPage({
               </tbody>
             </table>
             </div>
+            )}
 
             {/* Seven columns do not survive a phone; the same three facts —
                 who, how much, how much still owed — become one card. */}
+            {compact ? (
             <ul className="lcards">
               {rows.map((client) => (
                 <li
@@ -374,6 +381,7 @@ export function ClientsListPage({
                 </li>
               ))}
             </ul>
+            ) : null}
           </>
         )}
       </div>
