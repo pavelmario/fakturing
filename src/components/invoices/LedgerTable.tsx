@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, Check, RotateCcw, Wallet } from "lucide-react";
 import { formatDate, type InvoiceStatus } from "../../lib/invoice";
 import { useI18n } from "../../i18n";
+import { useCompactLayout } from "../../lib/useCompactLayout";
 import { SortChips } from "./SortChips";
 
 export type SortKey =
@@ -94,6 +95,7 @@ export function LedgerTable({
   currencies,
 }: LedgerTableProps) {
   const { t, tp, locale } = useI18n();
+  const compact = useCompactLayout();
 
   const header = (label: string, column: SortKey, align?: "right") =>
     onSort ? (
@@ -192,17 +194,83 @@ export function LedgerTable({
     { key: "total", label: t("invoicesList.colAmount") },
   ];
 
+  /* Seven columns will not fit a phone, and clipping them silently loses the
+     amount and the state — the two facts a row exists to carry. The same rows
+     become cards instead, keeping the status rail. */
+  const cards = (
+    <ul className="lcards">
+      {rows.map((row) => (
+        <li key={row.id} className="lcard" data-status={row.status}>
+          <button
+            type="button"
+            className="lcard-open"
+            onClick={() => onOpen(row.id)}
+          >
+            <span className="lcard-line">
+              <span className="lcard-number mono">
+                {row.invoiceNumber ?? t("common.placeholderDash")}
+                {row.isBtc ? (
+                  <span
+                    className="ledger-btc"
+                    title={t("invoicesList.paymentTypeBitcoin")}
+                  >
+                    {" ₿"}
+                  </span>
+                ) : null}
+              </span>
+              {/* The table puts the code in its header ("Částka · CZK")
+                  and the table is hidden here, so the card has to carry
+                  it — otherwise every amount on a phone is a bare
+                  figure with no currency at all. */}
+              <span className="lcard-amount num">
+                {formatMoney(row.total, row.currency)}
+              </span>
+            </span>
+            {showClient ? (
+              <span className="lcard-line">
+                <span className="lcard-client">
+                  {row.clientName ?? t("common.placeholderDash")}
+                </span>
+              </span>
+            ) : null}
+            <span className="lcard-line lcard-meta">
+              <span className="ledger-date">
+                {formatDate(row.issueDate, locale, t("common.placeholderDash"))}
+                {" → "}
+                <span
+                  className="ledger-date"
+                  data-late={row.status === "overdue"}
+                >
+                  {dueLabel(row)}
+                </span>
+              </span>
+              {statusCell(row)}
+            </span>
+          </button>
+          {rowAction(row, "lcard-action")}
+        </li>
+      ))}
+    </ul>
+  );
+
+  if (compact) {
+    return (
+      <>
+        {onSort ? (
+          <SortChips
+            keys={sortKeys}
+            activeKey={sortKey}
+            dir={sortDir}
+            onPick={onSort}
+          />
+        ) : null}
+        {cards}
+      </>
+    );
+  }
+
   return (
     <>
-      {onSort ? (
-        <SortChips
-          keys={sortKeys}
-          activeKey={sortKey}
-          dir={sortDir}
-          onPick={onSort}
-        />
-      ) : null}
-
       <div className="ledger-wrap">
         <table className="ledger">
           <thead>
@@ -277,63 +345,6 @@ export function LedgerTable({
           </tbody>
         </table>
       </div>
-
-      {/* Seven columns will not fit a phone, and clipping them silently loses
-          the amount and the state — the two facts a row exists to carry. The
-          same rows become cards instead, keeping the status rail. */}
-      <ul className="lcards">
-        {rows.map((row) => (
-          <li key={row.id} className="lcard" data-status={row.status}>
-            <button
-              type="button"
-              className="lcard-open"
-              onClick={() => onOpen(row.id)}
-            >
-              <span className="lcard-line">
-                <span className="lcard-number mono">
-                  {row.invoiceNumber ?? t("common.placeholderDash")}
-                  {row.isBtc ? (
-                    <span
-                      className="ledger-btc"
-                      title={t("invoicesList.paymentTypeBitcoin")}
-                    >
-                      {" ₿"}
-                    </span>
-                  ) : null}
-                </span>
-                {/* The table puts the code in its header ("Částka · CZK")
-                    and the table is hidden here, so the card has to carry
-                    it — otherwise every amount on a phone is a bare
-                    figure with no currency at all. */}
-                <span className="lcard-amount num">
-                  {formatMoney(row.total, row.currency)}
-                </span>
-              </span>
-              {showClient ? (
-                <span className="lcard-line">
-                  <span className="lcard-client">
-                    {row.clientName ?? t("common.placeholderDash")}
-                  </span>
-                </span>
-              ) : null}
-              <span className="lcard-line lcard-meta">
-                <span className="ledger-date">
-                  {formatDate(row.issueDate, locale, t("common.placeholderDash"))}
-                  {" → "}
-                  <span
-                    className="ledger-date"
-                    data-late={row.status === "overdue"}
-                  >
-                    {dueLabel(row)}
-                  </span>
-                </span>
-                {statusCell(row)}
-              </span>
-            </button>
-            {rowAction(row, "lcard-action")}
-          </li>
-        ))}
-      </ul>
     </>
   );
 }
