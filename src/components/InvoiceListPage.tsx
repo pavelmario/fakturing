@@ -342,7 +342,7 @@ export function InvoiceListPage({
   return (
     <div className="page-shell">
       <div className="page-container-lg">
-        <div className="flex items-end justify-between gap-4 mb-5">
+        <div className="page-head">
           <h1 className="page-title">{t("invoicesList.title")}</h1>
           <button onClick={onCreateInvoice} className="btn-primary">
             <Plus />

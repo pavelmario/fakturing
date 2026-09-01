@@ -77,7 +77,7 @@ export function InvoiceItemsTable({
               (showQuantity ? num(item.amount, 1) : 1) * num(item.unitPrice);
             return (
               <tr key={index}>
-                <td>
+                <td data-cell="description">
                   <input
                     type="text"
                     className="cell-input"
@@ -92,10 +92,14 @@ export function InvoiceItemsTable({
                 </td>
                 {showQuantity ? (
                   <>
-                    <td>
+                    <td
+                      data-cell="amount"
+                      data-label={t("invoiceCreate.itemAmount")}
+                    >
                       <input
                         type="number"
                         min={0}
+                        inputMode="decimal"
                         className="cell-input cell-num"
                         value={item.amount}
                         disabled={disabled}
@@ -106,7 +110,10 @@ export function InvoiceItemsTable({
                         aria-label={t("invoiceCreate.itemAmount")}
                       />
                     </td>
-                    <td>
+                    <td
+                      data-cell="unit"
+                      data-label={t("invoiceCreate.itemUnit")}
+                    >
                       <input
                         type="text"
                         className="cell-input"
@@ -121,11 +128,19 @@ export function InvoiceItemsTable({
                     </td>
                   </>
                 ) : null}
-                <td>
+                <td
+                  data-cell="price"
+                  data-label={
+                    showQuantity
+                      ? t("invoiceCreate.itemUnitPrice")
+                      : t("invoiceCreate.itemPrice")
+                  }
+                >
                   <input
                     type="number"
                     min={0}
                     step="0.01"
+                    inputMode="decimal"
                     className="cell-input cell-num"
                     value={item.unitPrice}
                     disabled={disabled}
@@ -136,11 +151,12 @@ export function InvoiceItemsTable({
                   />
                 </td>
                 {isVatPayer ? (
-                  <td>
+                  <td data-cell="vat" data-label={t("invoiceCreate.itemVat")}>
                     <input
                       type="number"
                       min={0}
                       step="1"
+                      inputMode="numeric"
                       className="cell-input cell-num"
                       value={item.vat}
                       disabled={disabled}
@@ -149,10 +165,14 @@ export function InvoiceItemsTable({
                     />
                   </td>
                 ) : null}
-                <td className="items-line-total num">
+                <td
+                  className="items-line-total num"
+                  data-cell="total"
+                  data-label={t("invoiceCreate.itemTotal")}
+                >
                   {formatAmount(lineTotal)}
                 </td>
-                <td>
+                <td data-cell="remove">
                   <button
                     type="button"
                     className="ledger-action items-remove"

@@ -454,7 +454,7 @@ export function InvoiceCreatePage({
   return (
     <div className="page-shell">
       <div className="page-container-lg">
-        <div className="flex items-end justify-between gap-4 mb-5">
+        <div className="page-head">
           <h1 className="page-title">{t("invoiceCreate.title")}</h1>
         </div>
 

@@ -6,7 +6,8 @@ devices through a relay you can point anywhere — including one you run yoursel
 There is no account, no server-side database, and nothing to sign up for: a BIP39
 seed phrase *is* the identity.
 
-Czech and English UI, light and dark themes, installable as a PWA, works offline.
+Czech and English UI, light and dark themes, usable on a phone, installable as
+a PWA, works offline.
 
 ![The invoice ledger](docs/screenshots/01-faktury.png)
 
@@ -76,6 +77,27 @@ Everything that changes how the app behaves, grouped:
 | **Bitcoin** | mempool explorer URL |
 | **Export/Import dat (CSV)** | per-section checkboxes — settings, clients, invoices, expenses — exported together or separately; templates live in `public/` |
 | **Nebezpečná zóna** | destructive resets |
+
+---
+
+## On a phone
+
+The same screens, reshaped rather than shrunk. Three breakpoints, each set by
+something that actually stops fitting:
+
+| Below | What changes |
+|---|---|
+| **56rem** (896px) | A ledger row needs ~830px for its seven columns, so every ledger — invoices, clients, expenses, a client's history — becomes a list of cards carrying the same status rail. Sorting moves from the column headers to a chip strip. The year strip and the filing-period band stack, and the filter chips become one horizontally scrolling row. |
+| **48rem** (768px) | The pill bar runs out of room for five destinations, so they move to a bottom tab bar and the top chrome goes away with them. Fields go to 16px (Safari zooms the page for anything smaller), controls grow to a 44px tap target, dialogs become bottom sheets, and the offline strip and toasts clear the tab bar. |
+| **40rem** (640px) | The line-items table stops fitting its own columns and each row becomes a card, every field carrying the label the dropped header used to give it. |
+
+Two things behave differently rather than just moving: row actions are always
+visible, because hover reveals nothing on a touch screen, and the invoice
+detail keeps its framed PDF but adds an **Otevřít PDF** link underneath — a
+mobile browser renders that frame as at best one static page and at worst an
+empty rectangle.
+
+Safe-area insets are respected, so the tab bar clears the home indicator.
 
 ---
 
@@ -194,6 +216,9 @@ src/
   mode for screen sharing.
 - **Migrations run silently.** Legacy single bank accounts and name-joined
   invoices are upgraded on load, without asking.
+- **Layout switches, it does not scale.** A table that will not fit is
+  rewritten as cards rather than clipped or shrunk; the two layouts render from
+  the same rows and swap in CSS.
 
 ## Known gaps
 

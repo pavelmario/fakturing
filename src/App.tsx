@@ -156,40 +156,54 @@ function App() {
       ? profile?.vatPayer === Evolu.sqliteTrue
       : profile.expenses === Evolu.sqliteTrue;
 
-  const tab = (to: string, icon: React.ReactNode, label: string, end = false) => (
+  /* One list of destinations, rendered twice: as the floating pill bar on a
+     wide screen and as a thumb-reachable bottom bar on a phone. Duplicating
+     the links rather than the list is what keeps the two from drifting. */
+  const primaryLinks = [
+    { to: "/", icon: <Receipt />, label: t("app.nav.invoices") },
+    { to: "/klienti", icon: <Users />, label: t("app.nav.clients") },
+    ...(expensesEnabled
+      ? [{ to: "/naklady", icon: <TrendingDown />, label: t("app.nav.expenses") }]
+      : []),
+  ];
+
+  const utilityLinks = [
+    { to: "/profil", icon: <UserRound />, label: t("app.nav.profile") },
+    { to: "/nastaveni", icon: <Settings2 />, label: t("app.nav.settings") },
+  ];
+
+  const tab = (
+    { to, icon, label }: { to: string; icon: React.ReactNode; label: string },
+    className: string,
+  ) => (
     <NavLink
+      key={to}
       to={to}
-      end={end}
       className={({ isActive }) =>
-        `tab-button ${isActive ? "tab-button-active" : "tab-button-inactive"}`
+        `${className} ${isActive ? "tab-button-active" : "tab-button-inactive"}`
       }
     >
       {icon}
-      {label}
+      <span>{label}</span>
     </NavLink>
   );
 
   return (
     <Suspense fallback={<div className="app-loading">{t("app.loading")}</div>}>
       <div className="app-shell">
-        <div className="fixed inset-x-0 top-3 z-20 px-4 sm:px-6">
-          <div className="app-nav">
+        <div className="app-nav-wrap">
+          <nav className="app-nav" aria-label={t("app.navLabel")}>
             <div className="app-tabs">
               <span className="app-brand">{t("app.brand")}</span>
               <span className="app-brand-rule" />
-              {tab("/", <Receipt />, t("app.nav.invoices"))}
-              {tab("/klienti", <Users />, t("app.nav.clients"))}
-              {expensesEnabled
-                ? tab("/naklady", <TrendingDown />, t("app.nav.expenses"))
-                : null}
+              {primaryLinks.map((link) => tab(link, "tab-button"))}
               <span className="ml-auto" />
-              {tab("/profil", <UserRound />, t("app.nav.profile"))}
-              {tab("/nastaveni", <Settings2 />, t("app.nav.settings"))}
+              {utilityLinks.map((link) => tab(link, "tab-button"))}
             </div>
-          </div>
+          </nav>
         </div>
 
-        <div className="mt-20">
+        <div className="app-main">
           <Routes>
             <Route path="/" element={<InvoicesRoute />} />
             <Route path="/faktury/nova" element={<InvoiceCreateRoute />} />
@@ -235,6 +249,16 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
+
+        {/* The phone shell: destinations sit under the thumb, not above the
+            fold, and the brand pill is dropped — the page title already says
+            where you are and 68px of chrome is a lot on a 844px screen. */}
+        <nav className="tab-bar" aria-label={t("app.navLabel")}>
+          {[...primaryLinks, ...utilityLinks].map((link) =>
+            tab(link, "tab-bar-item"),
+          )}
+        </nav>
+
         <PWAUpdatePrompt />
         <OfflineBanner />
       </div>

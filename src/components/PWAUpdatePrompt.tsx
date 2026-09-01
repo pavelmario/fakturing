@@ -8,7 +8,7 @@ export function PWAUpdatePrompt() {
   if (!needRefresh) return null;
 
   return (
-    <div className="fixed bottom-16 left-4 right-4 z-50 sm:left-auto sm:right-4 sm:w-80">
+    <div className="pwa-prompt">
       <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 shadow-lg dark:border-blue-800 dark:bg-blue-950">
         <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
           {t("pwa.updateAvailable")}
