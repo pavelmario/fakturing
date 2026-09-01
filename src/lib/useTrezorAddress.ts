@@ -69,6 +69,24 @@ const errorKey = ({ code, message }: ConnectError, fallbackKey: string) => {
   return fallbackKey;
 };
 
+/**
+ * Every browser on iOS is WebKit, and Suite Web refuses to run there — the
+ * popup lands on a "doesn't support iOS" dead end. Connect's only other web
+ * path is that same popup, so there is nothing to fall back to and no point
+ * initialising. Deep linking into the Suite iOS app via @trezor/connect-mobile
+ * is the real answer — connect.trezor.io claims its deeplink paths as an iOS
+ * universal link — but Suite returns through a full page load and this app
+ * keeps the invoice draft in memory, so that needs draft persistence first.
+ */
+const isIos = () => {
+  if (typeof navigator === "undefined") return false;
+  // iPadOS 13+ reports itself as MacIntel, so touch points disambiguate it.
+  return (
+    /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+};
+
 const manifest = () => {
   const appUrl =
     typeof window === "undefined" || !window.location.origin
@@ -134,14 +152,16 @@ export const useTrezorAddress = (
 ) => {
   const notify = useNotify();
   const [isLoading, setIsLoading] = useState(false);
+  const [unsupported] = useState(isIos);
 
   // Warm Connect up before the click. init() probes the loopback socket, and
   // on a machine without Suite Desktop that can outlast the click's transient
   // user activation — at which point window.open is blocked and the Suite Web
   // popup never appears.
   useEffect(() => {
+    if (unsupported) return;
     void initConnect();
-  }, []);
+  }, [unsupported]);
 
   const report = useCallback(
     (error: ConnectError, fallbackKey = "invoiceCreate.trezorRequestError") => {
@@ -152,6 +172,10 @@ export const useTrezorAddress = (
   );
 
   const load = useCallback(async () => {
+    if (unsupported) {
+      notify(t("invoiceCreate.trezorIosUnsupported"), "info");
+      return;
+    }
     setIsLoading(true);
     try {
       const ready = await initConnect();
@@ -192,7 +216,7 @@ export const useTrezorAddress = (
     } finally {
       setIsLoading(false);
     }
-  }, [notify, onAddress, report, t]);
+  }, [notify, onAddress, report, t, unsupported]);
 
   return { isLoading, load };
 };
