@@ -529,7 +529,7 @@ export function InvoiceDetailPage({
             </a>
           ) : null}
           <button
-            className="btn-danger ml-auto"
+            className="btn-danger inv-action-end"
             onClick={handleDelete}
             disabled={isDeleting}
           >

@@ -86,6 +86,13 @@
 
   --row-h: 40px;
 
+  /* Layout constants shared by the two shells. The bottom tab bar only exists
+     on a phone, but the shell has to reserve room for it either way. */
+  --tab-bar-h: 3.5rem;
+  /* Apple's floor for anything a thumb has to hit. Controls tuned for a mouse
+     (26px icon buttons, 22px arrows) are grown to this on touch. */
+  --tap: 44px;
+
   color-scheme: light;
 }
 

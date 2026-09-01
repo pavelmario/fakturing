@@ -9,7 +9,8 @@
         "settings": "Nastavení",
         "profile": "Profil"
       },
-      "brand": "Fakturing"
+      "brand": "Fakturing",
+      "navLabel": "Hlavní navigace"
     },
     "common": {
       "placeholderDash": "—",
@@ -20,7 +21,8 @@
       "cancel": "Zrušit",
       "delete": "Smazat",
       "edit": "Upravit",
-      "confirm": "Potvrdit"
+      "confirm": "Potvrdit",
+      "sortBy": "Řadit"
     },
     "clientsList": {
       "title": "Klienti",
@@ -317,7 +319,8 @@
       "paidOn": "Uhrazeno {date}",
       "editingBanner": "Upravujete fakturu. Změny se uloží až po potvrzení.",
       "editPaidConfirm": "Tato faktura je označena jako uhrazená. Opravdu ji chcete upravit?",
-      "discardConfirm": "Máte neuložené změny. Opravdu je chcete zahodit?"
+      "discardConfirm": "Máte neuložené změny. Opravdu je chcete zahodit?",
+      "pdfOpen": "Otevřít PDF"
     },
     "settings": {
       "sectionTitle": "Předvolby",
@@ -639,7 +642,8 @@
         "settings": "Settings",
         "profile": "Profile"
       },
-      "brand": "Fakturing"
+      "brand": "Fakturing",
+      "navLabel": "Main navigation"
     },
     "common": {
       "placeholderDash": "—",
@@ -650,7 +654,8 @@
       "cancel": "Cancel",
       "delete": "Delete",
       "edit": "Edit",
-      "confirm": "Confirm"
+      "confirm": "Confirm",
+      "sortBy": "Sort by"
     },
     "clientsList": {
       "title": "Clients",
@@ -947,7 +952,8 @@
       "paidOn": "Paid {date}",
       "editingBanner": "You are editing this invoice. Changes are saved only when you confirm.",
       "editPaidConfirm": "This invoice is marked as paid. Edit it anyway?",
-      "discardConfirm": "You have unsaved changes. Discard them?"
+      "discardConfirm": "You have unsaved changes. Discard them?",
+      "pdfOpen": "Open the PDF"
     },
     "settings": {
       "sectionTitle": "Preferences",

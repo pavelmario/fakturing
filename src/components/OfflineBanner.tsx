@@ -7,9 +7,5 @@ export function OfflineBanner() {
 
   if (isOnline) return null;
 
-  return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex h-[20px] items-center justify-center bg-amber-500 px-4 text-[10px] font-medium text-black shadow-md">
-      {t("pwa.offline")}
-    </div>
-  );
+  return <div className="offline-banner">{t("pwa.offline")}</div>;
 }

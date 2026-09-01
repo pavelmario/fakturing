@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MAX_SEGMENTS, type MonthCell, type YearSeries } from "../../lib/aging";
 import { useI18n } from "../../i18n";
@@ -167,10 +167,14 @@ export function YearStrip({
             data-align={
               cell.month <= 1 ? "start" : cell.month >= 10 ? "end" : "center"
             }
+            /* A custom property rather than `left` directly: on a phone the
+               tip spans the panel instead, and an inline `left` would win. */
             style={
               cell.month <= 1 || cell.month >= 10
                 ? undefined
-                : { left: `${((cell.month + 0.5) / 12) * 100}%` }
+                : ({
+                    "--tip-x": `${((cell.month + 0.5) / 12) * 100}%`,
+                  } as CSSProperties)
             }
           >
             <div className="ystrip-tip-head">

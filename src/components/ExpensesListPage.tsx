@@ -394,7 +394,7 @@ export function ExpensesListPage({
   return (
     <div className="page-shell">
       <div className="page-container-lg">
-        <div className="flex items-end justify-between gap-4 mb-5">
+        <div className="page-head">
           <h1 className="page-title">{t("expensesList.title")}</h1>
           <button onClick={onCreateExpense} className="btn-primary">
             <Plus />
@@ -483,15 +483,17 @@ export function ExpensesListPage({
               aria-label={t("expensesList.searchLabel")}
             />
           </div>
-          <button
-            type="button"
-            className="fchip"
-            data-on={browseAll}
-            aria-pressed={browseAll}
-            onClick={() => setBrowseAll((on) => !on)}
-          >
-            {t("expensesList.showAll")}
-          </button>
+          <div className="filter-chips">
+            <button
+              type="button"
+              className="fchip"
+              data-on={browseAll}
+              aria-pressed={browseAll}
+              onClick={() => setBrowseAll((on) => !on)}
+            >
+              {t("expensesList.showAll")}
+            </button>
+          </div>
           <div className="filter-bar-tail">
             <span className="filter-count">
               {visible.length} {tp("expensesList.expenseCount", visible.length)}
@@ -506,7 +508,8 @@ export function ExpensesListPage({
               : t("expensesList.emptyNoMatch")}
           </div>
         ) : (
-          <div className="ledger-wrap">
+          <>
+            <div className="ledger-wrap">
             <table className="ledger">
               <thead>
                 <tr>
@@ -567,7 +570,59 @@ export function ExpensesListPage({
                 })}
               </tbody>
             </table>
-          </div>
+            </div>
+
+            {/* A VAT payer's row carries eight columns; on a phone the same
+                document becomes a card, base and VAT on the meta line. */}
+            <ul className="lcards">
+              {visible.map((expense) => {
+                const gross = Number(expense.amountWithVat ?? 0);
+                const base = Number(expense.amountWithoutVat ?? 0);
+                return (
+                  <li key={expense.id} className="lcard" data-status="unpaid">
+                    <button
+                      type="button"
+                      className="lcard-open"
+                      onClick={() => onViewDetails(expense.id)}
+                    >
+                      <span className="lcard-line">
+                        <span className="lcard-client">
+                          {expense.description}
+                        </span>
+                        <span className="lcard-amount num">
+                          {amount(gross)}
+                        </span>
+                      </span>
+                      <span className="lcard-line lcard-meta">
+                        <span className="ledger-date">
+                          {formatDate(
+                            expense.expenseDate,
+                            locale,
+                            t("common.placeholderDash"),
+                          )}
+                          {expense.expenseNumber
+                            ? ` · ${expense.expenseNumber}`
+                            : ""}
+                        </span>
+                        {isVatPayer ? (
+                          <span className="ledger-date">
+                            {t("expensesList.colVat")} {amount(gross - base)}
+                          </span>
+                        ) : null}
+                      </span>
+                      {isVatPayer && expense.supplierVat ? (
+                        <span className="lcard-line lcard-meta">
+                          <span className="ledger-date mono">
+                            {expense.supplierVat}
+                          </span>
+                        </span>
+                      ) : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </div>
     </div>

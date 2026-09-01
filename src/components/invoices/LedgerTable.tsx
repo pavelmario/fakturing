@@ -132,131 +132,230 @@ export function LedgerTable({
     );
   };
 
+  const dueLabel = (row: LedgerRow) =>
+    row.dueTime
+      ? formatDate(new Date(row.dueTime).toISOString(), locale)
+      : t("common.placeholderDash");
+
+  /* The one row action, as it appears in both layouts. */
+  const rowAction = (row: LedgerRow, className: string) =>
+    row.status === "paid" ? (
+      <button
+        type="button"
+        className={className}
+        title={t("invoicesList.markUnpaid")}
+        aria-label={t("invoicesList.markUnpaid")}
+        onClick={() => onUndoPayment(row)}
+      >
+        <RotateCcw />
+      </button>
+    ) : (
+      <button
+        type="button"
+        className={className}
+        title={t("invoicesList.markPaid")}
+        aria-label={t("invoicesList.markPaid")}
+        onClick={() => onRecordPayment(row)}
+      >
+        <Wallet />
+      </button>
+    );
+
+  /* Sorting lives in the column headers, which the card layout does not have,
+     so the phone gets the same five keys as a scrollable chip row. */
+  const sortKeys: readonly { key: SortKey; label: string }[] = [
+    { key: "invoiceNumber", label: t("invoicesList.colNumber") },
+    ...(showClient
+      ? [{ key: "clientName" as const, label: t("invoicesList.colClient") }]
+      : []),
+    { key: "issueDate", label: t("invoicesList.colIssued") },
+    { key: "dueDate", label: t("invoicesList.colDue") },
+    { key: "total", label: t("invoicesList.colAmount") },
+  ];
+
   return (
-    <div className="ledger-wrap">
-      <table className="ledger">
-        <thead>
-          <tr>
-            <th className="ledger-rail" style={{ borderBottom: 0 }} />
-            <SortHeader
-              label={t("invoicesList.colNumber")}
-              column="invoiceNumber"
-              activeKey={sortKey}
-              dir={sortDir}
-              onSort={onSort}
-            />
-            {showClient ? (
+    <>
+      <div className="sortbar" role="group" aria-label={t("common.sortBy")}>
+        <span className="sortbar-label">{t("common.sortBy")}</span>
+        {sortKeys.map(({ key, label }) => (
+          <button
+            key={key}
+            type="button"
+            className="fchip"
+            data-on={sortKey === key}
+            aria-pressed={sortKey === key}
+            onClick={() => onSort(key)}
+          >
+            {label}
+            {sortKey === key ? (
+              sortDir === "asc" ? (
+                <ArrowUp />
+              ) : (
+                <ArrowDown />
+              )
+            ) : null}
+          </button>
+        ))}
+      </div>
+
+      <div className="ledger-wrap">
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th className="ledger-rail" style={{ borderBottom: 0 }} />
               <SortHeader
-                label={t("invoicesList.colClient")}
-                column="clientName"
+                label={t("invoicesList.colNumber")}
+                column="invoiceNumber"
                 activeKey={sortKey}
                 dir={sortDir}
                 onSort={onSort}
               />
-            ) : null}
-            <SortHeader
-              label={t("invoicesList.colIssued")}
-              column="issueDate"
-              activeKey={sortKey}
-              dir={sortDir}
-              onSort={onSort}
-            />
-            <SortHeader
-              label={t("invoicesList.colDue")}
-              column="dueDate"
-              activeKey={sortKey}
-              dir={sortDir}
-              onSort={onSort}
-            />
-            <th>{t("invoicesList.colState")}</th>
-            <SortHeader
-              label={
-                singleCurrency
-                  ? `${t("invoicesList.colAmount")} · ${singleCurrency}`
-                  : t("invoicesList.colAmount")
-              }
-              column="total"
-              activeKey={sortKey}
-              dir={sortDir}
-              onSort={onSort}
-              align="right"
-            />
-            <th style={{ width: "70px" }} />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.id}
-              data-status={row.status}
+              {showClient ? (
+                <SortHeader
+                  label={t("invoicesList.colClient")}
+                  column="clientName"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onSort={onSort}
+                />
+              ) : null}
+              <SortHeader
+                label={t("invoicesList.colIssued")}
+                column="issueDate"
+                activeKey={sortKey}
+                dir={sortDir}
+                onSort={onSort}
+              />
+              <SortHeader
+                label={t("invoicesList.colDue")}
+                column="dueDate"
+                activeKey={sortKey}
+                dir={sortDir}
+                onSort={onSort}
+              />
+              <th>{t("invoicesList.colState")}</th>
+              <SortHeader
+                label={
+                  singleCurrency
+                    ? `${t("invoicesList.colAmount")} · ${singleCurrency}`
+                    : t("invoicesList.colAmount")
+                }
+                column="total"
+                activeKey={sortKey}
+                dir={sortDir}
+                onSort={onSort}
+                align="right"
+              />
+              <th style={{ width: "70px" }} />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={row.id}
+                data-status={row.status}
+                onClick={() => onOpen(row.id)}
+              >
+                <td className="ledger-rail">
+                  <span />
+                </td>
+                <td className="ledger-number">
+                  {row.invoiceNumber ?? t("common.placeholderDash")}
+                  {row.isBtc ? (
+                    <span
+                      className="ledger-btc"
+                      title={t("invoicesList.paymentTypeBitcoin")}
+                    >
+                      {" ₿"}
+                    </span>
+                  ) : null}
+                </td>
+                {showClient ? (
+                  <td className="ledger-client">
+                    {row.clientName ?? t("common.placeholderDash")}
+                  </td>
+                ) : null}
+                <td className="ledger-date">
+                  {formatDate(
+                    row.issueDate,
+                    locale,
+                    t("common.placeholderDash"),
+                  )}
+                </td>
+                <td className="ledger-date" data-late={row.status === "overdue"}>
+                  {dueLabel(row)}
+                </td>
+                <td>{statusCell(row)}</td>
+                <td className="ledger-amount">
+                  {singleCurrency
+                    ? formatAmount(row.total)
+                    : formatMoney(row.total, row.currency)}
+                </td>
+                <td onClick={(event) => event.stopPropagation()}>
+                  <div className="ledger-actions">
+                    {rowAction(row, "ledger-action")}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Seven columns will not fit a phone, and clipping them silently loses
+          the amount and the state — the two facts a row exists to carry. The
+          same rows become cards instead, keeping the status rail. */}
+      <ul className="lcards">
+        {rows.map((row) => (
+          <li key={row.id} className="lcard" data-status={row.status}>
+            <button
+              type="button"
+              className="lcard-open"
               onClick={() => onOpen(row.id)}
             >
-              <td className="ledger-rail">
-                <span />
-              </td>
-              <td className="ledger-number">
-                {row.invoiceNumber ?? t("common.placeholderDash")}
-                {row.isBtc ? (
-                  <span
-                    className="ledger-btc"
-                    title={t("invoicesList.paymentTypeBitcoin")}
-                  >
-                    {" ₿"}
-                  </span>
-                ) : null}
-              </td>
+              <span className="lcard-line">
+                <span className="lcard-number mono">
+                  {row.invoiceNumber ?? t("common.placeholderDash")}
+                  {row.isBtc ? (
+                    <span
+                      className="ledger-btc"
+                      title={t("invoicesList.paymentTypeBitcoin")}
+                    >
+                      {" ₿"}
+                    </span>
+                  ) : null}
+                </span>
+                <span className="lcard-amount num">
+                  {singleCurrency
+                    ? formatAmount(row.total)
+                    : formatMoney(row.total, row.currency)}
+                </span>
+              </span>
               {showClient ? (
-                <td className="ledger-client">
-                  {row.clientName ?? t("common.placeholderDash")}
-                </td>
+                <span className="lcard-line">
+                  <span className="lcard-client">
+                    {row.clientName ?? t("common.placeholderDash")}
+                  </span>
+                </span>
               ) : null}
-              <td className="ledger-date">
-                {formatDate(
-                  row.issueDate,
-                  locale,
-                  t("common.placeholderDash"),
-                )}
-              </td>
-              <td className="ledger-date" data-late={row.status === "overdue"}>
-                {row.dueTime
-                  ? formatDate(new Date(row.dueTime).toISOString(), locale)
-                  : t("common.placeholderDash")}
-              </td>
-              <td>{statusCell(row)}</td>
-              <td className="ledger-amount">
-                {singleCurrency
-                  ? formatAmount(row.total)
-                  : formatMoney(row.total, row.currency)}
-              </td>
-              <td onClick={(event) => event.stopPropagation()}>
-                <div className="ledger-actions">
-                  {row.status === "paid" ? (
-                    <button
-                      type="button"
-                      className="ledger-action"
-                      title={t("invoicesList.markUnpaid")}
-                      aria-label={t("invoicesList.markUnpaid")}
-                      onClick={() => onUndoPayment(row)}
-                    >
-                      <RotateCcw />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="ledger-action"
-                      title={t("invoicesList.markPaid")}
-                      aria-label={t("invoicesList.markPaid")}
-                      onClick={() => onRecordPayment(row)}
-                    >
-                      <Wallet />
-                    </button>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+              <span className="lcard-line lcard-meta">
+                <span className="ledger-date">
+                  {formatDate(row.issueDate, locale, t("common.placeholderDash"))}
+                  {" → "}
+                  <span
+                    className="ledger-date"
+                    data-late={row.status === "overdue"}
+                  >
+                    {dueLabel(row)}
+                  </span>
+                </span>
+                {statusCell(row)}
+              </span>
+            </button>
+            {rowAction(row, "lcard-action")}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

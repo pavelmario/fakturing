@@ -165,10 +165,25 @@ export function ClientsListPage({
     </th>
   );
 
+  const sortKeys: readonly { key: SortKey; label: string }[] = [
+    { key: "name", label: t("clientsList.colName") },
+    { key: "lastIssue", label: t("clientsList.colLast") },
+    { key: "invoiced", label: t("clientsList.colInvoiced") },
+    { key: "unpaid", label: t("clientsList.colUnpaid") },
+  ];
+
+  /* The rail flags clients who owe you money. */
+  const railStatus = (stats: (typeof rows)[number]["stats"]) =>
+    stats.overdueCount > 0
+      ? "overdue"
+      : stats.unpaid.size > 0
+        ? "unpaid"
+        : "paid";
+
   return (
     <div className="page-shell">
       <div className="page-container-lg">
-        <div className="flex items-end justify-between gap-4 mb-5">
+        <div className="page-head">
           <h1 className="page-title">{t("clientsList.title")}</h1>
           <button onClick={onCreateClient} className="btn-primary">
             <Plus />
@@ -201,7 +216,31 @@ export function ClientsListPage({
               : t("clientsList.emptyNoMatch")}
           </div>
         ) : (
-          <div className="ledger-wrap">
+          <>
+            <div className="sortbar" role="group" aria-label={t("common.sortBy")}>
+              <span className="sortbar-label">{t("common.sortBy")}</span>
+              {sortKeys.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  className="fchip"
+                  data-on={sortKey === key}
+                  aria-pressed={sortKey === key}
+                  onClick={() => toggleSort(key)}
+                >
+                  {label}
+                  {sortKey === key ? (
+                    sortDir === "asc" ? (
+                      <ArrowUp />
+                    ) : (
+                      <ArrowDown />
+                    )
+                  ) : null}
+                </button>
+              ))}
+            </div>
+
+            <div className="ledger-wrap">
             <table className="ledger">
               <thead>
                 <tr>
@@ -218,14 +257,7 @@ export function ClientsListPage({
                 {rows.map((client) => (
                   <tr
                     key={client.id}
-                    /* The rail flags clients who owe you money. */
-                    data-status={
-                      client.stats.overdueCount > 0
-                        ? "overdue"
-                        : client.stats.unpaid.size > 0
-                          ? "unpaid"
-                          : "paid"
-                    }
+                    data-status={railStatus(client.stats)}
                     onClick={() => onViewDetails(client.id)}
                   >
                     <td className="ledger-rail">
@@ -281,7 +313,63 @@ export function ClientsListPage({
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+
+            {/* Seven columns do not survive a phone; the same three facts —
+                who, how much, how much still owed — become one card. */}
+            <ul className="lcards">
+              {rows.map((client) => (
+                <li
+                  key={client.id}
+                  className="lcard"
+                  data-status={railStatus(client.stats)}
+                >
+                  <button
+                    type="button"
+                    className="lcard-open"
+                    onClick={() => onViewDetails(client.id)}
+                  >
+                    <span className="lcard-line">
+                      <span className="lcard-client">
+                        {client.name ?? t("clientsList.unnamed")}
+                      </span>
+                      <span className="lcard-amount num">
+                        {lines(client.stats.invoiced).length
+                          ? lines(client.stats.invoiced).map(([code, value]) => (
+                              <span key={code} className="lcard-money">
+                                {amount(value)}
+                                <span className="cur">{code}</span>
+                              </span>
+                            ))
+                          : t("common.placeholderDash")}
+                      </span>
+                    </span>
+                    <span className="lcard-line lcard-meta">
+                      <span className="ledger-date">
+                        {client.companyIdentificationNumber
+                          ? `${t("clientsForm.companyIdLabel")} ${client.companyIdentificationNumber} · `
+                          : ""}
+                        {client.stats.count}{" "}
+                        {tp("invoicesList.invoiceCount", client.stats.count)}
+                      </span>
+                      {lines(client.stats.unpaid).length ? (
+                        <span
+                          className="lstate"
+                          data-state={
+                            client.stats.overdueCount > 0 ? "overdue" : "unpaid"
+                          }
+                        >
+                          {lines(client.stats.unpaid)
+                            .map(([code, value]) => `${amount(value)} ${code}`)
+                            .join(" · ")}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </div>
     </div>

@@ -21,7 +21,10 @@
   body {
     margin: 0;
     min-width: 320px;
+    /* dvh, so a phone's collapsing address bar cannot leave a strip of
+       background below the shell. */
     min-height: 100vh;
+    min-height: 100dvh;
     background: var(--paper);
     color: var(--ink);
     font-size: var(--fs-base);
@@ -30,6 +33,20 @@
   #root {
     width: 100%;
     min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  /* Kills the 300ms tap delay and the grey flash Android draws over every
+     control the design already gives a pressed state to. */
+  button,
+  a,
+  label,
+  summary,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   a {
@@ -78,11 +95,31 @@
 
   .app-shell {
     min-height: 100vh;
+    min-height: 100dvh;
     padding: 0 clamp(1rem, 4vw, 2.5rem) 4rem;
   }
 
+  /* The floating pill bar's own positioning, so a media query can retire it
+     in favour of the bottom bar. */
+  .app-nav-wrap {
+    position: fixed;
+    inset: 0.75rem 0 auto;
+    z-index: 20;
+    padding: 0 1rem;
+  }
+
+  .app-main {
+    margin-top: 5rem;
+  }
+
+  @media (min-width: 40rem) {
+    .app-nav-wrap {
+      padding: 0 1.5rem;
+    }
+  }
+
   .app-loading {
-    min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -171,6 +208,56 @@
     color: var(--ink);
   }
 
+  /* ---- Bottom tab bar (phones) --------------------------------------
+     The same destinations as the pill bar, moved under the thumb. It is
+     rendered on every screen and revealed by the phone media query. */
+
+  .tab-bar {
+    display: none;
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 30;
+    align-items: stretch;
+    gap: 2px;
+    padding: 5px 6px;
+    padding-bottom: calc(5px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--rule);
+    background: var(--surface);
+    box-shadow: var(--shadow-sticky);
+  }
+
+  .tab-bar-item {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: calc(var(--tab-bar-h) - 10px);
+    border-radius: var(--r);
+    font-size: var(--fs-xs);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    transition:
+      background-color 0.14s ease,
+      color 0.14s ease;
+  }
+
+  .tab-bar-item svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 1.75;
+    flex: none;
+  }
+
+  .tab-bar-item > span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* ---- Page scaffolding --------------------------------------------- */
 
   .page-shell {
@@ -193,6 +280,15 @@
     border-radius: var(--r-lg);
     background: var(--surface);
     padding: 1.75rem;
+  }
+
+  /* Title on one side, the screen's one primary action on the other. */
+  .page-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
   }
 
   .page-title {
@@ -719,6 +815,205 @@
     font-weight: 600;
   }
 
+  /* ==========================================================================
+     Ledger cards — the same rows on a phone
+     ========================================================================== */
+
+  /* A ledger row carries seven columns, and `.ledger-wrap` clips rather than
+     scrolls, so on a narrow screen the amount and the state simply vanished.
+     The rows are rendered a second time as cards and the two layouts swap at
+     the breakpoint; sorting, which lived in the column headers, moves to the
+     chip strip above. */
+
+  .lcards {
+    display: none;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .lcard {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--st, var(--rule-strong));
+    border-radius: var(--r);
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .lcard[data-status="paid"] {
+    --st: var(--paid);
+  }
+
+  .lcard[data-status="overdue"] {
+    --st: var(--overdue);
+  }
+
+  .lcard[data-status="unpaid"] {
+    --st: var(--rule-strong);
+  }
+
+  .lcard-open {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 0.5625rem 0.75rem;
+    border: 0;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .lcard-open:active {
+    background: var(--surface-hover);
+  }
+
+  .lcard-line {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .lcard-meta {
+    align-items: center;
+  }
+
+  .lcard-number {
+    font-size: var(--fs-md);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .lcard-amount {
+    flex: none;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "zero" 1;
+    font-size: var(--fs-md);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    text-align: right;
+  }
+
+  /* A client can be owed in several currencies; they stack rather than sum. */
+  .lcard-money {
+    display: block;
+  }
+
+  .lcard-client {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+    color: var(--ink);
+  }
+
+  /* Hover reveals nothing on a touch screen, so the row's one action is a
+     permanent strip down the card's edge. */
+  .lcard-action {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--tap);
+    border: 0;
+    border-left: 1px solid var(--rule);
+    background: var(--surface-2);
+    color: var(--ink-muted);
+    cursor: pointer;
+  }
+
+  .lcard-action svg {
+    width: 17px;
+    height: 17px;
+    stroke-width: 1.75;
+  }
+
+  .lcard-action:active {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  /* ---- Sort strip (cards have no column headers) --------------------- */
+
+  .sortbar {
+    display: none;
+    align-items: center;
+    gap: 0.375rem;
+    margin-bottom: 0.5rem;
+    padding-bottom: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .sortbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sortbar-label {
+    flex: none;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .sortbar .fchip {
+    flex: none;
+  }
+
+  /* Pushes Delete to the far end of the action bar, away from Export. Its
+     own class rather than a utility, so the phone layout can drop it — a
+     Tailwind utility would outrank anything in this layer. */
+  .inv-action-end {
+    margin-left: auto;
+  }
+
+  /* ---- Fixed status overlays ----------------------------------------- */
+
+  .offline-banner {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    padding: 0 1rem;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: var(--fs-xs);
+    font-weight: 500;
+    box-shadow: var(--shadow-pop);
+  }
+
+  .pwa-prompt {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 50;
+  }
+
+  @media (min-width: 40rem) {
+    .pwa-prompt {
+      left: auto;
+      width: 20rem;
+    }
+  }
+
   .setup-prompt {
     display: flex;
     align-items: center;
@@ -1077,6 +1372,7 @@
   }
 
   .ystrip-tip[data-align="center"] {
+    left: var(--tip-x);
     transform: translateX(-50%);
   }
 
@@ -1147,6 +1443,13 @@
     margin: 0 0.375rem;
     background: var(--rule-strong);
     flex: none;
+  }
+
+  /* Transparent on a wide screen — the chips stay direct flex children of
+     `.filter-bar` and the row reads exactly as before. The phone turns it into
+     one horizontally scrolling strip instead of three wrapped lines. */
+  .filter-chips {
+    display: contents;
   }
 
   .filter-bar-tail {
@@ -1301,6 +1604,23 @@
   @media (max-width: 64rem) {
     .compose {
       grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* Stacked, the sidebar is below the form, so sticking it to the top only
+       makes the totals hover over what you are typing. */
+    .compose-sticky {
+      position: static;
+    }
+
+    /* Three cells and a year picker in under 1024px leaves the lead figure
+       about 260px, and a seven-figure sum at --fs-xl needs more than that —
+       it was truncating to "1 680 690,00…". */
+    .ystrip-cell {
+      padding: 0.625rem 0.875rem;
+    }
+
+    .ystrip-cell[data-lead="true"] .ystrip-figure {
+      font-size: var(--fs-lg);
     }
   }
 
@@ -2373,6 +2693,11 @@
     display: block;
   }
 
+  /* Shown only where a framed PDF does not render — see the phone block. */
+  .pdf-open {
+    display: none;
+  }
+
   .pdf-frame-state {
     position: absolute;
     inset: 0;
@@ -2752,6 +3077,7 @@
   .data-export {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.5rem;
     margin-top: 0.75rem;
     padding-top: 0.75rem;
@@ -2888,5 +3214,555 @@
 
   .settings-checkbox-label-spaced {
     margin-top: 0.625rem;
+  }
+
+  /* ==========================================================================
+     Small screens
+     --------------------------------------------------------------------------
+     Three breakpoints, each set by something that actually stops fitting:
+
+       56rem  a ledger row needs ~830px for its seven columns, and the year
+              strip's three figures need about the same — below this both
+              change shape rather than get clipped.
+       48rem  the pill bar runs out of room for five destinations; below this
+              they move to a bottom tab bar and every control is sized for a
+              thumb rather than a cursor.
+       40rem  the line-items table stops fitting its own columns.
+     ========================================================================== */
+
+  /* Hover reveals nothing on a touch screen, so anything it was hiding has to
+     be there from the start. */
+  @media (hover: none) {
+    .ledger-actions {
+      opacity: 1;
+    }
+
+    .ledger tbody tr:hover {
+      background: transparent;
+    }
+  }
+
+  @media (max-width: 55.99rem) {
+    /* ---- Ledgers become cards ---------------------------------------- */
+    .ledger-wrap {
+      display: none;
+    }
+
+    .lcards {
+      display: flex;
+    }
+
+    .sortbar {
+      display: flex;
+    }
+
+    /* ---- Year strip / filing period ---------------------------------- */
+    .ystrip-head {
+      flex-wrap: wrap;
+    }
+
+    .ystrip-nav {
+      flex: 1 0 100%;
+      justify-content: center;
+      padding: 0.3125rem 0.75rem;
+      border-right: 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .ystrip-cell {
+      flex: 1 1 50%;
+      padding: 0.5rem 0.75rem;
+    }
+
+    /* The figure the tax is computed on keeps the full width; the two that
+       add up to it share the row below. */
+    .ystrip-cell[data-lead="true"] {
+      flex: 1 0 100%;
+      border-right: 0;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    /* Side by side, the two component cells get half the panel each, and at
+       320px that is 15px short of a seven-figure sum — it was ellipsising a
+       number. The figure scales with the panel instead of truncating. */
+    .ystrip-figure {
+      font-size: clamp(var(--fs-base), 4vw, var(--fs-md));
+    }
+
+    /* Back to full size now that the head stacks: with the whole width to
+       itself the headline figure fits even at 320px, and the two components
+       under it are what carry the size contrast. */
+    .ystrip-cell[data-lead="true"] .ystrip-figure {
+      font-size: var(--fs-xl);
+    }
+
+    .ystrip-plot {
+      padding: 0.75rem 0.75rem 0.5rem;
+      gap: 1px;
+    }
+
+    .ystrip-plot::after {
+      left: 0.75rem;
+      right: 0.75rem;
+      bottom: calc(0.5rem + 18px);
+    }
+
+    .ystrip-track {
+      height: 52px;
+    }
+
+    .ystrip-stack {
+      max-width: 18px;
+    }
+
+    .ystrip-empty {
+      inset: 0.75rem 0.75rem calc(0.5rem + 22px);
+    }
+
+    /* A tip offset by a percentage of a 350px panel lands half off it, so on
+       a narrow screen it spans the panel instead. */
+    .ystrip-tip,
+    .ystrip-tip[data-align="center"],
+    .ystrip-tip[data-align="start"],
+    .ystrip-tip[data-align="end"] {
+      left: 0.5rem;
+      right: 0.5rem;
+      min-width: 0;
+      transform: none;
+    }
+
+    /* ---- Filters ------------------------------------------------------ */
+    .filter-bar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.5rem;
+      padding: 0.75rem 0 0.625rem;
+    }
+
+    .search-field {
+      flex: 1 1 auto;
+      margin-right: 0;
+    }
+
+    /* One strip that scrolls, rather than three wrapped rows of chips. */
+    .filter-chips {
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+
+    .filter-chips::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-chips > * {
+      flex: none;
+    }
+
+    .filter-bar-tail {
+      margin-left: 0;
+      flex-wrap: wrap;
+      justify-content: space-between;
+    }
+
+    /* ---- Period actions ---------------------------------------------- */
+    .period-actions {
+      padding: 0.625rem 0.875rem;
+    }
+  }
+
+  @media (max-width: 47.99rem) {
+    /* ---- Shell -------------------------------------------------------- */
+
+    /* Five destinations will not fit the pill bar here. They move under the
+       thumb, and the 5rem of top chrome goes with them — on an 844px screen
+       that is worth more than a brand mark the page title already implies. */
+    .app-nav-wrap {
+      display: none;
+    }
+
+    .app-main {
+      margin-top: 0;
+    }
+
+    .tab-bar {
+      display: flex;
+    }
+
+    .app-shell {
+      padding-left: 1rem;
+      padding-right: 1rem;
+      padding-bottom: calc(
+        var(--tab-bar-h) + env(safe-area-inset-bottom) + 1.5rem
+      );
+    }
+
+    .page-shell {
+      padding-top: 1rem;
+    }
+
+    .page-head {
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    /* ---- Touch sizing -------------------------------------------------
+       Safari zooms the whole page whenever a focused field is under 16px, so
+       the field's own density gives way to the layout not jumping on tap. */
+    .form-input,
+    .form-textarea,
+    .form-select,
+    .cell-input,
+    .search-field input,
+    .datefield-trigger,
+    .selectfield-trigger {
+      font-size: 1rem;
+    }
+
+    .form-input,
+    .form-textarea,
+    .form-select,
+    .datefield-trigger,
+    .selectfield-trigger {
+      padding-top: 0.5rem;
+      padding-bottom: 0.5rem;
+    }
+
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger,
+    .btn-success,
+    .btn-paid,
+    .btn-ghost {
+      min-height: var(--tap);
+      padding: 0.5rem 0.875rem;
+    }
+
+    .fchip {
+      min-height: 34px;
+      padding: 0.375rem 0.6875rem;
+    }
+
+    .ledger-action,
+    .ystrip-arrow {
+      width: 34px;
+      height: 34px;
+    }
+
+    .datefield-day {
+      height: 34px;
+    }
+
+    .stepper-btn {
+      width: 24px;
+      height: 17px;
+    }
+
+    .stepper input {
+      padding-right: 2.25rem;
+    }
+
+    .selectfield-option {
+      padding: 0.5625rem 0.5rem;
+    }
+
+    /* ---- Banners ------------------------------------------------------
+       Message on the first line, figures and the action on the second, so
+       three fragments stop elbowing each other into three ragged rows. */
+    .overdue-banner {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      column-gap: 0.5rem;
+      row-gap: 0.25rem;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .overdue-banner > svg {
+      grid-area: 1 / 1 / 2 / 2;
+    }
+
+    .overdue-text {
+      grid-area: 1 / 2 / 2 / 4;
+    }
+
+    .overdue-totals {
+      grid-area: 2 / 1 / 3 / 3;
+      margin-left: 0;
+    }
+
+    .overdue-cta {
+      grid-area: 2 / 3 / 3 / 4;
+      padding-left: 0.5rem;
+    }
+
+    .setup-prompt {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: center;
+      column-gap: 0.5rem;
+      row-gap: 0.25rem;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .setup-prompt > svg {
+      grid-area: 1 / 1 / 2 / 2;
+    }
+
+    .setup-cta {
+      grid-column: 2;
+      margin-left: 0;
+      padding-left: 0;
+      border-left: 0;
+      text-decoration: underline;
+    }
+
+    /* ---- Document header and its actions ------------------------------ */
+    .inv-head {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+      padding: 0.75rem 0.875rem;
+    }
+
+    .inv-money {
+      align-items: flex-start;
+    }
+
+    .inv-number,
+    .inv-total,
+    .client-title {
+      font-size: var(--fs-lg);
+    }
+
+    /* Six buttons wrapped by content leave orphans; equal-basis items pair up
+       two to a row and the odd one out fills the line. */
+    .inv-actions {
+      gap: 0.5rem;
+      padding: 0.75rem 0.875rem;
+    }
+
+    .inv-actions > * {
+      flex: 1 1 8rem;
+    }
+
+    .inv-actions > .btn-primary:first-child {
+      flex: 1 1 100%;
+    }
+
+    /* ---- Edit mode ---------------------------------------------------- */
+    .editing-bar,
+    .settings-bar {
+      top: 0.5rem;
+      row-gap: 0.5rem;
+    }
+
+    .editing-bar-actions {
+      flex: 1 1 100%;
+    }
+
+    .editing-bar-actions > * {
+      flex: 1 1 auto;
+    }
+
+    /* ---- The just-saved invoice --------------------------------------
+       Three buttons that refuse to break words are wider than the phone; the
+       row wraps and they pair up like the detail page's actions. */
+    .saved-head {
+      padding: 0.75rem 0.875rem;
+    }
+
+    .saved-actions {
+      flex: 1 1 100%;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .saved-actions > * {
+      flex: 1 1 8rem;
+    }
+
+    /* ---- PDF ----------------------------------------------------------
+       A framed PDF is at best one static page on a phone and at worst an
+       empty rectangle, so the real viewer is one tap away underneath it. */
+    .pdf-preview {
+      padding: 0.75rem;
+    }
+
+    .pdf-frame {
+      max-height: 55vh;
+      max-height: 55dvh;
+    }
+
+    .pdf-open {
+      display: inline-flex;
+      width: 100%;
+    }
+
+    /* ---- Dialogs become sheets ---------------------------------------- */
+    .dialog-backdrop {
+      align-items: flex-end;
+      padding: 0;
+    }
+
+    .dialog {
+      max-width: none;
+      border-bottom: 0;
+      border-radius: var(--r-lg) var(--r-lg) 0 0;
+      animation: sheet-in 0.18s cubic-bezier(0.2, 0, 0.1, 1);
+    }
+
+    .dialog-foot {
+      border-radius: 0;
+      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    }
+
+    .dialog-foot {
+      flex-wrap: wrap;
+    }
+
+    .dialog-foot > * {
+      flex: 1 1 auto;
+    }
+
+    /* Inside a sheet there is nothing below the field, so the calendar opens
+       upward instead of off the bottom of the screen. */
+    .dialog .datefield-pop {
+      top: auto;
+      bottom: calc(100% + 4px);
+    }
+
+    .datefield-pop {
+      max-width: calc(100vw - 2rem);
+    }
+
+    /* ---- Overlays clear the tab bar ----------------------------------- */
+    .notices {
+      left: 0.75rem;
+      right: 0.75rem;
+      bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom) + 0.75rem);
+      max-width: none;
+    }
+
+    .pwa-prompt {
+      bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom) + 0.75rem);
+    }
+
+    /* With no bar above it, a strip pinned to the top of the viewport covers
+       the page title; it sits over the tab bar instead. */
+    .offline-banner {
+      top: auto;
+      bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom));
+    }
+
+    .inv-action-end {
+      margin-left: 0;
+    }
+  }
+
+  @media (max-width: 39.99rem) {
+    /* ---- Line items become cards -------------------------------------
+       Six fixed columns do not fit; the row keeps its order but wraps, and
+       each field carries the label the dropped header used to give it. */
+    .items-table,
+    .items-table tbody,
+    .items-table tr,
+    .items-table td {
+      display: block;
+      width: auto;
+    }
+
+    .items-table thead {
+      display: none;
+    }
+
+    .items-table tr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 0.375rem;
+      padding: 0.625rem 0.5rem;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .items-table tbody tr:last-child {
+      border-bottom: 0;
+    }
+
+    .items-table td {
+      border-bottom: 0;
+    }
+
+    .items-table td[data-cell="description"] {
+      flex: 1 1 100%;
+    }
+
+    /* A basis over a third of the row forces two fields to a line, which is
+       what keeps "cena za jednotku" from ellipsising down to "cena za …". */
+    .items-table td[data-cell="amount"],
+    .items-table td[data-cell="unit"],
+    .items-table td[data-cell="price"],
+    .items-table td[data-cell="vat"] {
+      flex: 1 1 7rem;
+      min-width: 0;
+    }
+
+    .items-table td[data-cell="total"] {
+      flex: 1 1 auto;
+    }
+
+    .items-table td[data-cell="remove"] {
+      flex: none;
+    }
+
+    .items-table td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 3px;
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--ink-faint);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .items-table td[data-cell="total"]::before {
+      text-align: right;
+    }
+
+    /* Standing alone rather than inside a ruled grid, each input needs its
+       own outline back. */
+    .items-table .cell-input {
+      height: var(--tap);
+      border: 1px solid var(--rule-strong);
+      border-radius: var(--r);
+      background: var(--surface);
+    }
+
+    .items-line-total {
+      height: var(--tap);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-end;
+      font-size: var(--fs-md);
+    }
+
+    .items-remove {
+      width: var(--tap);
+      height: var(--tap);
+    }
+  }
+
+  @keyframes sheet-in {
+    from {
+      transform: translateY(100%);
+    }
   }
 }

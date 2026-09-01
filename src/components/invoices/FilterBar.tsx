@@ -73,76 +73,81 @@ export function FilterBar({
         />
       </div>
 
-      {STATUSES.map((status) => {
-        const on = statuses.has(status);
-        return (
-          <button
-            key={status}
-            type="button"
-            className="fchip"
-            data-tone={status}
-            data-on={on}
-            aria-pressed={on}
-            onClick={() => onToggleStatus(status)}
-          >
-            {on ? <Check /> : <span className="fchip-dot" />}
-            {statusLabel(status)}
-          </button>
-        );
-      })}
-
-      <span className="filter-divider" role="separator" />
-
-      {TYPES.map((type) => {
-        const on = types.has(type);
-        return (
-          <button
-            key={type}
-            type="button"
-            className="fchip"
-            data-tone={type === "bitcoin" ? "btc" : "fiat"}
-            data-on={on}
-            aria-pressed={on}
-            onClick={() => onToggleType(type)}
-          >
-            {on ? <Check /> : <span className="fchip-dot" />}
-            {type === "bitcoin"
-              ? t("invoicesList.paymentTypeBitcoin")
-              : t("invoicesList.paymentTypeFiat")}
-          </button>
-        );
-      })}
-
-      {currencies.length > 1 ? (
-        <>
-          <span className="filter-divider" role="separator" />
-          {currencies.map((code) => (
+      {/* The chips are one scrollable strip on a phone and plain flex children
+          on a wide screen (`display: contents`), so the desktop bar keeps the
+          single-row alignment it had before. */}
+      <div className="filter-chips">
+        {STATUSES.map((status) => {
+          const on = statuses.has(status);
+          return (
             <button
-              key={code}
+              key={status}
               type="button"
-              className="fchip mono"
-              data-on={code === activeCurrency}
-              aria-pressed={code === activeCurrency}
-              onClick={() => onPickCurrency(code)}
+              className="fchip"
+              data-tone={status}
+              data-on={on}
+              aria-pressed={on}
+              onClick={() => onToggleStatus(status)}
             >
-              {code}
+              {on ? <Check /> : <span className="fchip-dot" />}
+              {statusLabel(status)}
             </button>
-          ))}
-        </>
-      ) : null}
+          );
+        })}
 
-      {period && periodLabel ? (
-        <button
-          type="button"
-          className="fchip fchip-period"
-          data-on="true"
-          onClick={onClearPeriod}
-          title={t("invoicesList.clearPeriod")}
-        >
-          {periodLabel}
-          <X />
-        </button>
-      ) : null}
+        <span className="filter-divider" role="separator" />
+
+        {TYPES.map((type) => {
+          const on = types.has(type);
+          return (
+            <button
+              key={type}
+              type="button"
+              className="fchip"
+              data-tone={type === "bitcoin" ? "btc" : "fiat"}
+              data-on={on}
+              aria-pressed={on}
+              onClick={() => onToggleType(type)}
+            >
+              {on ? <Check /> : <span className="fchip-dot" />}
+              {type === "bitcoin"
+                ? t("invoicesList.paymentTypeBitcoin")
+                : t("invoicesList.paymentTypeFiat")}
+            </button>
+          );
+        })}
+
+        {currencies.length > 1 ? (
+          <>
+            <span className="filter-divider" role="separator" />
+            {currencies.map((code) => (
+              <button
+                key={code}
+                type="button"
+                className="fchip mono"
+                data-on={code === activeCurrency}
+                aria-pressed={code === activeCurrency}
+                onClick={() => onPickCurrency(code)}
+              >
+                {code}
+              </button>
+            ))}
+          </>
+        ) : null}
+
+        {period && periodLabel ? (
+          <button
+            type="button"
+            className="fchip fchip-period"
+            data-on="true"
+            onClick={onClearPeriod}
+            title={t("invoicesList.clearPeriod")}
+          >
+            {periodLabel}
+            <X />
+          </button>
+        ) : null}
+      </div>
 
       <div className="filter-bar-tail">
         {activeCount > 0 ? (
