@@ -417,11 +417,11 @@ export function ClientDetailPage({
                 {t("clientDetail.noInvoices")}
               </div>
             ) : (
+              /* No sort props: this history is rendered in query order, and a
+                 lit chip claiming an order the list does not have is worse
+                 than no chips — on a phone they are the only affordance. */
               <LedgerTable
                 rows={rows}
-                sortKey="invoiceNumber"
-                sortDir="desc"
-                onSort={() => undefined}
                 onOpen={onViewInvoice}
                 showClient={false}
                 onRecordPayment={(row) => onViewInvoice(row.id)}

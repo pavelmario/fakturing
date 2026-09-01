@@ -2,6 +2,7 @@ import { use, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { ArrowDown, ArrowUp, Plus, Search } from "lucide-react";
+import { SortChips } from "./invoices/SortChips";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
 import { clientTotals, emptyTotals, type ClientInvoice } from "../lib/clientStats";
@@ -217,28 +218,12 @@ export function ClientsListPage({
           </div>
         ) : (
           <>
-            <div className="sortbar" role="group" aria-label={t("common.sortBy")}>
-              <span className="sortbar-label">{t("common.sortBy")}</span>
-              {sortKeys.map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  className="fchip"
-                  data-on={sortKey === key}
-                  aria-pressed={sortKey === key}
-                  onClick={() => toggleSort(key)}
-                >
-                  {label}
-                  {sortKey === key ? (
-                    sortDir === "asc" ? (
-                      <ArrowUp />
-                    ) : (
-                      <ArrowDown />
-                    )
-                  ) : null}
-                </button>
-              ))}
-            </div>
+            <SortChips
+              keys={sortKeys}
+              activeKey={sortKey}
+              dir={sortDir}
+              onPick={toggleSort}
+            />
 
             <div className="ledger-wrap">
             <table className="ledger">
@@ -352,19 +337,32 @@ export function ClientsListPage({
                         {client.stats.count}{" "}
                         {tp("invoicesList.invoiceCount", client.stats.count)}
                       </span>
-                      {lines(client.stats.unpaid).length ? (
+                      {/* The list's default order is by last invoice, so the
+                          card has to show the date it is sorted on. */}
+                      <span className="ledger-date">
+                        {client.stats.lastIssue
+                          ? formatDate(
+                              new Date(client.stats.lastIssue).toISOString(),
+                              locale,
+                            )
+                          : t("common.placeholderDash")}
+                      </span>
+                    </span>
+                    {lines(client.stats.unpaid).length ? (
+                      <span className="lcard-line lcard-meta">
                         <span
                           className="lstate"
                           data-state={
                             client.stats.overdueCount > 0 ? "overdue" : "unpaid"
                           }
                         >
+                          {t("clientsList.colUnpaid")}{" "}
                           {lines(client.stats.unpaid)
                             .map(([code, value]) => `${amount(value)} ${code}`)
                             .join(" · ")}
                         </span>
-                      ) : null}
-                    </span>
+                      </span>
+                    ) : null}
                   </button>
                 </li>
               ))}

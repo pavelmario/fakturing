@@ -36,8 +36,9 @@
     min-height: 100dvh;
   }
 
-  /* Kills the 300ms tap delay and the grey flash Android draws over every
-     control the design already gives a pressed state to. */
+  /* Kills the 300ms tap delay and the grey flash Android paints over every
+     control. Suppressing it means the app owes every control a pressed state
+     of its own — see `:active` below. */
   button,
   a,
   label,
@@ -47,6 +48,36 @@
   textarea {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* :hover never fires on a touch screen, so without this a tap on "Uložit"
+     looks like nothing happened at all. One uniform press, so it needs no
+     per-control colour decision and works on any ground. */
+  .btn-primary:active:not(:disabled),
+  .btn-secondary:active:not(:disabled),
+  .btn-danger:active:not(:disabled),
+  .btn-success:active:not(:disabled),
+  .btn-paid:active:not(:disabled),
+  .btn-ghost:active:not(:disabled),
+  .fchip:active,
+  .ledger-action:active:not(:disabled),
+  .ystrip-arrow:active,
+  .items-add:active:not(:disabled),
+  .datefield-trigger:active:not(:disabled),
+  .selectfield-trigger:active:not(:disabled),
+  .datefield-day:active:not(:disabled),
+  .selectfield-option:active:not(:disabled),
+  .overdue-banner:active,
+  .setup-prompt:active,
+  .token:active,
+  .btc-switch:active,
+  .input-affix-btn:active:not(:disabled),
+  .stepper-btn:active {
+    transform: scale(0.97);
+  }
+
+  .tab-button-inactive:active {
+    background: var(--surface-hover);
   }
 
   a {
@@ -112,13 +143,14 @@
     margin-top: 5rem;
   }
 
-  @media (min-width: 40rem) {
+  @media (min-width: 48rem) {
     .app-nav-wrap {
       padding: 0 1.5rem;
     }
   }
 
   .app-loading {
+    min-height: 100vh;
     min-height: 100dvh;
     display: flex;
     align-items: center;
@@ -999,12 +1031,15 @@
     box-shadow: var(--shadow-pop);
   }
 
+  /* Clear of `.notices`, which stacks upward from bottom: 1rem — the reload
+     button is useless behind a toast. Above them too, so an overlap on a
+     crowded screen still leaves the actionable thing on top. */
   .pwa-prompt {
     position: fixed;
     left: 1rem;
     right: 1rem;
-    bottom: 1rem;
-    z-index: 50;
+    bottom: 4.5rem;
+    z-index: 61;
   }
 
   @media (min-width: 40rem) {
@@ -3340,7 +3375,6 @@
     }
 
     .search-field {
-      flex: 1 1 auto;
       margin-right: 0;
     }
 
@@ -3602,13 +3636,21 @@
       width: 100%;
     }
 
-    /* ---- Dialogs become sheets ---------------------------------------- */
+    /* ---- Dialogs become sheets ----------------------------------------
+       The backdrop scrolls, not the dialog: below ~322px of viewport height
+       (a landscape phone, or any phone with the keyboard open) the sheet is
+       taller than the screen and its head went off the top, unreachable.
+       `margin-top: auto` keeps it pinned to the bottom while it does fit, and
+       scrolling the backdrop rather than the body leaves the date picker —
+       which is absolutely positioned inside that body — unclipped. */
     .dialog-backdrop {
-      align-items: flex-end;
+      align-items: flex-start;
       padding: 0;
+      overflow-y: auto;
     }
 
     .dialog {
+      margin-top: auto;
       max-width: none;
       border-bottom: 0;
       border-radius: var(--r-lg) var(--r-lg) 0 0;
@@ -3616,12 +3658,9 @@
     }
 
     .dialog-foot {
+      flex-wrap: wrap;
       border-radius: 0;
       padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
-    }
-
-    .dialog-foot {
-      flex-wrap: wrap;
     }
 
     .dialog-foot > * {
@@ -3635,10 +3674,6 @@
       bottom: calc(100% + 4px);
     }
 
-    .datefield-pop {
-      max-width: calc(100vw - 2rem);
-    }
-
     /* ---- Overlays clear the tab bar ----------------------------------- */
     .notices {
       left: 0.75rem;
@@ -3648,7 +3683,7 @@
     }
 
     .pwa-prompt {
-      bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom) + 0.75rem);
+      bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom) + 4.25rem);
     }
 
     /* With no bar above it, a strip pinned to the top of the viewport covers

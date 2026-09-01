@@ -573,7 +573,8 @@ export function ExpensesListPage({
             </div>
 
             {/* A VAT payer's row carries eight columns; on a phone the same
-                document becomes a card, base and VAT on the meta line. */}
+                document becomes a card — the document on the first two lines,
+                the two VAT figures on a third. */}
             <ul className="lcards">
               {visible.map((expense) => {
                 const gross = Number(expense.amountWithVat ?? 0);
@@ -589,9 +590,9 @@ export function ExpensesListPage({
                         <span className="lcard-client">
                           {expense.description}
                         </span>
-                        <span className="lcard-amount num">
-                          {amount(gross)}
-                        </span>
+                        {/* The table's header carries the currency
+                            ("Celkem · CZK") and is hidden here. */}
+                        <span className="lcard-amount num">{money(gross)}</span>
                       </span>
                       <span className="lcard-line lcard-meta">
                         <span className="ledger-date">
@@ -604,16 +605,19 @@ export function ExpensesListPage({
                             ? ` · ${expense.expenseNumber}`
                             : ""}
                         </span>
-                        {isVatPayer ? (
-                          <span className="ledger-date">
-                            {t("expensesList.colVat")} {amount(gross - base)}
+                        {isVatPayer && expense.supplierVat ? (
+                          <span className="ledger-date mono">
+                            {expense.supplierVat}
                           </span>
                         ) : null}
                       </span>
-                      {isVatPayer && expense.supplierVat ? (
+                      {isVatPayer ? (
                         <span className="lcard-line lcard-meta">
-                          <span className="ledger-date mono">
-                            {expense.supplierVat}
+                          <span className="ledger-date">
+                            {t("expensesList.colBase")} {amount(base)}
+                          </span>
+                          <span className="ledger-date">
+                            {t("expensesList.colVat")} {amount(gross - base)}
                           </span>
                         </span>
                       ) : null}

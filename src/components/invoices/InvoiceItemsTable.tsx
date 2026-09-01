@@ -99,7 +99,6 @@ export function InvoiceItemsTable({
                       <input
                         type="number"
                         min={0}
-                        inputMode="decimal"
                         className="cell-input cell-num"
                         value={item.amount}
                         disabled={disabled}
@@ -140,7 +139,6 @@ export function InvoiceItemsTable({
                     type="number"
                     min={0}
                     step="0.01"
-                    inputMode="decimal"
                     className="cell-input cell-num"
                     value={item.unitPrice}
                     disabled={disabled}

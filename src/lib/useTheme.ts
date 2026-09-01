@@ -17,6 +17,18 @@ export const useTheme = () => {
   useEffect(() => {
     try {
       document.documentElement.classList.toggle("dark", theme === "dark");
+      /* The browser chrome has to follow the app, and the app follows a stored
+         choice rather than the OS — a dark app under a light system otherwise
+         gets a cream address bar. Read back from the token so the colour has
+         one source of truth in tokens.css. */
+      const paper = getComputedStyle(document.documentElement)
+        .getPropertyValue("--paper")
+        .trim();
+      if (paper) {
+        document
+          .querySelector('meta[name="theme-color"]')
+          ?.setAttribute("content", paper);
+      }
       localStorage.setItem("theme", theme);
     } catch {
       /* ignore */
