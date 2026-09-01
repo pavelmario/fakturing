@@ -154,7 +154,8 @@ the popup opens, not as an obvious header error. Adding
 - **`@trezor/connect-web`** (Connect 10) for hardware-wallet BTC addresses — the
   wallet core lives in Trezor Suite, reached over a localhost socket when Suite
   Desktop is running and through a Suite Web popup otherwise. Needs **Suite
-  26.7.2+** and the security headers below
+  26.7.2+** and the security headers below. Not available in iOS browsers,
+  where Suite Web refuses to run — the app says so instead of sending you there
 - **`bip39`** for the seed phrase, **`lucide-react`** for icons
 - **`vite-plugin-pwa`** — offline shell with an explicit update prompt
 
