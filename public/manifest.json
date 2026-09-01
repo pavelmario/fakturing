@@ -3,8 +3,8 @@
   "short_name": "Fakturing",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#111827",
+  "background_color": "#f2efe7",
+  "theme_color": "#f2efe7",
   "icons": [
     {
       "src": "/pwa-64x64.png",

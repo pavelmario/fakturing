@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, Check, RotateCcw, Wallet } from "lucide-react";
 import { formatDate, type InvoiceStatus } from "../../lib/invoice";
 import { useI18n } from "../../i18n";
+import { SortChips } from "./SortChips";
 
 export type SortKey =
   | "invoiceNumber"
@@ -26,9 +27,13 @@ export type LedgerRow = {
 
 type LedgerTableProps = {
   rows: readonly LedgerRow[];
-  sortKey: SortKey;
-  sortDir: SortDir;
-  onSort: (key: SortKey) => void;
+  /* Sorting is optional: a client's own history is rendered in query order,
+     and headers and chips that reorder nothing are worse than none — on a
+     phone the chips are the only affordance, so a lit one claims an order
+     the list does not have. */
+  sortKey?: SortKey;
+  sortDir?: SortDir;
+  onSort?: (key: SortKey) => void;
   onOpen: (id: string) => void;
   onRecordPayment: (row: LedgerRow) => void;
   onUndoPayment: (row: LedgerRow) => void;
@@ -77,8 +82,8 @@ function SortHeader({
 
 export function LedgerTable({
   rows,
-  sortKey,
-  sortDir,
+  sortKey = "invoiceNumber",
+  sortDir = "desc",
   onSort,
   onOpen,
   onRecordPayment,
@@ -89,6 +94,22 @@ export function LedgerTable({
   currencies,
 }: LedgerTableProps) {
   const { t, tp, locale } = useI18n();
+
+  const header = (label: string, column: SortKey, align?: "right") =>
+    onSort ? (
+      <SortHeader
+        label={label}
+        column={column}
+        activeKey={sortKey}
+        dir={sortDir}
+        onSort={onSort}
+        align={align}
+      />
+    ) : (
+      <th style={align === "right" ? { textAlign: "right" } : undefined}>
+        {label}
+      </th>
+    );
 
   /* With one currency in view the code lives in the header and the rows stay
      bare, which keeps the column narrow and the digits aligned. As soon as a
@@ -161,8 +182,6 @@ export function LedgerTable({
       </button>
     );
 
-  /* Sorting lives in the column headers, which the card layout does not have,
-     so the phone gets the same five keys as a scrollable chip row. */
   const sortKeys: readonly { key: SortKey; label: string }[] = [
     { key: "invoiceNumber", label: t("invoicesList.colNumber") },
     ...(showClient
@@ -175,77 +194,34 @@ export function LedgerTable({
 
   return (
     <>
-      <div className="sortbar" role="group" aria-label={t("common.sortBy")}>
-        <span className="sortbar-label">{t("common.sortBy")}</span>
-        {sortKeys.map(({ key, label }) => (
-          <button
-            key={key}
-            type="button"
-            className="fchip"
-            data-on={sortKey === key}
-            aria-pressed={sortKey === key}
-            onClick={() => onSort(key)}
-          >
-            {label}
-            {sortKey === key ? (
-              sortDir === "asc" ? (
-                <ArrowUp />
-              ) : (
-                <ArrowDown />
-              )
-            ) : null}
-          </button>
-        ))}
-      </div>
+      {onSort ? (
+        <SortChips
+          keys={sortKeys}
+          activeKey={sortKey}
+          dir={sortDir}
+          onPick={onSort}
+        />
+      ) : null}
 
       <div className="ledger-wrap">
         <table className="ledger">
           <thead>
             <tr>
               <th className="ledger-rail" style={{ borderBottom: 0 }} />
-              <SortHeader
-                label={t("invoicesList.colNumber")}
-                column="invoiceNumber"
-                activeKey={sortKey}
-                dir={sortDir}
-                onSort={onSort}
-              />
-              {showClient ? (
-                <SortHeader
-                  label={t("invoicesList.colClient")}
-                  column="clientName"
-                  activeKey={sortKey}
-                  dir={sortDir}
-                  onSort={onSort}
-                />
-              ) : null}
-              <SortHeader
-                label={t("invoicesList.colIssued")}
-                column="issueDate"
-                activeKey={sortKey}
-                dir={sortDir}
-                onSort={onSort}
-              />
-              <SortHeader
-                label={t("invoicesList.colDue")}
-                column="dueDate"
-                activeKey={sortKey}
-                dir={sortDir}
-                onSort={onSort}
-              />
+              {header(t("invoicesList.colNumber"), "invoiceNumber")}
+              {showClient
+                ? header(t("invoicesList.colClient"), "clientName")
+                : null}
+              {header(t("invoicesList.colIssued"), "issueDate")}
+              {header(t("invoicesList.colDue"), "dueDate")}
               <th>{t("invoicesList.colState")}</th>
-              <SortHeader
-                label={
-                  singleCurrency
-                    ? `${t("invoicesList.colAmount")} · ${singleCurrency}`
-                    : t("invoicesList.colAmount")
-                }
-                column="total"
-                activeKey={sortKey}
-                dir={sortDir}
-                onSort={onSort}
-                align="right"
-              />
+              {header(
+                singleCurrency
+                  ? `${t("invoicesList.colAmount")} · ${singleCurrency}`
+                  : t("invoicesList.colAmount"),
+                "total",
+                "right",
+              )}
               <th style={{ width: "70px" }} />
             </tr>
           </thead>
@@ -325,10 +301,12 @@ export function LedgerTable({
                     </span>
                   ) : null}
                 </span>
+                {/* The table puts the code in its header ("Částka · CZK")
+                    and the table is hidden here, so the card has to carry
+                    it — otherwise every amount on a phone is a bare
+                    figure with no currency at all. */}
                 <span className="lcard-amount num">
-                  {singleCurrency
-                    ? formatAmount(row.total)
-                    : formatMoney(row.total, row.currency)}
+                  {formatMoney(row.total, row.currency)}
                 </span>
               </span>
               {showClient ? (

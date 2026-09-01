@@ -10,17 +10,10 @@
     <meta name="apple-mobile-web-app-title" content="Fakturing" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!-- The browser chrome takes the ledger-paper ground rather than a slate
-         blue that appears nowhere in the app. -->
-    <meta
-      name="theme-color"
-      media="(prefers-color-scheme: light)"
-      content="#f2efe7"
-    />
-    <meta
-      name="theme-color"
-      media="(prefers-color-scheme: dark)"
-      content="#131210"
-    />
+         blue that appears nowhere in the app. Deliberately not keyed to
+         prefers-color-scheme: the theme is a stored choice that only defaults
+         to the OS, so useTheme rewrites this from the live --paper token. -->
+    <meta name="theme-color" content="#f2efe7" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
