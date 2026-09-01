@@ -110,10 +110,17 @@ export function ClientsListPage({
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
     const list = clients
-      .map((client) => ({
-        ...client,
-        stats: totals.get(client.name ?? "") ?? emptyTotals(),
-      }))
+      .map((client) => {
+        const stats = totals.get(client.name ?? "") ?? emptyTotals();
+        /* Sorted once here rather than at each of the seven places the table
+           and the card layout between them needed the same two lists. */
+        return {
+          ...client,
+          stats,
+          invoicedLines: lines(stats.invoiced),
+          unpaidLines: lines(stats.unpaid),
+        };
+      })
       .filter((client) => {
         if (!needle) return true;
         return [client.name, client.email, client.companyIdentificationNumber]
@@ -265,7 +272,7 @@ export function ClientsListPage({
                     </td>
                     <td className="ledger-amount">{client.stats.count}</td>
                     <td className="ledger-amount">
-                      {lines(client.stats.invoiced).map(([code, value]) => (
+                      {client.invoicedLines.map(([code, value]) => (
                         <div key={code}>
                           {amount(value)}
                           <span className="cur">{code}</span>
@@ -273,8 +280,8 @@ export function ClientsListPage({
                       ))}
                     </td>
                     <td className="ledger-amount">
-                      {lines(client.stats.unpaid).length ? (
-                        lines(client.stats.unpaid).map(([code, value]) => (
+                      {client.unpaidLines.length ? (
+                        client.unpaidLines.map(([code, value]) => (
                           <div
                             key={code}
                             className="lstate"
@@ -319,8 +326,8 @@ export function ClientsListPage({
                         {client.name ?? t("clientsList.unnamed")}
                       </span>
                       <span className="lcard-amount num">
-                        {lines(client.stats.invoiced).length
-                          ? lines(client.stats.invoiced).map(([code, value]) => (
+                        {client.invoicedLines.length
+                          ? client.invoicedLines.map(([code, value]) => (
                               <span key={code} className="lcard-money">
                                 {amount(value)}
                                 <span className="cur">{code}</span>
@@ -348,7 +355,7 @@ export function ClientsListPage({
                           : t("common.placeholderDash")}
                       </span>
                     </span>
-                    {lines(client.stats.unpaid).length ? (
+                    {client.unpaidLines.length ? (
                       <span className="lcard-line lcard-meta">
                         <span
                           className="lstate"
@@ -357,7 +364,7 @@ export function ClientsListPage({
                           }
                         >
                           {t("clientsList.colUnpaid")}{" "}
-                          {lines(client.stats.unpaid)
+                          {client.unpaidLines
                             .map(([code, value]) => `${amount(value)} ${code}`)
                             .join(" · ")}
                         </span>
