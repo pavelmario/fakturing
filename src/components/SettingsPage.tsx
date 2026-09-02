@@ -26,6 +26,11 @@ import {
   NUMBER_TOKENS,
   formatInvoiceNumber,
 } from "../lib/invoiceNumber";
+import {
+  matchBankAccount,
+  matchClient,
+  parseFakturoidXml,
+} from "../lib/fakturoidImport";
 import { useI18n } from "../i18n";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { DonatePanel } from "./invoices/DonatePanel";
@@ -52,7 +57,7 @@ export function SettingsPage({
   const [expenses, setExpenses] = useState<boolean>(false);
   const [supplierVatPrefill, setSupplierVatPrefill] = useState<string>("");
   const [language, setLanguage] = useState<"cz" | "en">("cz");
-  const { t, locale } = useI18n(language);
+  const { t, tp, locale } = useI18n(language);
   const confirmDialog = useConfirm();
   const notify = useNotify();
   const [poRequired, setPoRequired] = useState<boolean>(false);
@@ -95,6 +100,7 @@ export function SettingsPage({
   const importInvoicesInputRef = useRef<HTMLInputElement | null>(null);
   const importExpensesInputRef = useRef<HTMLInputElement | null>(null);
   const importBankAccountsInputRef = useRef<HTMLInputElement | null>(null);
+  const importFakturoidInputRef = useRef<HTMLInputElement | null>(null);
 
   const profileQuery = useMemo(
     () =>
@@ -1040,6 +1046,203 @@ export function SettingsPage({
     reader.readAsText(file);
   };
 
+  /**
+   * Fakturoid's XML export — the one format of theirs that is a single file
+   * and still carries the invoice lines.
+   *
+   * Nothing is written until the summary is confirmed, and an invoice number
+   * already in the ledger is left where it is, so re-importing the same file
+   * (or a wider export overlapping an earlier one) adds only what is new.
+   */
+  const handleImportFakturoidXml = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        let parsed;
+        try {
+          parsed = parseFakturoidXml(String(reader.result ?? ""));
+        } catch (error) {
+          console.error("Fakturoid parse error:", error);
+          notify(t("alerts.fakturoidInvalidFile"), "error");
+          return;
+        }
+
+        if (parsed.invoices.length === 0) {
+          notify(t("alerts.fakturoidNoInvoices"), "error");
+          return;
+        }
+
+        const known = new Set<string>(
+          invoices.map((row) => String(row.invoiceNumber)),
+        );
+        const fresh = parsed.invoices.filter(
+          (invoice) => !known.has(invoice.invoiceNumber),
+        );
+        if (fresh.length === 0) {
+          notify(t("alerts.fakturoidNothingNew"), "info");
+          return;
+        }
+
+        /* Only the clients those invoices need. An export trimmed to one year
+           should not drag in the rest of the Fakturoid address book. */
+        const needed = new Set(fresh.map((invoice) => invoice.clientKey));
+        const existing = clients.map((row) => ({
+          id: String(row.id),
+          name: row.name,
+          companyIdentificationNumber: row.companyIdentificationNumber,
+        }));
+        const incoming = parsed.clients
+          .filter((client) => needed.has(client.key))
+          .map((client) => ({ client, id: matchClient(client, existing) }));
+        const toCreate = incoming.filter((entry) => entry.id === null);
+
+        const summary = [
+          tp("settings.fakturoidCountInvoices", fresh.length),
+          tp("settings.fakturoidCountClients", toCreate.length),
+        ].join(", ");
+
+        /* Everything left behind is spelled out rather than silently dropped:
+           an invoice missing from the ledger afterwards should be explained
+           by this dialog. */
+        const duplicates = parsed.invoices.length - fresh.length;
+        const left = (
+          [
+            [duplicates, "fakturoidSkipDuplicates"],
+            [parsed.skipped.proforma, "fakturoidSkipProforma"],
+            [parsed.skipped.cancelled, "fakturoidSkipCancelled"],
+            [parsed.skipped.unusable, "fakturoidSkipUnusable"],
+          ] as const
+        )
+          .filter(([count]) => count > 0)
+          .map(([count, key]) => t(`settings.${key}`, { count }));
+
+        const confirmed = await confirmDialog({
+          title: t("settings.fakturoidConfirmTitle"),
+          message: [
+            summary,
+            left.length
+              ? t("settings.fakturoidSkipped", { parts: left.join(", ") })
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          confirmLabel: t("settings.fakturoidConfirmLabel"),
+        });
+        if (!confirmed) return;
+
+        /* Clients first: an invoice stores its client's id, and creating both
+           in one pass would leave each client's first invoice detached from
+           the history the Klienti page builds out of it. */
+        const idByKey = new Map<string, string>();
+        for (const entry of incoming) {
+          if (entry.id) {
+            idByKey.set(entry.client.key, entry.id);
+            continue;
+          }
+          const result = evolu.insert("client", {
+            name: entry.client.name,
+            email: null,
+            phone: null,
+            addressLine1: entry.client.addressLine1,
+            addressLine2: entry.client.addressLine2,
+            companyIdentificationNumber:
+              entry.client.companyIdentificationNumber,
+            vatNumber: entry.client.vatNumber,
+            note: null,
+            deleted: Evolu.sqliteFalse,
+          });
+          if (!result.ok) {
+            console.error("Fakturoid client insert error:", result.error);
+            continue;
+          }
+          idByKey.set(entry.client.key, String(result.value.id));
+        }
+
+        const accounts = bankAccountRows.map((row) => ({
+          id: String(row.id),
+          accountNumber: row.accountNumber,
+          iban: row.iban,
+        }));
+
+        /* Midday, not midnight: a date stored at 00:00 UTC reads as the day
+           before once the browser is west of Greenwich. */
+        const toIso = (date: string | null) => {
+          if (!date) return null;
+          const result = Evolu.dateToDateIso(new Date(`${date}T12:00:00`));
+          return result.ok ? result.value : null;
+        };
+
+        let written = 0;
+        const failed: string[] = [];
+        for (const invoice of fresh) {
+          const issueDate = toIso(invoice.issueDate);
+          const paymentDays = Evolu.NonNegativeNumber.from(invoice.paymentDays);
+          const items = Evolu.Json.from(JSON.stringify(invoice.items));
+          if (!issueDate || !paymentDays.ok || !items.ok) {
+            failed.push(invoice.invoiceNumber);
+            continue;
+          }
+
+          const result = evolu.insert("invoice", {
+            invoiceNumber: invoice.invoiceNumber,
+            clientName: invoice.clientName,
+            clientId: idByKey.get(invoice.clientKey) ?? null,
+            currency: invoice.currency,
+            bankAccountId: invoice.bankAccount
+              ? matchBankAccount(invoice.bankAccount, accounts)
+              : null,
+            issueDate,
+            duzp: toIso(invoice.duzp),
+            paymentDate: toIso(invoice.paymentDate),
+            paymentDays: paymentDays.value,
+            paymentMethod: invoice.paymentMethod,
+            purchaseOrderNumber: invoice.purchaseOrderNumber,
+            invoicingNote: invoice.invoicingNote,
+            btcInvoice: Evolu.sqliteFalse,
+            btcAddress: null,
+            items: items.value,
+            deleted: Evolu.sqliteFalse,
+          });
+          if (!result.ok) {
+            console.error("Fakturoid invoice insert error:", result.error);
+            failed.push(invoice.invoiceNumber);
+            continue;
+          }
+          written += 1;
+        }
+
+        notify(
+          t("alerts.fakturoidImported", {
+            summary: tp("settings.fakturoidCountInvoices", written),
+          }),
+          "success",
+        );
+        /* Reported separately: a partial import that says only "done" is how
+           a missing invoice goes unnoticed until the tax return. */
+        if (failed.length > 0) {
+          notify(
+            t("alerts.fakturoidPartial", { numbers: failed.join(", ") }),
+            "error",
+          );
+        }
+      } catch (error) {
+        console.error("Fakturoid import error:", error);
+        notify(t("alerts.fakturoidImportFailed"), "error");
+      } finally {
+        if (importFakturoidInputRef.current) {
+          importFakturoidInputRef.current.value = "";
+        }
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
   // Save data via Evolu (local-first + sync)
   const handleSave = async () => {
     setSaveError(null);
@@ -1811,6 +2014,26 @@ export function SettingsPage({
                   : t("settings.exportAll")}
               </button>
             </div>
+          </section>
+
+          {/* ---- Fakturoid ------------------------------------------- */}
+          <section className="compose-block">
+            <h2 className="compose-heading">{t("settings.fakturoidTitle")}</h2>
+            <p className="field-hint mb-2">{t("settings.fakturoidHint")}</p>
+            <input
+              ref={importFakturoidInputRef}
+              type="file"
+              accept=".xml,text/xml,application/xml"
+              onChange={handleImportFakturoidXml}
+              className="hidden"
+            />
+            <button
+              className="btn-secondary"
+              onClick={() => importFakturoidInputRef.current?.click()}
+            >
+              <Upload />
+              {t("settings.fakturoidPick")}
+            </button>
           </section>
 
           {/* ---- Danger zone ----------------------------------------- */}

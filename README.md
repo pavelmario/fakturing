@@ -76,7 +76,30 @@ Everything that changes how the app behaves, grouped:
 | **Evolu** | relay URL and connection state, seed phrase backup and restore |
 | **Bitcoin** | mempool explorer URL |
 | **Export/Import dat (CSV)** | per-section checkboxes — settings, clients, invoices, expenses — exported together or separately; templates live in `public/` |
+| **Import z Fakturoidu** | a Fakturoid XML export becomes invoices and clients — see below |
 | **Nebezpečná zóna** | destructive resets |
+
+---
+
+### Coming from Fakturoid
+
+Export your invoices from Fakturoid as **Fakturoid XML** — of their eight
+formats it is the only one that is a single file *and* carries the invoice
+lines; CSV and Excel give per-invoice totals only, and ISDOC and Peppol arrive
+as ZIPs of one document per invoice.
+
+Drop the file on **Nastavení → Import z Fakturoidu** and you get a summary
+before anything is written: how many invoices and new clients would appear, and
+what is being left out. Clients are matched on IČO first and name second, so an
+import never duplicates someone already in your address book. An invoice number
+already in the ledger is skipped, which makes re-importing the same file — or a
+wider export overlapping an earlier one — safe.
+
+Proformas and cancelled invoices are deliberately not imported, and both are
+counted in that summary rather than silently dropped. Line prices are taken net
+whichever way Fakturoid quoted them, and the due date comes from the dates on
+the document rather than its stated payment terms, so an invoice whose due date
+was moved by hand keeps the one the client actually saw.
 
 ---
 
