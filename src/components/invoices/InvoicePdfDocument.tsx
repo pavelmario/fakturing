@@ -9,6 +9,7 @@ import {
 } from "@react-pdf/renderer";
 import * as Evolu from "@evolu/common";
 import type { InvoiceItem } from "../../lib/invoice";
+import type { InvoiceQrCodes } from "../../lib/useInvoiceQr";
 
 /**
  * The A4 invoice document.
@@ -69,7 +70,7 @@ export type InvoicePdfData = {
   invoiceTotalWithVat: number;
   totalVatAmount: number;
   showVat: boolean;
-  qrCodeDataUrl: string | null;
+  qrCodes: InvoiceQrCodes;
   showQuantity: boolean;
   displayClientName: string;
   sanitizedInvoiceNumber: string;
@@ -183,6 +184,10 @@ const pdfStyles = StyleSheet.create({
     alignItems: "flex-start",
     marginTop: 18,
   },
+  qrRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
   qrBlock: {
     width: 120,
     alignItems: "flex-start",
@@ -193,6 +198,19 @@ const pdfStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#d1d5db",
     padding: 6,
+  },
+  /* Two codes have to share the width one used to have, next to a totals
+     block that takes half the page. */
+  qrBlockPair: {
+    width: 104,
+    alignItems: "flex-start",
+  },
+  qrImagePair: {
+    width: 96,
+    height: 96,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    padding: 5,
   },
   qrLabel: {
     marginTop: 6,
@@ -263,7 +281,7 @@ export function InvoicePdfDocument({
   invoiceTotalWithVat,
   totalVatAmount,
   showVat,
-  qrCodeDataUrl,
+  qrCodes,
   showQuantity,
   displayClientName,
   sanitizedInvoiceNumber,
@@ -271,6 +289,9 @@ export function InvoicePdfDocument({
   formatCurrency,
   formatNumber,
 }: InvoicePdfData) {
+  /* Side by side they have to be smaller; alone, a code keeps its old size. */
+  const bothQrCodes = Boolean(qrCodes.bank && qrCodes.btc);
+
   return (
     <Document>
       <Page size="A4" style={pdfStyles.page}>
@@ -525,14 +546,26 @@ export function InvoicePdfDocument({
         {/* Kept whole: the totals were being orphaned onto a page of their
             own, away from the QR they belong beside. */}
         <View style={pdfStyles.summaryRow} wrap={false}>
-          {qrCodeDataUrl ? (
-            <View style={pdfStyles.qrBlock}>
-              <Image style={pdfStyles.qrImage} src={qrCodeDataUrl} />
-              <Text style={pdfStyles.qrLabel}>
-                {invoice.btcInvoice === Evolu.sqliteTrue
-                  ? t("pdf.qrPaymentBtc")
-                  : t("pdf.qrPayment")}
-              </Text>
+          {qrCodes.bank || qrCodes.btc ? (
+            <View style={pdfStyles.qrRow}>
+              {qrCodes.bank ? (
+                <View style={bothQrCodes ? pdfStyles.qrBlockPair : pdfStyles.qrBlock}>
+                  <Image
+                    style={bothQrCodes ? pdfStyles.qrImagePair : pdfStyles.qrImage}
+                    src={qrCodes.bank}
+                  />
+                  <Text style={pdfStyles.qrLabel}>{t("pdf.qrPayment")}</Text>
+                </View>
+              ) : null}
+              {qrCodes.btc ? (
+                <View style={bothQrCodes ? pdfStyles.qrBlockPair : pdfStyles.qrBlock}>
+                  <Image
+                    style={bothQrCodes ? pdfStyles.qrImagePair : pdfStyles.qrImage}
+                    src={qrCodes.btc}
+                  />
+                  <Text style={pdfStyles.qrLabel}>{t("pdf.qrPaymentBtc")}</Text>
+                </View>
+              ) : null}
             </View>
           ) : (
             <View />

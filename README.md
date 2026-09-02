@@ -42,6 +42,9 @@ The landing screen is a ledger, not a dashboard.
   currencies, because the SPD format encodes CZK only.
 - **Bitcoin invoices** — a BTC address per invoice, optionally read straight off a
   **Trezor** via Trezor Connect, plus a link to the mempool explorer of your choice.
+  A BTC invoice payable to an account carries **both** codes side by side, the SPD
+  one and a BIP21 `bitcoin:` URI, because accepting BTC does not stop a client
+  paying the ordinary way.
 
 ### Klienti — clients
 
@@ -76,7 +79,36 @@ Everything that changes how the app behaves, grouped:
 | **Evolu** | relay URL and connection state, seed phrase backup and restore |
 | **Bitcoin** | mempool explorer URL |
 | **Export/Import dat (CSV)** | per-section checkboxes — settings, clients, invoices, expenses — exported together or separately; templates live in `public/` |
+| **Import z Fakturoidu** | a Fakturoid XML export becomes invoices and clients — see below |
 | **Nebezpečná zóna** | destructive resets |
+
+---
+
+### Coming from Fakturoid
+
+Export your invoices from Fakturoid as **Fakturoid XML** — of their eight
+formats it is the only one that is a single file *and* carries the invoice
+lines; CSV and Excel give per-invoice totals only, and ISDOC and Peppol arrive
+as ZIPs of one document per invoice.
+
+Drop the file on **Nastavení → Import z Fakturoidu** and you get a summary
+before anything is written: how many invoices and new clients would appear, and
+what is being left out. Clients are matched on IČO first and name second, so an
+import never duplicates someone already in your address book. An invoice number
+already in the ledger is skipped, which makes re-importing the same file — or a
+wider export overlapping an earlier one — safe.
+
+Proformas and cancelled invoices are deliberately not imported, and both are
+counted in that summary rather than silently dropped. Line prices are taken net
+whichever way Fakturoid quoted them, and the due date comes from the dates on
+the document rather than its stated payment terms, so an invoice whose due date
+was moved by hand keeps the one the client actually saw.
+
+Fakturoid has no Bitcoin payment method, so an invoice payable in BTC says so in
+its note — "Adresa pro příjem BTC: bc1…". That address is what marks the invoice
+on the way in: a `bc1…` one is unmistakable on its own, while a legacy `1…`/`3…`
+address counts only where the text also mentions BTC, since 26 to 35 characters
+of base58 is a shape a reference number can imitate.
 
 ---
 

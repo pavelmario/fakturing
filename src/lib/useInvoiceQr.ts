@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import QRCode from "qrcode";
 import { supportsCzechQr } from "./money";
@@ -24,11 +24,25 @@ type QrInput = {
   showVat: boolean;
 };
 
+export type InvoiceQrCodes = {
+  /** The Czech SPD string — "QR platba". */
+  bank: string | null;
+  /** A BIP21 `bitcoin:` URI. */
+  btc: string | null;
+};
+
 /**
- * Builds the payment QR: a BIP21 URI for bitcoin invoices, otherwise the Czech
- * SPD ("QR platba") string. Returns null when the inputs cannot produce a
- * valid code — notably when IBAN and SWIFT are not both set, which previously
- * still rendered an empty QR block on the document.
+ * Builds the payment QR codes, each independently of the other.
+ *
+ * A bitcoin invoice used to *replace* the bank code with a BIP21 URI, which
+ * was wrong for the invoices this is written against: they are payable to an
+ * account and accept BTC as well, so taking the banking QR away removed the
+ * way most clients actually pay. Both are built when both are possible, and
+ * the document prints them side by side.
+ *
+ * Either is null when its inputs cannot produce a valid code — no address for
+ * BTC; for the bank code a cash invoice, a currency SPD cannot encode, or an
+ * IBAN and SWIFT that are not both set, which used to render an empty frame.
  *
  * Extracted so the create flow can show the same document it just saved.
  */
@@ -40,73 +54,52 @@ export const useInvoiceQr = ({
   invoiceDueDateQr,
   sanitizedInvoiceNumber,
   showVat,
-}: QrInput): string | null => {
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
+}: QrInput): InvoiceQrCodes => {
+  /* Kept as two strings rather than one object so an unchanged code still
+     bails out of a re-render, the way it did before this returned a pair. */
+  const [bankQr, setBankQr] = useState<string | null>(null);
+  const [btcQr, setBtcQr] = useState<string | null>(null);
 
   useEffect(() => {
-    const buildQr = async () => {
-      if (!invoice) {
-        setQrCodeDataUrl(null);
-        return;
-      }
+    let cancelled = false;
 
-      // If the invoice is a BTC invoice, build a bitcoin: URI QR
-      if (invoice.btcInvoice === Evolu.sqliteTrue) {
-        const address = (invoice.btcAddress ?? "").trim();
-        if (!address) {
-          setQrCodeDataUrl(null);
-          return;
-        }
+    const buildBtc = async (): Promise<string | null> => {
+      if (!invoice || invoice.btcInvoice !== Evolu.sqliteTrue) return null;
+      const address = (invoice.btcAddress ?? "").trim();
+      if (!address) return null;
 
-        const label = sanitizedInvoiceNumber
-          ? `?label=${encodeURIComponent(sanitizedInvoiceNumber)}`
-          : "";
-        const uri = `bitcoin:${address}${label}`;
-        try {
-          const dataUrl = await QRCode.toDataURL(uri, {
-            margin: 0,
-            width: 256,
-          });
-          setQrCodeDataUrl(dataUrl);
-          return;
-        } catch (error) {
-          console.error("Failed to generate BTC QR code:", error);
-          setQrCodeDataUrl(null);
-          return;
-        }
+      const label = sanitizedInvoiceNumber
+        ? `?label=${encodeURIComponent(sanitizedInvoiceNumber)}`
+        : "";
+      try {
+        return await QRCode.toDataURL(`bitcoin:${address}${label}`, {
+          margin: 0,
+          width: 256,
+        });
+      } catch (error) {
+        console.error("Failed to generate BTC QR code:", error);
+        return null;
       }
+    };
 
-      // For non-BTC invoices, do not show QR for cash payments
-      if (invoice.paymentMethod === "cash") {
-        setQrCodeDataUrl(null);
-        return;
-      }
+    const buildBank = async (): Promise<string | null> => {
+      if (!invoice) return null;
+      // No bank QR for cash payments
+      if (invoice.paymentMethod === "cash") return null;
 
       /* The SPD format encodes CZK, so a foreign-currency invoice gets no
          Czech payment QR rather than a wrong one. */
-      if (!supportsCzechQr(invoice.currency)) {
-        setQrCodeDataUrl(null);
-        return;
-      }
+      if (!supportsCzechQr(invoice.currency)) return null;
 
-      // Require both IBAN and SWIFT set in settings for bank QR (non-BTC)
-      if (!profile?.iban || !profile?.swift) {
-        setQrCodeDataUrl(null);
-        return;
-      }
+      // Require both IBAN and SWIFT set in settings
+      if (!profile?.iban || !profile?.swift) return null;
 
       const ibanCandidate = (profile.iban ?? "").replace(/\s/g, "");
-      if (!ibanCandidate) {
-        setQrCodeDataUrl(null);
-        return;
-      }
+      if (!ibanCandidate) return null;
 
       const totalForQr = showVat ? invoiceTotalWithVat : invoiceTotal;
       const amount = Number.isFinite(totalForQr) ? totalForQr : 0;
-      if (!amount || amount <= 0) {
-        setQrCodeDataUrl(null);
-        return;
-      }
+      if (!amount || amount <= 0) return null;
 
       const variableSymbol = sanitizedInvoiceNumber;
       const formattedAmount = Number.isInteger(amount)
@@ -127,18 +120,27 @@ export const useInvoiceQr = ({
       ].filter((value) => value !== undefined);
 
       try {
-        const dataUrl = await QRCode.toDataURL(parts.join("*"), {
+        return await QRCode.toDataURL(parts.join("*"), {
           margin: 0,
           width: 256,
         });
-        setQrCodeDataUrl(dataUrl);
       } catch (error) {
         console.error("Failed to generate QR code:", error);
-        setQrCodeDataUrl(null);
+        return null;
       }
     };
 
-    buildQr();
+    const build = async () => {
+      const [bank, btc] = await Promise.all([buildBank(), buildBtc()]);
+      if (cancelled) return;
+      setBankQr(bank);
+      setBtcQr(btc);
+    };
+
+    build();
+    return () => {
+      cancelled = true;
+    };
   }, [
     invoice,
     invoice?.btcInvoice,
@@ -155,5 +157,5 @@ export const useInvoiceQr = ({
     sanitizedInvoiceNumber,
   ]);
 
-  return qrCodeDataUrl;
+  return useMemo(() => ({ bank: bankQr, btc: btcQr }), [bankQr, btcQr]);
 };
