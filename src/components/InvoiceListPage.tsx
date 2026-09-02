@@ -200,28 +200,38 @@ export function InvoiceListPage({
     [scoped, chartYear],
   );
 
+  /**
+   * The year on the strip is a scope, not a filter — the same way the
+   * currency chips are.
+   *
+   * It used to move only the chart, so importing a back year dropped its
+   * invoices into a ledger headed by a different year, and the strip could
+   * read 2026 above a table of 2025 rows.
+   */
+  const inYear = useMemo(
+    () => scoped.filter((row) => invoiceYear(row.issueDate) === chartYear),
+    [chartYear, scoped],
+  );
+
   /* Lateness in aggregate exists only while something is late. */
   const overdue = useMemo(
-    () => scoped.filter((row) => row.status === "overdue"),
-    [scoped],
+    () => inYear.filter((row) => row.status === "overdue"),
+    [inYear],
   );
   const overdueTotals = useMemo(() => sumByCurrency(overdue), [overdue]);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return rows.filter((row) => {
-      if (row.currency !== activeCurrency) return false;
+    return inYear.filter((row) => {
       if (statuses.size > 0 && !statuses.has(row.status)) return false;
       if (types.size > 0 && !types.has(row.isBtc ? "bitcoin" : "fiat")) {
         return false;
       }
-      if (period) {
+      /* The year is already the scope, so a period narrows to its month. */
+      if (period?.month != null) {
         const issued = row.issueDate ? new Date(row.issueDate) : null;
         if (!issued || Number.isNaN(issued.getTime())) return false;
-        if (issued.getFullYear() !== period.year) return false;
-        if (period.month !== null && issued.getMonth() !== period.month) {
-          return false;
-        }
+        if (issued.getMonth() !== period.month) return false;
       }
       if (needle) {
         const haystack = [row.invoiceNumber, row.clientName, row.invoicingNote]
@@ -232,7 +242,7 @@ export function InvoiceListPage({
       }
       return true;
     });
-  }, [activeCurrency, period, rows, search, statuses, types]);
+  }, [inYear, period, search, statuses, types]);
 
   const sorted = useMemo(() => {
     const list = [...filtered];
@@ -376,7 +386,12 @@ export function InvoiceListPage({
           <div className="mb-4">
             <YearStrip
               series={yearSeries}
-              onGoToYear={setPickedYear}
+              /* A month picked in the old year would filter the new one to
+                 nothing, so stepping years drops it. */
+              onGoToYear={(year) => {
+                setPickedYear(year);
+                setPeriod(null);
+              }}
               activeMonth={
                 period && period.year === chartYear ? period.month : null
               }
@@ -421,9 +436,11 @@ export function InvoiceListPage({
             activeCount > 0
               ? t("invoicesList.rowCount", {
                   shown: sorted.length,
-                  total: invoices.length,
+                  /* What the scope can reach, not what the database holds —
+                     "3 of 42" under a year showing 11 was a puzzle. */
+                  total: inYear.length,
                 })
-              : `${invoices.length} ${tp("invoicesList.invoiceCount", invoices.length)}`
+              : `${inYear.length} ${tp("invoicesList.invoiceCount", inYear.length)}`
           }
         />
 
