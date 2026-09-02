@@ -9,6 +9,10 @@ type YearStripProps = {
   activeMonth: number | null;
   onSelectMonth: (month: number | null) => void;
   formatMoney: (value: number) => string;
+  /** The one currency the bars are made of. */
+  currency: string;
+  /** Named only when the ledger holds more than one currency. */
+  showCurrency: boolean;
 };
 
 /**
@@ -30,6 +34,8 @@ export function YearStrip({
   activeMonth,
   onSelectMonth,
   formatMoney,
+  currency,
+  showCurrency,
 }: YearStripProps) {
   const { t, tp, locale } = useI18n();
   const [hovered, setHovered] = useState<number | null>(null);
@@ -89,6 +95,16 @@ export function YearStrip({
             <ChevronLeft />
           </button>
           <span className="ystrip-year-label num">{series.year}</span>
+          {/* A column cannot stack two currencies, so when the ledger below
+              holds both, the chart names the one it is made of. */}
+          {showCurrency ? (
+            <span
+              className="ystrip-currency mono"
+              title={t("invoicesList.chartCurrencyNote", { currency })}
+            >
+              {currency}
+            </span>
+          ) : null}
           <button
             type="button"
             className="ystrip-arrow"

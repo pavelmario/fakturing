@@ -16,9 +16,9 @@ type FilterBarProps = {
   onClearPeriod: () => void;
   periodLabel: string | null;
   /* Shown only when the ledger holds more than one currency — figures are
-     never summed across them. */
+     never summed across them. Nothing lit means every currency is in view. */
   currencies: readonly string[];
-  activeCurrency: string;
+  activeCurrency: string | null;
   onPickCurrency: (currency: string) => void;
   activeCount: number;
   onClearAll: () => void;
@@ -120,18 +120,26 @@ export function FilterBar({
         {currencies.length > 1 ? (
           <>
             <span className="filter-divider" role="separator" />
-            {currencies.map((code) => (
-              <button
-                key={code}
-                type="button"
-                className="fchip mono"
-                data-on={code === activeCurrency}
-                aria-pressed={code === activeCurrency}
-                onClick={() => onPickCurrency(code)}
-              >
-                {code}
-              </button>
-            ))}
+            {currencies.map((code) => {
+              const on = code === activeCurrency;
+              return (
+                <button
+                  key={code}
+                  type="button"
+                  className="fchip mono"
+                  data-on={on}
+                  aria-pressed={on}
+                  title={
+                    on
+                      ? t("invoicesList.currencyClear", { currency: code })
+                      : t("invoicesList.currencyPick", { currency: code })
+                  }
+                  onClick={() => onPickCurrency(code)}
+                >
+                  {code}
+                </button>
+              );
+            })}
           </>
         ) : null}
 
