@@ -76,8 +76,9 @@ export function InvoiceListPage({
   );
   const [types, setTypes] = useState<ReadonlySet<PaymentType>>(new Set());
   const [period, setPeriod] = useState<PeriodFilter>(null);
-  /* Amounts are never converted, so every aggregate is scoped to one
-     currency. With a single currency in the ledger this is invisible. */
+  /* Amounts are never converted, so a currency narrows what is summed.
+     Nothing picked means every currency is in view — the chips toggle, so a
+     pick can always be undone. */
   const [pickedCurrency, setPickedCurrency] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("invoiceNumber");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -174,14 +175,21 @@ export function InvoiceListPage({
       .map(([code]) => code);
   }, [rows]);
 
+  /* null is a real state: the whole ledger, CZK and EUR side by side. */
   const activeCurrency =
-    (pickedCurrency && currencies.includes(pickedCurrency)
+    pickedCurrency && currencies.includes(pickedCurrency)
       ? pickedCurrency
-      : currencies[0]) ?? DEFAULT_CURRENCY;
+      : null;
 
-  /* Everything that adds up is computed on one currency's invoices. */
+  /* Bars cannot stack two currencies, so with none picked the chart falls
+     back to the ledger's dominant one and says which in its header. */
+  const chartCurrency = activeCurrency ?? currencies[0] ?? DEFAULT_CURRENCY;
+
   const scoped = useMemo(
-    () => rows.filter((row) => row.currency === activeCurrency),
+    () =>
+      activeCurrency
+        ? rows.filter((row) => row.currency === activeCurrency)
+        : rows,
     [activeCurrency, rows],
   );
 
@@ -196,8 +204,12 @@ export function InvoiceListPage({
     currentYear;
 
   const yearSeries = useMemo(
-    () => computeYearSeries(scoped, chartYear),
-    [scoped, chartYear],
+    () =>
+      computeYearSeries(
+        scoped.filter((row) => row.currency === chartCurrency),
+        chartYear,
+      ),
+    [scoped, chartCurrency, chartYear],
   );
 
   /**
@@ -277,9 +289,16 @@ export function InvoiceListPage({
     return list;
   }, [filtered, locale, sortDir, sortKey]);
 
-  /* Defaults to the scope in view, so every aggregate prints its own
+  /* What the table is actually showing, which is not always the pick: a
+     status or month filter can leave one currency standing on its own. */
+  const visibleCurrencies = useMemo(
+    () => [...new Set(sorted.map((row) => row.currency))],
+    [sorted],
+  );
+
+  /* Defaults to the chart's currency, so every aggregate prints its own
      currency rather than assuming CZK. */
-  const money = (value: number, currency: string = activeCurrency) =>
+  const money = (value: number, currency: string = chartCurrency) =>
     isDiscreteMode
       ? t("common.discreteMask")
       : formatMoney(value, locale, currency);
@@ -399,6 +418,9 @@ export function InvoiceListPage({
                 setPeriod(month === null ? null : { year: chartYear, month })
               }
               formatMoney={money}
+              currency={chartCurrency}
+              /* Only worth naming when the ledger holds more than one. */
+              showCurrency={currencies.length > 1}
             />
           </div>
         ) : null}
@@ -430,7 +452,11 @@ export function InvoiceListPage({
           activeCount={activeCount}
           currencies={currencies}
           activeCurrency={activeCurrency}
-          onPickCurrency={setPickedCurrency}
+          /* Clicking the lit chip clears it, the way every other chip
+             behaves — otherwise a pick is a one-way door. */
+          onPickCurrency={(code) =>
+            setPickedCurrency((prev) => (prev === code ? null : code))
+          }
           onClearAll={clearAll}
           resultLabel={
             activeCount > 0
@@ -461,7 +487,7 @@ export function InvoiceListPage({
             onUndoPayment={undoPayment}
             formatAmount={amount}
             formatMoney={money}
-            currencies={[activeCurrency]}
+            currencies={visibleCurrencies}
           />
         )}
       </div>
@@ -472,7 +498,7 @@ export function InvoiceListPage({
             payingInvoice.invoiceNumber ?? t("common.placeholderDash")
           }
           clientName={payingInvoice.clientName ?? ""}
-          amount={money(payingInvoice.total)}
+          amount={money(payingInvoice.total, payingInvoice.currency)}
           onConfirm={(date) => confirmPayment(payingInvoice, date)}
           onCancel={() => setPayingInvoice(null)}
         />
