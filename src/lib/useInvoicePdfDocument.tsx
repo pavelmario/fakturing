@@ -86,7 +86,7 @@ export const useInvoicePdfDocument = (
   /* Falls back to the profile's legacy single account when none are set up. */
   const account = resolveAccount(bankAccounts, profile, invoice.bankAccountId);
 
-  const qrCodeDataUrl = useInvoiceQr({
+  const qrCodes = useInvoiceQr({
     invoice,
     profile: account
       ? {
@@ -122,7 +122,7 @@ export const useInvoicePdfDocument = (
       invoiceTotalWithVat={gross}
       totalVatAmount={vatAmount}
       showVat={showVat}
-      qrCodeDataUrl={qrCodeDataUrl}
+      qrCodes={qrCodes}
       showQuantity={usesQuantity(normalizedItems)}
       displayClientName={invoice.clientName ?? "—"}
       sanitizedInvoiceNumber={sanitizedInvoiceNumber}

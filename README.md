@@ -42,6 +42,9 @@ The landing screen is a ledger, not a dashboard.
   currencies, because the SPD format encodes CZK only.
 - **Bitcoin invoices** — a BTC address per invoice, optionally read straight off a
   **Trezor** via Trezor Connect, plus a link to the mempool explorer of your choice.
+  A BTC invoice payable to an account carries **both** codes side by side, the SPD
+  one and a BIP21 `bitcoin:` URI, because accepting BTC does not stop a client
+  paying the ordinary way.
 
 ### Klienti — clients
 
@@ -100,6 +103,12 @@ counted in that summary rather than silently dropped. Line prices are taken net
 whichever way Fakturoid quoted them, and the due date comes from the dates on
 the document rather than its stated payment terms, so an invoice whose due date
 was moved by hand keeps the one the client actually saw.
+
+Fakturoid has no Bitcoin payment method, so an invoice payable in BTC says so in
+its note — "Adresa pro příjem BTC: bc1…". That address is what marks the invoice
+on the way in: a `bc1…` one is unmistakable on its own, while a legacy `1…`/`3…`
+address counts only where the text also mentions BTC, since 26 to 35 characters
+of base58 is a shape a reference number can imitate.
 
 ---
 

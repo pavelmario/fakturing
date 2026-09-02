@@ -1203,8 +1203,10 @@ export function SettingsPage({
             paymentMethod: invoice.paymentMethod,
             purchaseOrderNumber: invoice.purchaseOrderNumber,
             invoicingNote: invoice.invoicingNote,
-            btcInvoice: Evolu.sqliteFalse,
-            btcAddress: null,
+            btcInvoice: invoice.btcInvoice
+              ? Evolu.sqliteTrue
+              : Evolu.sqliteFalse,
+            btcAddress: invoice.btcAddress,
             items: items.value,
             deleted: Evolu.sqliteFalse,
           });

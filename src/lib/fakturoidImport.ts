@@ -13,6 +13,8 @@
  * carrying the unit price both with and without VAT.
  */
 
+import { findBtcAddress } from "./btcAddress";
+
 export type FakturoidClient = {
   /** Fakturoid's own subject id, falling back to IČO and then the name. */
   key: string;
@@ -44,6 +46,8 @@ export type FakturoidInvoice = {
   paymentMethod: string;
   purchaseOrderNumber: string | null;
   invoicingNote: string | null;
+  btcInvoice: boolean;
+  btcAddress: string | null;
   /** The supplier account it was payable to, e.g. `322103029/0300`. */
   bankAccount: string | null;
   items: FakturoidItem[];
@@ -87,6 +91,9 @@ const isTrue = (value: string): boolean => value.toLowerCase() === "true";
 /** Evolu's string types have hard limits; a name that long is already broken. */
 const clip = (value: string, max: number): string =>
   value.length > max ? value.slice(0, max).trim() : value;
+
+const clipOrNull = (value: string | null, max: number): string | null =>
+  value === null ? null : orNull(clip(value, max));
 
 /** Fakturoid writes plain numbers as `54862.0` and `1.0`. */
 const numberValue = (value: string, fallback = 0): number => {
@@ -224,6 +231,14 @@ export const parseFakturoidXml = (xml: string): FakturoidExport => {
       spanned ?? (Number.isFinite(due) ? due : 0),
     );
 
+    /* The note stays exactly as written — it is the text of the invoice —
+       so an address lifted out of it is carried in both places. */
+    const note = childText(element, "note");
+    const btcAddress = clipOrNull(
+      findBtcAddress(note, childText(element, "private_note")),
+      100,
+    );
+
     invoices.push({
       invoiceNumber,
       clientKey: client.key,
@@ -238,7 +253,9 @@ export const parseFakturoidXml = (xml: string): FakturoidExport => {
       paymentMethod:
         childText(element, "payment_method") === "cash" ? "cash" : "bank",
       purchaseOrderNumber: orNull(clip(childText(element, "order_number"), 100)),
-      invoicingNote: orNull(clip(childText(element, "note"), 1000)),
+      invoicingNote: orNull(clip(note, 1000)),
+      btcInvoice: btcAddress !== null,
+      btcAddress,
       bankAccount: orNull(clip(childText(element, "bank_account"), 100)),
       items: readItems(element),
     });
