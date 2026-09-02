@@ -146,6 +146,13 @@ export function SettingsPage({
             "id",
             "invoiceNumber",
             "clientName",
+            /* The export headers have always listed these three, but the
+               query did not select them, so every backup wrote them empty —
+               a restore dropped foreign-currency invoices back to CZK and
+               detached each one from its client. */
+            "clientId",
+            "currency",
+            "bankAccountId",
             "issueDate",
             "duzp",
             "paymentDate",
