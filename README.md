@@ -2,7 +2,7 @@
 
 A local-first invoicing app for Czech freelancers and small companies. Your data
 lives in the browser, is encrypted end-to-end by Evolu, and syncs between your
-devices through a relay you can point anywhere — including one you run yourself.
+devices through a relay you can point anywhere.
 There is no account, no server-side database, and nothing to sign up for: a BIP39
 seed phrase *is* the identity.
 
@@ -153,6 +153,32 @@ Safe-area insets are respected, so the tab bar clears the home indicator.
 
 ---
 
+## Sync and the seed phrase
+
+Nothing here is a client for a server. The database is SQLite **in the browser**,
+every screen reads from it, and that is why the app is instant and works on a
+plane. Sync is a background extra, not the path the data takes.
+
+Identity is a BIP39 seed phrase — no account, no e-mail, no password. It derives
+both the owner every row is stamped with and the key the data is encrypted with.
+Type it on another device and your ledger is there; lose it and nobody, the relay
+operator included, can get the data back.
+
+What leaves the browser is not the state of the database but a stream of small
+changes — which column of which row took which value, at which logical time —
+encrypted before it goes. The relay stores them per owner as opaque blobs
+(`evolu_message`) alongside the timestamps it needs to compare histories; it has
+no idea any of it is invoices.
+
+Two devices editing the same invoice do not conflict: every change carries a
+logical clock, and they merge per column, deterministically. This is also why
+nothing is ever hard-deleted — every table has its own `deleted` flag, because a
+deletion is just another change, while a vanished row would be indistinguishable
+from one a device has not heard about yet.
+
+Offline, the app keeps writing locally and says so in a banner; it catches up
+when the connection returns.
+
 ## Configuration worth knowing
 
 **Invoice numbers** follow a pattern you set, with a live preview:
@@ -176,7 +202,15 @@ Default `faktura-{cislo}`.
 **Currencies** offered: CZK, EUR, USD, GBP, PLN. Amounts are never converted.
 
 **Relay** defaults to `wss://free.evoluhq.com` and is overridable in settings
-(stored under `invoiceApp_relayUrl`). `npm run relay` starts a local one.
+(stored under `invoiceApp_relayUrl`). It only ever carries encrypted messages —
+see [Sync](#sync-and-the-seed-phrase).
+
+Self-hosting one is currently not possible off the shelf: the published
+`@evolu/relay` pins `@evolu/common` 6 while this app's client is on 7. It
+accepts the connection and answers, but stores nothing — verified against
+`1.1.2-preview.6`, whose `evolu_message`, `evolu_timestamp` and `evolu_writeKey`
+tables stayed empty after a real edit. A relay built from Evolu at the matching
+version would work; the setting is there and takes any `ws://` or `wss://` URL.
 
 **Security headers** are set in four places that must stay in step:
 `public/_headers` (Netlify, Cloudflare Pages), `vercel.json`, and `server` /
@@ -223,13 +257,6 @@ npm install
 npm run dev            # http://localhost:5173
 ```
 
-Optionally run your own relay instead of the public one, and point settings at
-`ws://localhost:8080`:
-
-```bash
-npm run relay          # RELAY_PORT / RELAY_DATA_FILE override the defaults
-```
-
 ### Scripts
 
 | Script | Does |
@@ -238,7 +265,6 @@ npm run relay          # RELAY_PORT / RELAY_DATA_FILE override the defaults
 | `npm run build` | `tsc -b` then a production build |
 | `npm run preview` | serve the production build |
 | `npm run lint` | ESLint (currently clean: 0 errors, 0 warnings) |
-| `npm run relay` | local Evolu WebSocket relay on port 8080 |
 
 ---
 
