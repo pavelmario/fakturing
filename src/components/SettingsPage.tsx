@@ -186,12 +186,17 @@ export function SettingsPage({
           .select([
             "id",
             "expenseNumber",
+            "supplierName",
             "supplierVat",
+            "supplierIco",
             "amountWithoutVat",
             "vatRate",
             "amountWithVat",
             "description",
             "expenseDate",
+            "items",
+            "note",
+            "templateId",
           ])
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
@@ -923,17 +928,18 @@ export function SettingsPage({
     reader.onload = async () => {
       try {
         const text = String(reader.result ?? "");
-        const lines = text
-          .split(/\r?\n/)
-          .map((line) => line.trim())
-          .filter(Boolean);
-        if (lines.length < 2) {
+        /* Splitting on newlines cannot read what this page writes: a note is
+           a textarea, the export quotes the newlines inside it, and the line
+           split then cuts one record into two and maps the halves onto the
+           wrong headers. */
+        const rows = parseCsvRows(text);
+        if (rows.length < 2) {
           notify(t("alerts.csvNoData"), "error");
           return;
         }
 
-        const headers = parseCsvLine(lines[0]);
-        const dataRows = lines.slice(1).map((line) => parseCsvLine(line));
+        const headers = rows[0];
+        const dataRows = rows.slice(1);
         const formatTypeError = Evolu.createFormatTypeError();
 
         const toNullable = (value: string | undefined) => {
@@ -1013,14 +1019,29 @@ export function SettingsPage({
           );
           if (amountWithVat === "error") return;
 
+          /* A file written before expenses had a breakdown has no column
+             here at all, which is a blank cell, not a broken one. */
+          const itemsRaw = row.items?.trim();
+          const itemsResult = itemsRaw ? Evolu.Json.from(itemsRaw) : null;
+          if (itemsResult && !itemsResult.ok) {
+            console.error("Items error:", formatTypeError(itemsResult.error));
+            notify(t("alerts.expensesImportValidation"), "error");
+            return;
+          }
+
           const payload = {
             expenseNumber: toNullable(row.expenseNumber),
+            supplierName: toNullable(row.supplierName),
             supplierVat: toNullable(row.supplierVat),
+            supplierIco: toNullable(row.supplierIco),
             amountWithoutVat,
             vatRate,
             amountWithVat,
             description,
             expenseDate: expenseDateResult.value,
+            items: itemsResult?.ok ? itemsResult.value : null,
+            note: toNullable(row.note),
+            templateId: toNullable(row.templateId),
             deleted: Evolu.sqliteFalse,
           };
 
@@ -1458,12 +1479,17 @@ export function SettingsPage({
   const expensesExportHeaders = [
     "id",
     "expenseNumber",
+    "supplierName",
     "supplierVat",
+    "supplierIco",
     "amountWithoutVat",
     "vatRate",
     "amountWithVat",
     "description",
     "expenseDate",
+    "items",
+    "note",
+    "templateId",
   ];
 
   const handleExportSettingsCsv = () => {
@@ -1544,6 +1570,15 @@ export function SettingsPage({
       invoiceNamingFormat,
       invoiceNumberFormat,
     }) !== JSON.stringify(storedValues);
+
+  /* One sample document behind both previews below, so the filename and the
+     number they show are the same document. */
+  const previewDate = new Date();
+  const numberPreview = formatInvoiceNumber(
+    invoiceNumberFormat,
+    7,
+    previewDate,
+  );
 
   const pickedCount = Object.values(exportPick).filter(Boolean).length;
   const allPicked = pickedCount === Object.keys(exportPick).length;
@@ -1692,9 +1727,7 @@ export function SettingsPage({
               ))}
             </div>
             <p className="field-hint">
-              {t("settings.invoiceNumberPreview", {
-                number: formatInvoiceNumber(invoiceNumberFormat, 7),
-              })}
+              {t("settings.invoiceNumberPreview", { number: numberPreview })}
             </p>
 
             <label htmlFor="invoiceNamingFormat" className="form-label mt-3">
@@ -1727,10 +1760,15 @@ export function SettingsPage({
             <p className="field-hint">
               {t("settings.invoiceNamingPreview", {
                 name: buildInvoiceFileName(invoiceNamingFormat, {
-                  number: "2026-0007",
+                  /* The same sample number the field above previews: a
+                     filename carrying {cislo} has to show the numbering the
+                     user just chose, not a shape of its own. It used to
+                     hardcode 2026-0007, so a pattern of {rok}-{poradi:3}
+                     was previewed as one digit longer than it issues. */
+                  number: numberPreview,
                   client: "Alza.cz a.s.",
                   supplier: name,
-                  issueDate: new Date(2026, 7, 1),
+                  issueDate: previewDate,
                 }),
               })}
             </p>

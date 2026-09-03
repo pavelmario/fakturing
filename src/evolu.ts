@@ -99,15 +99,47 @@ export const Schema = {
     items: Evolu.Json,
     deleted: Evolu.nullOr(Evolu.SqliteBoolean),
   },
+  /* An expense is the mirror image of an invoice: from whom, and for what.
+     `items` carries the same line shape as `invoice.items`, and the three
+     amount columns stay filled from it so every existing consumer — the
+     period totals, the ledger, the kontrolni hlaseni export — keeps reading
+     the numbers it always read. */
   expense: {
     id: Evolu.id("Expense"),
     expenseNumber: Evolu.nullOr(Evolu.TrimmedString100),
+    /** Snapshot of the supplier's name as it was on the document. */
+    supplierName: Evolu.nullOr(Evolu.TrimmedString100),
     supplierVat: Evolu.nullOr(Evolu.TrimmedString100),
+    supplierIco: Evolu.nullOr(Evolu.TrimmedString100),
     amountWithoutVat: Evolu.nullOr(Evolu.NonNegativeNumber),
     vatRate: Evolu.nullOr(Evolu.NonNegativeNumber),
     amountWithVat: Evolu.nullOr(Evolu.NonNegativeNumber),
     description: Evolu.NonEmptyTrimmedString100,
     expenseDate: Evolu.DateIso,
+    /** Optional breakdown; null or [] means the amount was entered whole. */
+    items: Evolu.nullOr(Evolu.Json),
+    note: Evolu.nullOr(Evolu.TrimmedString1000),
+    /** The recurring template this was generated from, if any. */
+    templateId: Evolu.nullOr(Evolu.TrimmedString100),
+    deleted: Evolu.nullOr(Evolu.SqliteBoolean),
+  },
+  /* A cost that repeats unchanged — warehouse rent, hosting, the accountant.
+     Kept as a template rather than a schedule: nothing is ever written
+     without you asking for it, so a month you did not pay stays empty. */
+  expenseTemplate: {
+    id: Evolu.id("ExpenseTemplate"),
+    name: Evolu.NonEmptyTrimmedString100,
+    supplierName: Evolu.nullOr(Evolu.TrimmedString100),
+    supplierVat: Evolu.nullOr(Evolu.TrimmedString100),
+    supplierIco: Evolu.nullOr(Evolu.TrimmedString100),
+    description: Evolu.nullOr(Evolu.TrimmedString100),
+    amountWithoutVat: Evolu.nullOr(Evolu.NonNegativeNumber),
+    vatRate: Evolu.nullOr(Evolu.NonNegativeNumber),
+    amountWithVat: Evolu.nullOr(Evolu.NonNegativeNumber),
+    items: Evolu.nullOr(Evolu.Json),
+    note: Evolu.nullOr(Evolu.TrimmedString1000),
+    /** Which day of the month the generated expense is dated. */
+    dayOfMonth: Evolu.nullOr(Evolu.NonNegativeNumber),
     deleted: Evolu.nullOr(Evolu.SqliteBoolean),
   },
 };

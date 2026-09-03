@@ -29,7 +29,10 @@ The landing screen is a ledger, not a dashboard.
   **no filter is active by default**.
 - **Currency scope** — nothing is ever converted, so every total, the year strip
   and the overdue banner are scoped to a single currency. Chips switch the scope
-  when you invoice in more than one.
+  when you invoice in more than one. The strip's bars still show every invoice
+  the month holds: one in another currency cannot be sized on that scale, so it
+  is drawn as a hollow cap above the bar — counted, never measured — and named
+  on its own line in the tooltip and the header.
 - **Create / detail** share one composer: the detail page renders read-only and
   becomes editable only after **Upravit**, so a stray click can never change an
   issued invoice.
@@ -60,6 +63,23 @@ Visible only for VAT payers (it defaults to your VAT-payer flag and stays an
 explicit toggle). Period-driven: pick a month, get the expenses and the VAT
 figures for it, and export a **kontrolní hlášení** XML (`DPHKH1` 02.01, sections
 B2/B3/C) ready for the tax portal.
+
+An expense is the invoice model read the other way round — from whom, and for
+what:
+
+- **Dodavatel** — name, DIČ and IČO on the document itself. The name suggests
+  from suppliers you have already used and from the DIČ list in Settings, and
+  picking one fills in the rest. There is no supplier directory: each expense
+  keeps its own snapshot, exactly as an invoice keeps `clientName`.
+- **Rozpis po položkách** — optional, and the same line table the invoice
+  composer uses. Without it you type the total off the receipt and the base
+  back-computes; with it the lines are the truth and the total is their sum.
+  Mixed rates on one document are reported per band in the control statement.
+- **Pravidelné náklady** — warehouse rent, hosting, the accountant. Saved as a
+  template (from scratch, or from an expense you are already looking at) and
+  booked into a period from a checklist that shows what this month is still
+  missing. Nothing is ever written without you asking: a month you did not pay
+  for stays empty.
 
 ### Profil — your company
 
@@ -243,6 +263,8 @@ src/
 │   ├── clients/ClientForm.tsx
 │   ├── ExpensesListPage.tsx     # period view + kontrolní hlášení XML
 │   ├── ExpenseCreatePage.tsx, ExpenseDetailPage.tsx, expenses/
+│   ├── ExpenseTemplatePage.tsx  # a recurring cost, edited as the expense
+│   │                            # it will become
 │   ├── ProfilePage.tsx          # company profile
 │   ├── profile/BankAccounts.tsx # multiple accounts, one per currency
 │   ├── SettingsPage.tsx         # preferences, CSV, relay, seed
@@ -250,6 +272,8 @@ src/
 │   ├── PaymentDialog.tsx, OfflineBanner.tsx, PWAUpdatePrompt.tsx
 └── lib/                         # pure logic + hooks
     ├── invoice.ts               # totals, status, dates
+    ├── expense.ts               # expense totals + the VAT band split
+    ├── expenseForm.ts, expenseSave.ts, supplierOptions.ts
     ├── money.ts                 # currencies, formatting, SPD support
     ├── invoiceNumber.ts         # number patterns + next sequence
     ├── invoiceFileName.ts       # PDF filename templating
@@ -275,6 +299,9 @@ src/
 ## Known gaps
 
 - **No invoice drafts** — an interrupted invoice is lost.
+- **Recurring expense templates are not in the CSV export** — they live in the
+  synced database only. Expenses themselves round-trip in full, breakdown
+  included.
 
 ## License
 

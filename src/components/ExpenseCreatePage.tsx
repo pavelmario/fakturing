@@ -4,8 +4,20 @@ import { useQuery } from "@evolu/react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
 import { ExpenseForm } from "./expenses/ExpenseForm";
-import { emptyExpense, type ExpenseFormValues } from "../lib/expenseForm";
+import { InvoiceSummary } from "./invoices/InvoiceSummary";
+import {
+  emptyExpense,
+  expenseFormTotals,
+  type ExpenseFormValues,
+} from "../lib/expenseForm";
+import {
+  buildExpensePayload,
+  validateExpense,
+  type ExpenseErrors,
+} from "../lib/expenseSave";
+import { collectSuppliers } from "../lib/supplierOptions";
 import { parseSupplierVatPrefill } from "../supplierVatPrefill";
+import { DEFAULT_CURRENCY, formatAmount, formatMoney } from "../lib/money";
 import { useNotify } from "../lib/confirmContext";
 
 type ExpenseCreatePageProps = {
@@ -15,7 +27,7 @@ type ExpenseCreatePageProps = {
 export function ExpenseCreatePage({
   onExpenseCreated,
 }: ExpenseCreatePageProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const notify = useNotify();
   const evolu = useEvolu();
   const owner = use(evolu.appOwner);
@@ -35,53 +47,58 @@ export function ExpenseCreatePage({
   );
   const profile = useQuery(profileQuery)[0];
   const isVatPayer = profile?.vatPayer === Evolu.sqliteTrue;
+
+  /* Suppliers are gathered, not managed: whoever you have already bought
+     from, plus the DIČ list from Settings. */
+  const supplierRowsQuery = useMemo(
+    () =>
+      evolu.createQuery((db) =>
+        db
+          .selectFrom("expense")
+          .select(["supplierName", "supplierVat", "supplierIco"])
+          .where("ownerId", "=", owner.id)
+          .where("isDeleted", "is not", Evolu.sqliteTrue)
+          .where("deleted", "is not", Evolu.sqliteTrue)
+          .orderBy("expenseDate", "desc"),
+      ),
+    [evolu, owner.id],
+  );
+  const supplierRows = useQuery(supplierRowsQuery);
   const suppliers = useMemo(
-    () => parseSupplierVatPrefill(profile?.supplierVatPrefill),
-    [profile?.supplierVatPrefill],
+    () =>
+      collectSuppliers(
+        supplierRows,
+        parseSupplierVatPrefill(profile?.supplierVatPrefill),
+      ),
+    [supplierRows, profile?.supplierVatPrefill],
   );
 
   const [values, setValues] = useState<ExpenseFormValues>(() =>
     emptyExpense(isVatPayer),
   );
-  const [errors, setErrors] = useState<
-    Partial<Record<keyof ExpenseFormValues, string>>
-  >({});
+  const [errors, setErrors] = useState<ExpenseErrors>({});
+  const [noteOpen, setNoteOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const totals = expenseFormTotals(values, isVatPayer);
+  const money = (value: number) => formatMoney(value, locale, DEFAULT_CURRENCY);
+  const amount = (value: number) => formatAmount(value, locale);
+
   const handleSave = () => {
-    const found: Partial<Record<keyof ExpenseFormValues, string>> = {};
-    if (!values.description.trim()) {
-      found.description = t("alerts.expenseTypeRequired");
-    }
-    if (!values.expenseDate.trim()) {
-      found.expenseDate = t("alerts.expenseDateRequired");
-    }
-    if (!values.amountWithVat.trim() || Number(values.amountWithVat) < 0) {
-      found.amountWithVat = t("alerts.expenseAmountWithVatRequired");
-    }
+    const found = validateExpense(values, isVatPayer, t);
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
-    const dateResult = Evolu.dateToDateIso(new Date(values.expenseDate));
-    if (!dateResult.ok) {
+    const payload = buildExpensePayload(values, isVatPayer);
+    if (!payload) {
       setErrors({ expenseDate: t("alerts.expenseDateInvalid") });
       return;
     }
-    const nonNegative = (raw: string) => {
-      if (!raw.trim()) return null;
-      const result = Evolu.NonNegativeNumber.from(Number(raw));
-      return result.ok ? result.value : null;
-    };
 
     setIsSaving(true);
     const result = evolu.insert("expense", {
-      description: values.description.trim(),
-      expenseDate: dateResult.value,
-      expenseNumber: values.expenseNumber.trim() || null,
-      supplierVat: values.supplierVat.trim() || null,
-      amountWithoutVat: nonNegative(values.amountWithoutVat),
-      vatRate: nonNegative(values.vatRate),
-      amountWithVat: nonNegative(values.amountWithVat),
+      ...payload,
+      templateId: null,
       deleted: Evolu.sqliteFalse,
     });
     setIsSaving(false);
@@ -95,25 +112,41 @@ export function ExpenseCreatePage({
 
   return (
     <div className="page-shell">
-      <div className="page-container">
-        <h1 className="page-title mb-5">{t("expenseForm.title")}</h1>
+      <div className="page-container-lg">
+        <div className="page-head">
+          <h1 className="page-title">{t("expenseForm.title")}</h1>
+        </div>
         <ExpenseForm
           values={values}
           errors={errors}
           isVatPayer={isVatPayer}
           suppliers={suppliers}
+          formatAmount={amount}
+          noteOpen={noteOpen}
+          onNoteOpenChange={setNoteOpen}
           onChange={(patch) => {
             setErrors({});
             setValues((prev) => ({ ...prev, ...patch }));
           }}
+          sidebarFooter={
+            <div className="compose-panel compose-sticky">
+              <InvoiceSummary
+                net={totals.net}
+                vat={totals.vat}
+                gross={totals.gross}
+                isVatPayer={isVatPayer}
+                formatMoney={money}
+              />
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="btn-primary w-full mt-3"
+              >
+                {isSaving ? t("common.saving") : t("expenseForm.save")}
+              </button>
+            </div>
+          }
         />
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="btn-primary w-full mt-3"
-        >
-          {isSaving ? t("common.saving") : t("expenseForm.save")}
-        </button>
       </div>
     </div>
   );

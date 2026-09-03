@@ -37,11 +37,11 @@ const num = (value: unknown): number => {
 };
 
 /** Sum of line totals, excluding VAT. */
-export const invoiceNet = (items: InvoiceItem[]): number =>
+export const invoiceNet = (items: readonly InvoiceItem[]): number =>
   items.reduce((sum, item) => sum + num(item.amount) * num(item.unitPrice), 0);
 
 /** VAT owed across all lines. */
-export const invoiceVat = (items: InvoiceItem[]): number =>
+export const invoiceVat = (items: readonly InvoiceItem[]): number =>
   items.reduce(
     (sum, item) =>
       sum + num(item.amount) * num(item.unitPrice) * (num(item.vat) / 100),
@@ -49,14 +49,14 @@ export const invoiceVat = (items: InvoiceItem[]): number =>
   );
 
 /** Sum of line totals including VAT. */
-export const invoiceGross = (items: InvoiceItem[]): number =>
+export const invoiceGross = (items: readonly InvoiceItem[]): number =>
   invoiceNet(items) + invoiceVat(items);
 
 /**
  * The figure to show the user. A VAT payer thinks in gross — it is what the
  * client actually transfers and what the PDF and payment QR carry.
  */
-export const invoiceTotal = (items: InvoiceItem[], isVatPayer: boolean) =>
+export const invoiceTotal = (items: readonly InvoiceItem[], isVatPayer: boolean) =>
   isVatPayer ? invoiceGross(items) : invoiceNet(items);
 
 export const parseDate = (iso: string | null | undefined): Date | null => {

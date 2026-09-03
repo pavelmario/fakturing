@@ -203,12 +203,11 @@ export function InvoiceListPage({
     availableYears[availableYears.length - 1] ??
     currentYear;
 
+  /* Every row in scope, with the chart's currency named: the bars are drawn
+     from that one, and the rest are counted beside them rather than dropped —
+     the strip used to say "18 faktur" over a ledger listing 19. */
   const yearSeries = useMemo(
-    () =>
-      computeYearSeries(
-        scoped.filter((row) => row.currency === chartCurrency),
-        chartYear,
-      ),
+    () => computeYearSeries(scoped, chartYear, chartCurrency),
     [scoped, chartCurrency, chartYear],
   );
 
@@ -419,8 +418,6 @@ export function InvoiceListPage({
               }
               formatMoney={money}
               currency={chartCurrency}
-              /* Only worth naming when the ledger holds more than one. */
-              showCurrency={currencies.length > 1}
             />
           </div>
         ) : null}
