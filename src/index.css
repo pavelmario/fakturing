@@ -1049,6 +1049,74 @@
     }
   }
 
+  /* The accent rail marks anything asking for a decision — the same rail the
+     setup prompt below uses, so the two read as one kind of thing. */
+  .pwa-card {
+    border: 1px solid var(--rule-strong);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--r);
+    background: var(--surface);
+    box-shadow: var(--shadow-pop);
+    padding: 0.75rem 0.875rem 0.875rem;
+    animation: pop-in 0.16s ease;
+  }
+
+  .pwa-card-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .pwa-card-mark {
+    display: inline-flex;
+    flex: none;
+    margin-top: 1px;
+    color: var(--accent-text);
+  }
+
+  .pwa-card-mark svg {
+    width: 15px;
+    height: 15px;
+    stroke-width: 2;
+  }
+
+  .pwa-card-body {
+    min-width: 0;
+  }
+
+  .pwa-card-title {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--accent-text);
+  }
+
+  .pwa-card-text {
+    margin: 0.1875rem 0 0;
+    font-size: var(--fs-base);
+    color: var(--ink);
+  }
+
+  /* Updating reloads the page, and there are no drafts yet — so the cost of
+     pressing it is stated next to the button, not discovered after. */
+  .pwa-card-note {
+    margin: 0.25rem 0 0;
+    font-size: var(--fs-sm);
+    /* The same weight every other hint in the app carries — faint enough to
+       stay secondary, legible enough to read on the dark ground. */
+    color: var(--ink-muted);
+  }
+
+  .pwa-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 0.75rem;
+    /* Lined up under the text rather than the icon. */
+    padding-left: calc(15px + 0.5rem);
+  }
+
   .setup-prompt {
     display: flex;
     align-items: center;

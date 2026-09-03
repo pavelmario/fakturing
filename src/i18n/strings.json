@@ -576,7 +576,9 @@
       "updateNow": "Aktualizovat",
       "updateLater": "Později",
       "offline": "Jste offline",
-      "backOnline": "Připojení obnoveno"
+      "backOnline": "Připojení obnoveno",
+      "updateTitle": "Nová verze",
+      "updateHint": "Aplikace se po aktualizaci znovu načte."
     },
     "pdf": {
       "invoiceTitle": "Faktura {number}",
@@ -1283,7 +1285,9 @@
       "updateNow": "Update",
       "updateLater": "Later",
       "offline": "You are offline",
-      "backOnline": "Back online"
+      "backOnline": "Back online",
+      "updateTitle": "New version",
+      "updateHint": "The app reloads after updating."
     },
     "pdf": {
       "invoiceTitle": "Invoice {number}",
