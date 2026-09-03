@@ -1545,6 +1545,15 @@ export function SettingsPage({
       invoiceNumberFormat,
     }) !== JSON.stringify(storedValues);
 
+  /* One sample document behind both previews below, so the filename and the
+     number they show are the same document. */
+  const previewDate = new Date();
+  const numberPreview = formatInvoiceNumber(
+    invoiceNumberFormat,
+    7,
+    previewDate,
+  );
+
   const pickedCount = Object.values(exportPick).filter(Boolean).length;
   const allPicked = pickedCount === Object.keys(exportPick).length;
 
@@ -1692,9 +1701,7 @@ export function SettingsPage({
               ))}
             </div>
             <p className="field-hint">
-              {t("settings.invoiceNumberPreview", {
-                number: formatInvoiceNumber(invoiceNumberFormat, 7),
-              })}
+              {t("settings.invoiceNumberPreview", { number: numberPreview })}
             </p>
 
             <label htmlFor="invoiceNamingFormat" className="form-label mt-3">
@@ -1727,10 +1734,15 @@ export function SettingsPage({
             <p className="field-hint">
               {t("settings.invoiceNamingPreview", {
                 name: buildInvoiceFileName(invoiceNamingFormat, {
-                  number: "2026-0007",
+                  /* The same sample number the field above previews: a
+                     filename carrying {cislo} has to show the numbering the
+                     user just chose, not a shape of its own. It used to
+                     hardcode 2026-0007, so a pattern of {rok}-{poradi:3}
+                     was previewed as one digit longer than it issues. */
+                  number: numberPreview,
                   client: "Alza.cz a.s.",
                   supplier: name,
-                  issueDate: new Date(2026, 7, 1),
+                  issueDate: previewDate,
                 }),
               })}
             </p>
