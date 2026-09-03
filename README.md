@@ -29,7 +29,10 @@ The landing screen is a ledger, not a dashboard.
   **no filter is active by default**.
 - **Currency scope** — nothing is ever converted, so every total, the year strip
   and the overdue banner are scoped to a single currency. Chips switch the scope
-  when you invoice in more than one.
+  when you invoice in more than one. The strip's bars still show every invoice
+  the month holds: one in another currency cannot be sized on that scale, so it
+  is drawn as a hollow cap above the bar — counted, never measured — and named
+  on its own line in the tooltip and the header.
 - **Create / detail** share one composer: the detail page renders read-only and
   becomes editable only after **Upravit**, so a stray click can never change an
   issued invoice.

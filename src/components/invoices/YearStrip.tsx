@@ -1,6 +1,11 @@
-import { useState, type CSSProperties } from "react";
+import { Fragment, useState, type CSSProperties } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { MAX_SEGMENTS, type MonthCell, type YearSeries } from "../../lib/aging";
+import {
+  MAX_SEGMENTS,
+  type CurrencyTotals,
+  type MonthCell,
+  type YearSeries,
+} from "../../lib/aging";
 import { useI18n } from "../../i18n";
 
 type YearStripProps = {
@@ -8,11 +13,9 @@ type YearStripProps = {
   onGoToYear: (year: number) => void;
   activeMonth: number | null;
   onSelectMonth: (month: number | null) => void;
-  formatMoney: (value: number) => string;
-  /** The one currency the bars are made of. */
+  formatMoney: (value: number, currency?: string) => string;
+  /** The one currency the bars are measured in. */
   currency: string;
-  /** Named only when the ledger holds more than one currency. */
-  showCurrency: boolean;
 };
 
 /**
@@ -27,6 +30,17 @@ type YearStripProps = {
  * by a hairline, so a column carries three facts at once: total height is the
  * month's billing, the number of divisions is the invoice count, and colour is
  * whether it has been paid.
+ *
+ * An invoice in another currency cannot be sized on this scale without
+ * converting it, and nothing here converts. It is drawn anyway — as a hollow
+ * cap above the bar, one per invoice, deliberately the same height whatever it
+ * is worth. So the column still shows every invoice the month holds and the
+ * count matches the ledger below; only the money keeps to one currency.
+ *
+ * Which currency that is needs no badge of its own: every figure in the header
+ * carries its own mark, and each one lists the other currencies underneath it.
+ * A standing "CZK" label existed to stop a short column reading as a quiet
+ * month — a job the caps now do in the column itself.
  */
 export function YearStrip({
   series,
@@ -35,7 +49,6 @@ export function YearStrip({
   onSelectMonth,
   formatMoney,
   currency,
-  showCurrency,
 }: YearStripProps) {
   const { t, tp, locale } = useI18n();
   const [hovered, setHovered] = useState<number | null>(null);
@@ -48,6 +61,25 @@ export function YearStrip({
   const scale = series.peak > 0 ? series.peak : 1;
   const shown = hovered ?? activeMonth;
   const cell = shown === null ? null : series.months[shown];
+
+  /* Four caps are 24px of a 64px track; past that the bar has no room left
+     and the tooltip carries the exact count anyway. */
+  const MAX_CAPS = 4;
+
+  const capsFor = (month: MonthCell) => month.foreign.slice(0, MAX_CAPS);
+
+  const foreignLine = (totals: CurrencyTotals[], pick: keyof CurrencyTotals) =>
+    totals
+      .filter((entry) => Number(entry[pick]) !== 0)
+      .map((entry) => (
+        <div
+          key={entry.currency}
+          className="ystrip-figure-alt num"
+          title={t("invoicesList.chartCurrencyNote", { currency })}
+        >
+          + {formatMoney(Number(entry[pick]), entry.currency)}
+        </div>
+      ));
 
   const segmentsFor = (month: MonthCell) =>
     month.invoices.length > MAX_SEGMENTS
@@ -63,6 +95,7 @@ export function YearStrip({
       series: null,
       label: t("invoicesList.invoicedTitle"),
       value: series.invoiced,
+      pick: "invoiced" as const,
       count: series.count,
     },
     {
@@ -70,6 +103,7 @@ export function YearStrip({
       series: "paid",
       label: t("invoicesList.seriesPaid"),
       value: series.paid,
+      pick: "paid" as const,
       count: series.paidCount,
     },
     {
@@ -77,6 +111,7 @@ export function YearStrip({
       series: "unpaid",
       label: t("invoicesList.seriesUnpaid"),
       value: series.unpaid,
+      pick: "unpaid" as const,
       count: series.unpaidCount,
     },
   ] as const;
@@ -95,16 +130,6 @@ export function YearStrip({
             <ChevronLeft />
           </button>
           <span className="ystrip-year-label num">{series.year}</span>
-          {/* A column cannot stack two currencies, so when the ledger below
-              holds both, the chart names the one it is made of. */}
-          {showCurrency ? (
-            <span
-              className="ystrip-currency mono"
-              title={t("invoicesList.chartCurrencyNote", { currency })}
-            >
-              {currency}
-            </span>
-          ) : null}
           <button
             type="button"
             className="ystrip-arrow"
@@ -128,6 +153,7 @@ export function YearStrip({
               {summary.label}
             </div>
             <div className="ystrip-figure">{formatMoney(summary.value)}</div>
+            {foreignLine(series.foreignTotals, summary.pick)}
             <div className="ystrip-cell-meta">
               <span className="num">{summary.count}</span>{" "}
               {tp("invoicesList.invoiceCount", summary.count)}
@@ -150,21 +176,37 @@ export function YearStrip({
             onClick={() =>
               onSelectMonth(activeMonth === month.month ? null : month.month)
             }
-            aria-label={`${monthName(month.month)} ${series.year}: ${formatMoney(month.invoiced)}, ${month.count} ${tp("invoicesList.invoiceCount", month.count)}`}
+            aria-label={[
+              `${monthName(month.month)} ${series.year}: ${formatMoney(month.invoiced)}`,
+              ...month.foreignTotals.map((entry) =>
+                formatMoney(entry.invoiced, entry.currency),
+              ),
+              `${month.count} ${tp("invoicesList.invoiceCount", month.count)}`,
+            ].join(", ")}
           >
             <span className="ystrip-track">
-              <span
-                className="ystrip-stack"
-                style={{ height: `${(month.invoiced / scale) * 100}%` }}
-              >
-                {segmentsFor(month).map((segment) => (
+              <span className="ystrip-bar">
+                {capsFor(month).map((invoice) => (
                   <span
-                    key={segment.id}
-                    className="ystrip-seg"
-                    data-series={segment.paid ? "paid" : "unpaid"}
-                    style={{ flexGrow: Math.max(segment.total, 1) }}
+                    key={invoice.id}
+                    className="ystrip-cap"
+                    data-series={invoice.paid ? "paid" : "unpaid"}
+                    title={t("invoicesList.chartCurrencyNote", { currency })}
                   />
                 ))}
+                <span
+                  className="ystrip-stack"
+                  style={{ height: `${(month.invoiced / scale) * 100}%` }}
+                >
+                  {segmentsFor(month).map((segment) => (
+                    <span
+                      key={segment.id}
+                      className="ystrip-seg"
+                      data-series={segment.paid ? "paid" : "unpaid"}
+                      style={{ flexGrow: Math.max(segment.total, 1) }}
+                    />
+                  ))}
+                </span>
               </span>
             </span>
             <span className="ystrip-label">{monthName(month.month)}</span>
@@ -196,16 +238,38 @@ export function YearStrip({
             <div className="ystrip-tip-head">
               {monthName(cell.month)} {series.year}
             </div>
-            <div className="ystrip-tip-row" data-series="paid">
-              <span className="ystrip-swatch" />
-              {t("invoicesList.seriesPaid")}
-              <b className="num">{formatMoney(cell.paid)}</b>
-            </div>
-            <div className="ystrip-tip-row" data-series="unpaid">
-              <span className="ystrip-swatch" />
-              {t("invoicesList.seriesUnpaid")}
-              <b className="num">{formatMoney(cell.unpaid)}</b>
-            </div>
+            {/* Split by state, as the colours are — another currency is not a
+                third state of an invoice. It goes under the state it is in,
+                on its own line because it cannot be added to the one above. */}
+            {(
+              [
+                {
+                  key: "paid",
+                  label: t("invoicesList.seriesPaid"),
+                  value: cell.paid,
+                },
+                {
+                  key: "unpaid",
+                  label: t("invoicesList.seriesUnpaid"),
+                  value: cell.unpaid,
+                },
+              ] as const
+            ).map((row) => (
+              <Fragment key={row.key}>
+                <div className="ystrip-tip-row" data-series={row.key}>
+                  <span className="ystrip-swatch" />
+                  {row.label}
+                  <b className="num">{formatMoney(row.value)}</b>
+                </div>
+                {cell.foreignTotals
+                  .filter((entry) => entry[row.key] !== 0)
+                  .map((entry) => (
+                    <div key={entry.currency} className="ystrip-tip-alt num">
+                      + {formatMoney(entry[row.key], entry.currency)}
+                    </div>
+                  ))}
+              </Fragment>
+            ))}
             <div className="ystrip-tip-foot">
               <span className="num">{cell.count}</span>{" "}
               {tp("invoicesList.invoiceCount", cell.count)}
