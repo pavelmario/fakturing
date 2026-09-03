@@ -1,3 +1,4 @@
-expenseNumber,supplierVat,amountWithoutVat,vatRate,amountWithVat,description,expenseDate
-2026-E001,CZ12345678,12000,21,14520,Software subscription,2026-02-10T00:00:00.000Z
-2026-E002,,3500,0,3500,Travel costs,2026-02-16T00:00:00.000Z
+expenseNumber,supplierName,supplierVat,supplierIco,amountWithoutVat,vatRate,amountWithVat,description,expenseDate,items,note
+2026-E001,Alza.cz a.s.,CZ27082440,27082440,12000,21,14520,Software subscription,2026-02-10T00:00:00.000Z,,
+2026-E002,Dopravce s.r.o.,,,3500,0,3500,Travel costs,2026-02-16T00:00:00.000Z,,
+2026-E003,Papírnictví s.r.o.,CZ11223344,11223344,2900,21,3464,Kancelářské potřeby,2026-02-18T00:00:00.000Z,"[{""amount"":2,""unit"":""ks"",""description"":""Toner do tiskárny"",""unitPrice"":1200,""vat"":21},{""amount"":1,""unit"":"""",""description"":""Káva do kanceláře"",""unitPrice"":500,""vat"":12}]",Rozepsaný doklad

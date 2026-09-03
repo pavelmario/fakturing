@@ -61,6 +61,23 @@ explicit toggle). Period-driven: pick a month, get the expenses and the VAT
 figures for it, and export a **kontrolní hlášení** XML (`DPHKH1` 02.01, sections
 B2/B3/C) ready for the tax portal.
 
+An expense is the invoice model read the other way round — from whom, and for
+what:
+
+- **Dodavatel** — name, DIČ and IČO on the document itself. The name suggests
+  from suppliers you have already used and from the DIČ list in Settings, and
+  picking one fills in the rest. There is no supplier directory: each expense
+  keeps its own snapshot, exactly as an invoice keeps `clientName`.
+- **Rozpis po položkách** — optional, and the same line table the invoice
+  composer uses. Without it you type the total off the receipt and the base
+  back-computes; with it the lines are the truth and the total is their sum.
+  Mixed rates on one document are reported per band in the control statement.
+- **Pravidelné náklady** — warehouse rent, hosting, the accountant. Saved as a
+  template (from scratch, or from an expense you are already looking at) and
+  booked into a period from a checklist that shows what this month is still
+  missing. Nothing is ever written without you asking: a month you did not pay
+  for stays empty.
+
 ### Profil — your company
 
 Everything that ends up printed on an invoice: identity, address, contact,
@@ -243,6 +260,8 @@ src/
 │   ├── clients/ClientForm.tsx
 │   ├── ExpensesListPage.tsx     # period view + kontrolní hlášení XML
 │   ├── ExpenseCreatePage.tsx, ExpenseDetailPage.tsx, expenses/
+│   ├── ExpenseTemplatePage.tsx  # a recurring cost, edited as the expense
+│   │                            # it will become
 │   ├── ProfilePage.tsx          # company profile
 │   ├── profile/BankAccounts.tsx # multiple accounts, one per currency
 │   ├── SettingsPage.tsx         # preferences, CSV, relay, seed
@@ -250,6 +269,8 @@ src/
 │   ├── PaymentDialog.tsx, OfflineBanner.tsx, PWAUpdatePrompt.tsx
 └── lib/                         # pure logic + hooks
     ├── invoice.ts               # totals, status, dates
+    ├── expense.ts               # expense totals + the VAT band split
+    ├── expenseForm.ts, expenseSave.ts, supplierOptions.ts
     ├── money.ts                 # currencies, formatting, SPD support
     ├── invoiceNumber.ts         # number patterns + next sequence
     ├── invoiceFileName.ts       # PDF filename templating
@@ -275,6 +296,9 @@ src/
 ## Known gaps
 
 - **No invoice drafts** — an interrupted invoice is lost.
+- **Recurring expense templates are not in the CSV export** — they live in the
+  synced database only. Expenses themselves round-trip in full, breakdown
+  included.
 
 ## License
 

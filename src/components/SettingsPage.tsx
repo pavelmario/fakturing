@@ -186,12 +186,17 @@ export function SettingsPage({
           .select([
             "id",
             "expenseNumber",
+            "supplierName",
             "supplierVat",
+            "supplierIco",
             "amountWithoutVat",
             "vatRate",
             "amountWithVat",
             "description",
             "expenseDate",
+            "items",
+            "note",
+            "templateId",
           ])
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
@@ -923,17 +928,18 @@ export function SettingsPage({
     reader.onload = async () => {
       try {
         const text = String(reader.result ?? "");
-        const lines = text
-          .split(/\r?\n/)
-          .map((line) => line.trim())
-          .filter(Boolean);
-        if (lines.length < 2) {
+        /* Splitting on newlines cannot read what this page writes: a note is
+           a textarea, the export quotes the newlines inside it, and the line
+           split then cuts one record into two and maps the halves onto the
+           wrong headers. */
+        const rows = parseCsvRows(text);
+        if (rows.length < 2) {
           notify(t("alerts.csvNoData"), "error");
           return;
         }
 
-        const headers = parseCsvLine(lines[0]);
-        const dataRows = lines.slice(1).map((line) => parseCsvLine(line));
+        const headers = rows[0];
+        const dataRows = rows.slice(1);
         const formatTypeError = Evolu.createFormatTypeError();
 
         const toNullable = (value: string | undefined) => {
@@ -1013,14 +1019,29 @@ export function SettingsPage({
           );
           if (amountWithVat === "error") return;
 
+          /* A file written before expenses had a breakdown has no column
+             here at all, which is a blank cell, not a broken one. */
+          const itemsRaw = row.items?.trim();
+          const itemsResult = itemsRaw ? Evolu.Json.from(itemsRaw) : null;
+          if (itemsResult && !itemsResult.ok) {
+            console.error("Items error:", formatTypeError(itemsResult.error));
+            notify(t("alerts.expensesImportValidation"), "error");
+            return;
+          }
+
           const payload = {
             expenseNumber: toNullable(row.expenseNumber),
+            supplierName: toNullable(row.supplierName),
             supplierVat: toNullable(row.supplierVat),
+            supplierIco: toNullable(row.supplierIco),
             amountWithoutVat,
             vatRate,
             amountWithVat,
             description,
             expenseDate: expenseDateResult.value,
+            items: itemsResult?.ok ? itemsResult.value : null,
+            note: toNullable(row.note),
+            templateId: toNullable(row.templateId),
             deleted: Evolu.sqliteFalse,
           };
 
@@ -1458,12 +1479,17 @@ export function SettingsPage({
   const expensesExportHeaders = [
     "id",
     "expenseNumber",
+    "supplierName",
     "supplierVat",
+    "supplierIco",
     "amountWithoutVat",
     "vatRate",
     "amountWithVat",
     "description",
     "expenseDate",
+    "items",
+    "note",
+    "templateId",
   ];
 
   const handleExportSettingsCsv = () => {

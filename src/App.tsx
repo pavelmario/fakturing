@@ -22,6 +22,7 @@ import { ClientsPage } from "./components/ClientsPage";
 import { ExpenseCreatePage } from "./components/ExpenseCreatePage";
 import { ExpenseDetailPage } from "./components/ExpenseDetailPage";
 import { ExpensesListPage } from "./components/ExpensesListPage";
+import { ExpenseTemplatePage } from "./components/ExpenseTemplatePage";
 import { InvoiceCreatePage } from "./components/InvoiceCreatePage";
 import { InvoiceDetailPage } from "./components/InvoiceDetailPage";
 import { InvoiceListPage } from "./components/InvoiceListPage";
@@ -108,6 +109,20 @@ function ExpensesRoute() {
     <ExpensesListPage
       onCreateExpense={() => navigate("/naklady/novy")}
       onViewDetails={(id) => navigate(`/naklady/${id}`)}
+      onCreateTemplate={() => navigate("/naklady/pravidelne/nova")}
+      onEditTemplate={(id) => navigate(`/naklady/pravidelne/${id}`)}
+    />
+  );
+}
+
+function ExpenseTemplateRoute() {
+  const navigate = useNavigate();
+  const { templateId } = useParams();
+  return (
+    <ExpenseTemplatePage
+      key={templateId ?? "new"}
+      templateId={templateId}
+      onDone={() => navigate("/naklady")}
     />
   );
 }
@@ -222,6 +237,14 @@ function App() {
                 <Route
                   path="/naklady/novy"
                   element={<ExpenseCreateRoute />}
+                />
+                <Route
+                  path="/naklady/pravidelne/nova"
+                  element={<ExpenseTemplateRoute />}
+                />
+                <Route
+                  path="/naklady/pravidelne/:templateId"
+                  element={<ExpenseTemplateRoute />}
                 />
                 <Route
                   path="/naklady/:expenseId"

@@ -151,7 +151,7 @@
       "dateFromLabel": "Datum od",
       "dateToLabel": "Datum do",
       "resetDateFilters": "Resetovat datum",
-      "searchPlaceholder": "Hledat popis, číslo dokladu, DIČ…",
+      "searchPlaceholder": "Hledat dodavatele, popis, položku, číslo dokladu…",
       "typeFilterLabel": "Typ nákladu",
       "typeFilterAll": "všechny typy",
       "paymentMethodFilterLabel": "Způsob platby",
@@ -185,7 +185,15 @@
       "colDate": "Datum",
       "colDescription": "Popis",
       "colNumber": "Doklad",
-      "colSupplier": "DIČ dodavatele"
+      "colSupplier": "Dodavatel",
+      "itemCount": {
+        "one": "položka",
+        "few": "položky",
+        "many": "položek"
+      },
+      "numberMissing": "chybí číslo",
+      "numberMissingHint": "Doklad nad 10 000 Kč potřebuje pro kontrolní hlášení DIČ dodavatele i číslo dokladu.",
+      "vatMissing": "chybí DIČ"
     },
     "expenseCreate": {
       "sectionTitle": "Nový",
@@ -382,8 +390,6 @@
       "themeSwitchToLight": "Přepnout na světlý režim",
       "discreteMode": "Diskrétní režim",
       "expenses": "Evidence nákladů",
-      "supplierVatPrefillLabel": "Našeptávač DIČ dodavatelů",
-      "supplierVatPrefillPlaceholder": "CZ123456 | Acme, s.r.o.\nCZ654321 | Emca, a.s.",
       "poRequired": "Číslo objednávky na faktuře",
       "mempoolLabel": "Mempool URL",
       "invoiceNamingFormatLabel": "Název souboru faktury",
@@ -428,7 +434,6 @@
       "poRequiredHint": "Přidá na fakturu pole pro číslo objednávky.",
       "mempoolHint": "Adresa prohlížeče, na který odkazují bitcoinové faktury.",
       "expensesTitle": "Náklady",
-      "supplierVatPrefillHint": "Jeden dodavatel na řádek ve tvaru DIČ | název.",
       "importHint": "Zálohujte nebo přeneste data mezi zařízeními.",
       "template": "Šablona",
       "fakturoidTitle": "Import z Fakturoidu",
@@ -464,7 +469,10 @@
       "exportAll": "Vybrat vše",
       "exportNone": "Zrušit výběr",
       "invoiceNumberFormatLabel": "Číslování faktur",
-      "invoiceNumberPreview": "Další číslo: {number}"
+      "invoiceNumberPreview": "Další číslo: {number}",
+      "supplierVatPrefillLabel": "Našeptávač DIČ dodavatelů",
+      "supplierVatPrefillPlaceholder": "CZ123456 | Acme, s.r.o.\nCZ654321 | Emca, a.s.",
+      "supplierVatPrefillHint": "Jeden dodavatel na řádek ve tvaru DIČ | název."
     },
     "alerts": {
       "confirmResetSeed": "Chystáte se resetovat lokální data a vygenerovat nový seed zálohy. Chcete pokračovat?",
@@ -560,7 +568,8 @@
       "expenseCreated": "Náklad byl úspěšně uložen!",
       "expenseUpdated": "Náklad byl úspěšně aktualizován!",
       "expenseDeleted": "Náklad byl úspěšně smazán.",
-      "aresOffline": "ARES není dostupný, jste offline."
+      "aresOffline": "ARES není dostupný, jste offline.",
+      "expenseItemsAmountRequired": "Vyplňte cenu alespoň u jedné položky"
     },
     "pwa": {
       "updateAvailable": "Je k dispozici nová verze aplikace.",
@@ -615,7 +624,7 @@
       "nextMonth": "Následující měsíc"
     },
     "expenseForm": {
-      "aboutTitle": "Doklad",
+      "aboutTitle": "Za co",
       "amountTitle": "Částka",
       "descriptionLabel": "Popis nákladu *",
       "dateLabel": "Datum",
@@ -624,14 +633,25 @@
       "rateLabel": "Sazba DPH",
       "grossLabel": "Celkem s DPH *",
       "totalLabel": "Částka *",
-      "supplierVatLabel": "DIČ dodavatele",
-      "supplierVatPlaceholder": "Vyberte dodavatele",
-      "supplierVatHint": "Povinné u dokladů nad 10 000 Kč pro kontrolní hlášení.",
+      "supplierVatLabel": "DIČ",
+      "supplierVatHint": "DIČ je u dokladů nad 10 000 Kč povinné pro kontrolní hlášení.",
       "title": "Nový náklad",
       "save": "Uložit náklad",
       "editingBanner": "Upravujete náklad. Změny se uloží až po potvrzení.",
       "detailTitle": "Detail nákladu",
-      "notFound": "Náklad nenalezen."
+      "notFound": "Náklad nenalezen.",
+      "supplierTitle": "Dodavatel",
+      "supplierNameLabel": "Název dodavatele",
+      "supplierNamePlaceholder": "Od koho doklad je",
+      "supplierIcoLabel": "IČO",
+      "descriptionPlaceholder": "Za co náklad je",
+      "descriptionFromItems": "Necháte-li prázdné, doplní se z první položky.",
+      "breakdownOn": "Rozepsat po položkách",
+      "breakdownOff": "Zrušit rozpis",
+      "breakdownHint": "Rozpis položek stejně jako na faktuře",
+      "numberHint": "Číslo z dokladu dodavatele; nad 10 000 Kč je povinné.",
+      "noteLabel": "Poznámka",
+      "notePlaceholder": "Interní poznámka k nákladu"
     },
     "profile": {
       "title": "Profil",
@@ -655,6 +675,35 @@
       "bankMakeDefault": "Nastavit jako výchozí",
       "bankDeleteConfirm": "Smazat tento účet? Faktury, které na něj odkazují, zůstanou beze změny.",
       "bankLegacyLabel": "Účet z profilu"
+    },
+    "expenseTemplates": {
+      "title": "Pravidelné náklady",
+      "panelTitle": "Šablona",
+      "create": "Nová šablona",
+      "createTitle": "Nový pravidelný náklad",
+      "editTitle": "Pravidelný náklad",
+      "empty": "Zatím nemáte žádnou šablonu. Náklady, které se opakují ve stejné výši — pronájem skladu, hosting, účetnictví — si uložte jako šablonu a jedním kliknutím je zapíšete do zvoleného období.",
+      "generate": "Vytvořit",
+      "generateMissing": "Vytvořit vše chybějící ({count})",
+      "booked": "zapsáno",
+      "dayOfMonthShort": "{day}. v měsíci",
+      "dayOfMonthLabel": "Den v měsíci",
+      "dayOfMonthHint": "Datum, které dostane vytvořený náklad. V kratším měsíci se zkrátí na poslední den.",
+      "nameLabel": "Název šablony",
+      "namePlaceholder": "Pronájem skladu",
+      "save": "Uložit šablonu",
+      "saveFailed": "Šablonu se nepodařilo uložit.",
+      "saved": "Šablona „{name}“ uložena.",
+      "saveFromExpense": "Uložit jako pravidelný",
+      "saveFromExpenseConfirm": "Uložit „{name}“ jako pravidelný náklad?",
+      "generated": "„{name}“ zapsáno do období {period}.",
+      "generatedMany": "Zapsáno {count} nákladů do období {period}.",
+      "generateFailed": "Náklad se z šablony nepodařilo vytvořit.",
+      "notFound": "Šablona nenalezena.",
+      "deleteConfirm": "Smazat tuto šablonu? Už zapsané náklady zůstanou.",
+      "alreadyTemplate": "Tento náklad už je uložený jako pravidelný.",
+      "isTemplate": "uložen jako pravidelný",
+      "stampFailed": "Šablona vznikla, ale tento doklad se k ní nepodařilo přiřadit."
     }
   },
   "en": {
@@ -809,7 +858,7 @@
       "dateFromLabel": "Date from",
       "dateToLabel": "Date to",
       "resetDateFilters": "Reset date",
-      "searchPlaceholder": "Search description, document no., VAT ID…",
+      "searchPlaceholder": "Search supplier, description, line, document no.…",
       "typeFilterLabel": "Expense type",
       "typeFilterAll": "all types",
       "paymentMethodFilterLabel": "Payment method",
@@ -843,7 +892,15 @@
       "colDate": "Date",
       "colDescription": "Description",
       "colNumber": "Document",
-      "colSupplier": "Supplier VAT ID"
+      "colSupplier": "Supplier",
+      "itemCount": {
+        "one": "line",
+        "few": "lines",
+        "many": "lines"
+      },
+      "numberMissing": "no number",
+      "numberMissingHint": "A document over CZK 10,000 needs the supplier's VAT ID and document number for the control statement.",
+      "vatMissing": "no VAT ID"
     },
     "expenseCreate": {
       "sectionTitle": "New",
@@ -1040,8 +1097,6 @@
       "themeSwitchToLight": "Switch to light mode",
       "discreteMode": "Discrete mode",
       "expenses": "Expenses tracking",
-      "supplierVatPrefillLabel": "Supplier VAT prefill",
-      "supplierVatPrefillPlaceholder": "CZ123456 | Acme, Inc.\nCZ654321 | Emca, corp.",
       "poRequired": "Purchase order number on invoice",
       "mempoolLabel": "Mempool URL",
       "invoiceNamingFormatLabel": "Invoice file name",
@@ -1086,7 +1141,6 @@
       "poRequiredHint": "Adds a purchase order field to invoices.",
       "mempoolHint": "The explorer that bitcoin invoices link to.",
       "expensesTitle": "Expenses",
-      "supplierVatPrefillHint": "One supplier per line, as VAT ID | name.",
       "importHint": "Back up your data or move it between devices.",
       "template": "Template",
       "fakturoidTitle": "Import from Fakturoid",
@@ -1122,7 +1176,10 @@
       "exportAll": "Select all",
       "exportNone": "Clear selection",
       "invoiceNumberFormatLabel": "Invoice numbering",
-      "invoiceNumberPreview": "Next number: {number}"
+      "invoiceNumberPreview": "Next number: {number}",
+      "supplierVatPrefillLabel": "Supplier VAT prefill",
+      "supplierVatPrefillPlaceholder": "CZ123456 | Acme, Inc.\nCZ654321 | Emca, corp.",
+      "supplierVatPrefillHint": "One supplier per line, as VAT ID | name."
     },
     "alerts": {
       "confirmResetSeed": "You are about to reset local data and generate a new backup seed. Continue?",
@@ -1218,7 +1275,8 @@
       "expenseCreated": "Expense saved successfully!",
       "expenseUpdated": "Expense updated successfully!",
       "expenseDeleted": "Expense deleted successfully.",
-      "aresOffline": "ARES is unavailable, you are offline."
+      "aresOffline": "ARES is unavailable, you are offline.",
+      "expenseItemsAmountRequired": "Enter a price on at least one line"
     },
     "pwa": {
       "updateAvailable": "A new version of the app is available.",
@@ -1273,7 +1331,7 @@
       "nextMonth": "Next month"
     },
     "expenseForm": {
-      "aboutTitle": "Document",
+      "aboutTitle": "What for",
       "amountTitle": "Amount",
       "descriptionLabel": "Description *",
       "dateLabel": "Date",
@@ -1282,14 +1340,25 @@
       "rateLabel": "VAT rate",
       "grossLabel": "Total incl. VAT *",
       "totalLabel": "Amount *",
-      "supplierVatLabel": "Supplier VAT ID",
-      "supplierVatPlaceholder": "Pick a supplier",
-      "supplierVatHint": "Required above CZK 10,000 for the control statement.",
+      "supplierVatLabel": "VAT ID",
+      "supplierVatHint": "The VAT ID is required above CZK 10,000 for the control statement.",
       "title": "New expense",
       "save": "Save expense",
       "editingBanner": "You are editing this expense. Changes are saved only when you confirm.",
       "detailTitle": "Expense detail",
-      "notFound": "Expense not found."
+      "notFound": "Expense not found.",
+      "supplierTitle": "Supplier",
+      "supplierNameLabel": "Supplier name",
+      "supplierNamePlaceholder": "Who the document is from",
+      "supplierIcoLabel": "Company ID",
+      "descriptionPlaceholder": "What the cost is for",
+      "descriptionFromItems": "Left empty, it is taken from the first line.",
+      "breakdownOn": "Break down into lines",
+      "breakdownOff": "Drop the breakdown",
+      "breakdownHint": "Line items, the same as on an invoice",
+      "numberHint": "The supplier's document number; required above CZK 10,000.",
+      "noteLabel": "Note",
+      "notePlaceholder": "Internal note about this cost"
     },
     "profile": {
       "title": "Profile",
@@ -1313,6 +1382,35 @@
       "bankMakeDefault": "Make default",
       "bankDeleteConfirm": "Delete this account? Invoices referencing it are unchanged.",
       "bankLegacyLabel": "Account from profile"
+    },
+    "expenseTemplates": {
+      "title": "Recurring costs",
+      "panelTitle": "Template",
+      "create": "New template",
+      "createTitle": "New recurring cost",
+      "editTitle": "Recurring cost",
+      "empty": "No templates yet. Costs that repeat at the same amount — warehouse rent, hosting, accounting — can be saved as a template and booked into the selected period in one click.",
+      "generate": "Create",
+      "generateMissing": "Create all missing ({count})",
+      "booked": "booked",
+      "dayOfMonthShort": "{day}th of the month",
+      "dayOfMonthLabel": "Day of the month",
+      "dayOfMonthHint": "The date the created expense gets. A shorter month clamps it to its last day.",
+      "nameLabel": "Template name",
+      "namePlaceholder": "Warehouse rent",
+      "save": "Save template",
+      "saveFailed": "The template could not be saved.",
+      "saved": "Template “{name}” saved.",
+      "saveFromExpense": "Save as recurring",
+      "saveFromExpenseConfirm": "Save “{name}” as a recurring cost?",
+      "generated": "“{name}” booked into {period}.",
+      "generatedMany": "{count} costs booked into {period}.",
+      "generateFailed": "The expense could not be created from the template.",
+      "notFound": "Template not found.",
+      "deleteConfirm": "Delete this template? Costs already booked stay.",
+      "alreadyTemplate": "This cost is already saved as recurring.",
+      "isTemplate": "saved as recurring",
+      "stampFailed": "The template was created but this document could not be attached to it."
     }
   }
 }

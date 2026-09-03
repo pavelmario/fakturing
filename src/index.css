@@ -2618,6 +2618,176 @@
     padding: 0.625rem 1.125rem;
   }
 
+  /* Says what is missing where the value would have been, rather than
+     leaving an em dash the export later refuses. */
+  .ledger-warn {
+    color: var(--accent-text);
+  }
+
+  /* A state where an action used to be — the button is gone because it has
+     already been taken, and the row says so in its place. */
+  .inv-action-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .inv-action-note svg {
+    width: 13px;
+    height: 13px;
+    stroke-width: 2;
+  }
+
+  /* ---- Recurring expenses ----------------------------------------------- */
+
+  /* A checklist against the chosen period, not a schedule. The question at
+     the end of a month is "what have I not booked yet", so the panel answers
+     it in place: one line per repeating cost, and either a tick or a button. */
+  .rec {
+    border: 1px solid var(--rule);
+    border-radius: var(--r);
+    background: var(--surface);
+    margin-bottom: 0.75rem;
+  }
+
+  .rec-head {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5625rem 0.875rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .rec-head .compose-heading {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 0;
+  }
+
+  .rec-head .compose-heading svg {
+    width: 13px;
+    height: 13px;
+    stroke-width: 2;
+  }
+
+  .rec-period {
+    font-size: var(--fs-sm);
+    color: var(--ink-faint);
+    text-transform: capitalize;
+  }
+
+  .rec-head-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .rec-empty {
+    margin: 0;
+    padding: 0.75rem 0.875rem;
+    max-width: 54rem;
+    font-size: var(--fs-sm);
+    color: var(--ink-muted);
+  }
+
+  .rec-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .rec-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.25rem 0.875rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .rec-list > .rec-row:last-child {
+    border-bottom: 0;
+  }
+
+  /* Booked is the resting state, so it recedes; what is still missing is
+     what the eye should land on. */
+  .rec-row[data-done="true"] .rec-name,
+  .rec-row[data-done="true"] .rec-amount {
+    color: var(--ink-muted);
+  }
+
+  .rec-open {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.3125rem 0;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .rec-name {
+    font-size: var(--fs-base);
+    font-weight: 500;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .rec-open:hover .rec-name {
+    color: var(--accent-text);
+  }
+
+  .rec-meta {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: var(--fs-sm);
+    color: var(--ink-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .rec-amount {
+    font-size: var(--fs-base);
+    color: var(--ink);
+  }
+
+  /* The tick and the button occupy the same column width, so the rows stay
+     aligned whichever state they are in. */
+  .rec-done,
+  .rec-generate {
+    flex: none;
+    min-width: 6.25rem;
+  }
+
+  .rec-done {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    font-size: var(--fs-sm);
+    color: var(--paid);
+  }
+
+  .rec-done svg {
+    width: 13px;
+    height: 13px;
+    stroke-width: 2.25;
+  }
+
+  .rec-generate {
+    justify-content: center;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+  }
+
   /* ---- Client detail ---------------------------------------------------- */
 
   .client-form {
@@ -3418,6 +3588,34 @@
     /* ---- Period actions ---------------------------------------------- */
     .period-actions {
       padding: 0.625rem 0.875rem;
+    }
+
+    /* ---- Recurring expenses ------------------------------------------ */
+
+    /* Name, amount and action will not sit on one line here, so the name
+       takes the row and the figure pairs with its button below it. */
+    .rec-row {
+      flex-wrap: wrap;
+      gap: 0.375rem 0.75rem;
+      padding: 0.5rem 0.875rem;
+    }
+
+    .rec-open {
+      flex-basis: 100%;
+      flex-wrap: wrap;
+    }
+
+    .rec-amount {
+      margin-left: auto;
+    }
+
+    .rec-head {
+      flex-wrap: wrap;
+    }
+
+    .rec-head-actions {
+      flex-basis: 100%;
+      margin-left: 0;
     }
   }
 
