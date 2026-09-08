@@ -447,7 +447,6 @@
       "template": "Šablona",
       "fakturoidTitle": "Import z Fakturoidu",
       "fakturoidHint": "Ve Fakturoidu vyexportujte faktury ve formátu Fakturoid XML a soubor nahrajte sem. Klienti se spárují podle IČO, proformy a storna se přeskočí.",
-      "fakturoidPick": "Vybrat XML soubor",
       "fakturoidConfirmTitle": "Importovat z Fakturoidu?",
       "fakturoidConfirmLabel": "Importovat",
       "fakturoidCountInvoices": {
@@ -487,7 +486,18 @@
       "emailSubjectLabel": "Předmět",
       "emailBodyLabel": "Text",
       "emailSubjectDefault": "Faktura {cislo}",
-      "emailBodyDefault": "Dobrý den,\n\nv příloze posílám fakturu {cislo} na částku {castka} se splatností {splatnost}.\n\nDěkuji,\n{dodavatel}"
+      "emailBodyDefault": "Dobrý den,\n\nv příloze posílám fakturu {cislo} na částku {castka} se splatností {splatnost}.\n\nDěkuji,\n{dodavatel}",
+      "fakturoidPickInvoices": "Vybrat XML s fakturami",
+      "fakturoidPickExpenses": "Vybrat XML s náklady",
+      "fakturoidExpensesHint": "Náklady se z Fakturoidu exportují zvlášť. Doklad v cizí měně se uloží v přepočtu na koruny, jinak se přeskočí.",
+      "fakturoidCountExpenses": {
+        "one": "{count} náklad",
+        "few": "{count} náklady",
+        "many": "{count} nákladů"
+      },
+      "fakturoidSkipForeign": "cizí měna bez přepočtu: {count}",
+      "fakturoidExpensesConfirmTitle": "Importovat náklady z Fakturoidu?",
+      "fakturoidExpenseConverted": "Původní částka {amount} {currency}."
     },
     "alerts": {
       "confirmResetSeed": "Chystáte se resetovat lokální data a vygenerovat nový seed zálohy. Chcete pokračovat?",
@@ -586,7 +596,11 @@
       "aresOffline": "ARES není dostupný, jste offline.",
       "expenseItemsAmountRequired": "Vyplňte cenu alespoň u jedné položky",
       "emailNoAddress": "Klient nemá e-mailovou adresu. Doplňte ji v kartě klienta.",
-      "emailPdfFailed": "PDF se nepodařilo připravit, e-mail je bez přílohy."
+      "emailPdfFailed": "PDF se nepodařilo připravit, e-mail je bez přílohy.",
+      "fakturoidNoExpenses": "Export neobsahuje žádné náklady.",
+      "fakturoidExpensesNothingNew": "Všechny náklady z exportu už v aplikaci jsou.",
+      "fakturoidExpensesImported": "Naimportováno: {summary}.",
+      "fakturoidExpensesPartial": "Tyto náklady se naimportovat nepodařilo: {numbers}."
     },
     "pwa": {
       "updateAvailable": "Je k dispozici nová verze aplikace.",
@@ -1173,7 +1187,6 @@
       "template": "Template",
       "fakturoidTitle": "Import from Fakturoid",
       "fakturoidHint": "In Fakturoid, export your invoices as Fakturoid XML and upload the file here. Clients are matched on their company ID; proformas and cancelled invoices are skipped.",
-      "fakturoidPick": "Choose XML file",
       "fakturoidConfirmTitle": "Import from Fakturoid?",
       "fakturoidConfirmLabel": "Import",
       "fakturoidCountInvoices": {
@@ -1213,7 +1226,17 @@
       "emailSubjectLabel": "Subject",
       "emailBodyLabel": "Body",
       "emailSubjectDefault": "Invoice {cislo}",
-      "emailBodyDefault": "Hello,\n\nplease find attached invoice {cislo} for {castka}, due {splatnost}.\n\nThank you,\n{dodavatel}"
+      "emailBodyDefault": "Hello,\n\nplease find attached invoice {cislo} for {castka}, due {splatnost}.\n\nThank you,\n{dodavatel}",
+      "fakturoidPickInvoices": "Pick the invoices XML",
+      "fakturoidPickExpenses": "Pick the expenses XML",
+      "fakturoidExpensesHint": "Fakturoid exports expenses separately. A document in a foreign currency is stored converted to koruna, or skipped if the export carries no converted total.",
+      "fakturoidCountExpenses": {
+        "one": "{count} expense",
+        "many": "{count} expenses"
+      },
+      "fakturoidSkipForeign": "foreign currency, not converted: {count}",
+      "fakturoidExpensesConfirmTitle": "Import expenses from Fakturoid?",
+      "fakturoidExpenseConverted": "Originally {amount} {currency}."
     },
     "alerts": {
       "confirmResetSeed": "You are about to reset local data and generate a new backup seed. Continue?",
@@ -1312,7 +1335,11 @@
       "aresOffline": "ARES is unavailable, you are offline.",
       "expenseItemsAmountRequired": "Enter a price on at least one line",
       "emailNoAddress": "This client has no e-mail address. Add one on the client's page.",
-      "emailPdfFailed": "The PDF could not be prepared; the draft has no attachment."
+      "emailPdfFailed": "The PDF could not be prepared; the draft has no attachment.",
+      "fakturoidNoExpenses": "The export contains no expenses.",
+      "fakturoidExpensesNothingNew": "Every expense in the export is already here.",
+      "fakturoidExpensesImported": "Imported: {summary}.",
+      "fakturoidExpensesPartial": "These expenses could not be imported: {numbers}."
     },
     "pwa": {
       "updateAvailable": "A new version of the app is available.",

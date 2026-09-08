@@ -32,8 +32,18 @@ import { EMAIL_TOKENS } from "../lib/invoiceEmail";
 import {
   matchBankAccount,
   matchClient,
+  parseFakturoidExpenseXml,
   parseFakturoidXml,
 } from "../lib/fakturoidImport";
+import {
+  expenseAmountColumns,
+  itemToForm,
+  normalizeExpenseItems,
+  trim100,
+  trim1000,
+  type ExpenseFormValues,
+} from "../lib/expenseForm";
+import { formatAmount } from "../lib/money";
 import { useI18n } from "../i18n";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { DonatePanel } from "./invoices/DonatePanel";
@@ -106,6 +116,7 @@ export function SettingsPage({
   const importExpensesInputRef = useRef<HTMLInputElement | null>(null);
   const importBankAccountsInputRef = useRef<HTMLInputElement | null>(null);
   const importFakturoidInputRef = useRef<HTMLInputElement | null>(null);
+  const importFakturoidExpensesInputRef = useRef<HTMLInputElement | null>(null);
   /* The token buttons write into these, at the caret. */
   const numberFormatRef = useRef<HTMLInputElement | null>(null);
   const namingFormatRef = useRef<HTMLInputElement | null>(null);
@@ -1290,6 +1301,205 @@ export function SettingsPage({
     reader.readAsText(file);
   };
 
+  /**
+   * The same export, on the costs side.
+   *
+   * Fakturoid keeps expenses in their own file, so this is a second picker
+   * rather than a smarter one — and the document it writes is the supplier's:
+   * its number, its taxable supply date, its lines. Anything already carrying
+   * that supplier's document number is left alone, so a wider export
+   * overlapping an earlier import adds only what is new.
+   */
+  const handleImportFakturoidExpensesXml = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        let parsed;
+        try {
+          parsed = parseFakturoidExpenseXml(String(reader.result ?? ""));
+        } catch (error) {
+          console.error("Fakturoid expense parse error:", error);
+          notify(t("alerts.fakturoidInvalidFile"), "error");
+          return;
+        }
+
+        if (parsed.expenses.length === 0) {
+          notify(t("alerts.fakturoidNoExpenses"), "error");
+          return;
+        }
+
+        /* Identity is the supplier's document number, not ours: two
+           suppliers numbering from one is ordinary. */
+        const keyOf = (supplier: string, number: string | null) =>
+          `${supplier.trim().toLocaleLowerCase()}|${(number ?? "").trim()}`;
+        const known = new Set(
+          expenseRows.map((row) =>
+            keyOf(String(row.supplierName ?? ""), row.expenseNumber),
+          ),
+        );
+        const fresh = parsed.expenses.filter(
+          (expense) =>
+            !known.has(keyOf(expense.supplierName, expense.expenseNumber)),
+        );
+        if (fresh.length === 0) {
+          notify(t("alerts.fakturoidExpensesNothingNew"), "info");
+          return;
+        }
+
+        const duplicates = parsed.expenses.length - fresh.length;
+        const left = (
+          [
+            [duplicates, "fakturoidSkipDuplicates"],
+            [parsed.skipped.foreignCurrency, "fakturoidSkipForeign"],
+            [parsed.skipped.unusable, "fakturoidSkipUnusable"],
+          ] as const
+        )
+          .filter(([count]) => count > 0)
+          .map(([count, key]) => t(`settings.${key}`, { count }));
+
+        const confirmed = await confirmDialog({
+          title: t("settings.fakturoidExpensesConfirmTitle"),
+          message: [
+            tp("settings.fakturoidCountExpenses", fresh.length),
+            left.length
+              ? t("settings.fakturoidSkipped", { parts: left.join(", ") })
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          confirmLabel: t("settings.fakturoidConfirmLabel"),
+        });
+        if (!confirmed) return;
+
+        const isVatPayer = profile?.vatPayer === Evolu.sqliteTrue;
+        let written = 0;
+        const failed: string[] = [];
+
+        for (const expense of fresh) {
+          /* Through the form's own shape, so an imported cost is stored by
+             exactly the rules a typed one is — including a non-VAT payer's,
+             for whom the net figure is the gross one. */
+          const values: ExpenseFormValues = {
+            supplierName: trim100(expense.supplierName),
+            supplierVat: trim100(expense.supplierVat ?? ""),
+            supplierIco: trim100(expense.supplierIco ?? ""),
+            description: trim100(expense.description),
+            expenseDate: expense.expenseDate,
+            expenseNumber: trim100(expense.expenseNumber ?? ""),
+            note: trim1000(
+              [
+                expense.note ?? "",
+                expense.originalCurrency
+                  ? t("settings.fakturoidExpenseConverted", {
+                      amount: formatAmount(expense.originalTotal ?? 0, locale),
+                      currency: expense.originalCurrency,
+                    })
+                  : "",
+              ]
+                .filter(Boolean)
+                .join("\n"),
+            ),
+            amountWithoutVat: String(expense.amountWithoutVat),
+            vatRate: String(expense.vatRate),
+            amountWithVat: String(expense.amountWithVat),
+            /* A supplier charges VAT whether or not it can be claimed back.
+               For a non-VAT payer the form's lines are quoted gross, so the
+               net prices out of Fakturoid are grossed up on the way in —
+               left as they were, every receipt would be understated by its
+               own VAT. */
+            items: expense.items
+              .map((item) =>
+                isVatPayer
+                  ? item
+                  : {
+                      ...item,
+                      unitPrice:
+                        Math.round(item.unitPrice * (1 + item.vat / 100) * 100) /
+                        100,
+                      vat: 0,
+                    },
+              )
+              .map(itemToForm),
+          };
+
+          const columns = expenseAmountColumns(values, isVatPayer);
+          const items = normalizeExpenseItems(values.items, isVatPayer);
+          const label = values.expenseNumber || values.description;
+
+          /* Midday, not midnight: a date stored at 00:00 UTC reads as the day
+             before once the browser is west of Greenwich. */
+          const dateIso = Evolu.dateToDateIso(
+            new Date(`${expense.expenseDate}T12:00:00`),
+          );
+          const net = Evolu.NonNegativeNumber.from(columns.amountWithoutVat);
+          const rate = Evolu.NonNegativeNumber.from(columns.vatRate);
+          const gross = Evolu.NonNegativeNumber.from(columns.amountWithVat);
+          const stored = Evolu.Json.from(JSON.stringify(items));
+          if (
+            !dateIso.ok ||
+            !net.ok ||
+            !rate.ok ||
+            !gross.ok ||
+            !stored.ok ||
+            !values.description
+          ) {
+            failed.push(label);
+            continue;
+          }
+
+          const result = evolu.insert("expense", {
+            expenseNumber: values.expenseNumber || null,
+            supplierName: values.supplierName || null,
+            supplierVat: values.supplierVat || null,
+            supplierIco: values.supplierIco || null,
+            amountWithoutVat: net.value,
+            vatRate: rate.value,
+            amountWithVat: gross.value,
+            description: values.description,
+            expenseDate: dateIso.value,
+            items: items.length > 0 ? stored.value : null,
+            note: values.note || null,
+            templateId: null,
+            deleted: Evolu.sqliteFalse,
+          });
+          if (!result.ok) {
+            console.error("Fakturoid expense insert error:", result.error);
+            failed.push(label);
+            continue;
+          }
+          written += 1;
+        }
+
+        notify(
+          t("alerts.fakturoidExpensesImported", {
+            summary: tp("settings.fakturoidCountExpenses", written),
+          }),
+          "success",
+        );
+        if (failed.length > 0) {
+          notify(
+            t("alerts.fakturoidExpensesPartial", { numbers: failed.join(", ") }),
+            "error",
+          );
+        }
+      } catch (error) {
+        console.error("Fakturoid expense import error:", error);
+        notify(t("alerts.fakturoidImportFailed"), "error");
+      } finally {
+        if (importFakturoidExpensesInputRef.current) {
+          importFakturoidExpensesInputRef.current.value = "";
+        }
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
   // Save data via Evolu (local-first + sync)
   const handleSave = async () => {
     setSaveError(null);
@@ -2168,13 +2378,38 @@ export function SettingsPage({
               onChange={handleImportFakturoidXml}
               className="hidden"
             />
-            <button
-              className="btn-secondary"
-              onClick={() => importFakturoidInputRef.current?.click()}
-            >
-              <Upload />
-              {t("settings.fakturoidPick")}
-            </button>
+            <input
+              ref={importFakturoidExpensesInputRef}
+              type="file"
+              accept=".xml,text/xml,application/xml"
+              onChange={handleImportFakturoidExpensesXml}
+              className="hidden"
+            />
+            <div className="btn-row">
+              <button
+                className="btn-secondary"
+                onClick={() => importFakturoidInputRef.current?.click()}
+              >
+                <Upload />
+                {t("settings.fakturoidPickInvoices")}
+              </button>
+              {expenses ? (
+                <button
+                  className="btn-secondary"
+                  onClick={() =>
+                    importFakturoidExpensesInputRef.current?.click()
+                  }
+                >
+                  <Upload />
+                  {t("settings.fakturoidPickExpenses")}
+                </button>
+              ) : null}
+            </div>
+            {expenses ? (
+              <p className="field-hint mt-2">
+                {t("settings.fakturoidExpensesHint")}
+              </p>
+            ) : null}
           </section>
 
           {/* ---- Danger zone ----------------------------------------- */}
