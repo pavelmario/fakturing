@@ -506,6 +506,7 @@ export function InvoiceCreatePage({
             <InvoicePdfPreview
               document={savedDocument}
               title={savedFileName}
+              dragFileName={savedFileName}
             />
           </div>
         ) : (

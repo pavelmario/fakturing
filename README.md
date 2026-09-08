@@ -41,9 +41,13 @@ The landing screen is a ledger, not a dashboard.
 - **Duplicate** opens a prefilled draft rather than silently writing a new record.
 - **PDF export** (A4, `@react-pdf/renderer`) with repeating table headers, totals
   that never orphan, and a filename built from your own template.
-- **Poslat e-mailem** fills the covering mail from your template and opens it in
-  whatever mail client the machine has, with the PDF already downloaded to
-  attach — the app sends nothing itself.
+- **Poslat e-mailem** opens the machine's own mail client on a draft to the
+  client, worded from your template — the app sends nothing itself. The
+  invoice cannot ride along in a `mailto:`, so **the preview below is the
+  attachment**: drag the sheet into the compose window and Chrome hands the
+  file over at the drop, without writing anything to disk. Pressing the
+  button says so on the sheet itself — it dims and asks for the drag until
+  the invoice is picked up.
 - **Czech SPD payment QR** for CZK invoices; suppressed with a note for other
   currencies, because the SPD format encodes CZK only.
 - **Bitcoin invoices** — a BTC address per invoice, optionally read straight off a
@@ -363,8 +367,10 @@ src/
 
 - **No invoice drafts** — an interrupted invoice is lost, though leaving one
   half-written now asks first.
-- **`mailto:` cannot attach**, so the covering e-mail opens with the PDF
-  downloaded beside it rather than already attached.
+- **No handover carries a whole e-mail.** `mailto:` opens the client but
+  cannot attach, and dragging the file out of the page is a Chrome and Edge
+  ability — in Safari and Firefox the invoice is exported and attached by
+  hand.
 - **Recurring expense templates are not in the CSV export** — they live in the
   synced database only. Expenses themselves round-trip in full, breakdown
   included.

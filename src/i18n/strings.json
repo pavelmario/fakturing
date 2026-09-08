@@ -335,8 +335,8 @@
       "discardConfirm": "Máte neuložené změny. Opravdu je chcete zahodit?",
       "pdfOpen": "Otevřít PDF",
       "emailSend": "Poslat e-mailem",
-      "emailPreparing": "Připravuji…",
-      "emailAttachHint": "PDF je stažené jako {name} — přiložte ho k rozepsanému e-mailu."
+      "dragHelp": "Přetáhněte do e-mailu",
+      "dragPrompt": "Přetáhněte fakturu do rozepsaného e-mailu"
     },
     "settings": {
       "sectionTitle": "Předvolby",
@@ -596,7 +596,6 @@
       "aresOffline": "ARES není dostupný, jste offline.",
       "expenseItemsAmountRequired": "Vyplňte cenu alespoň u jedné položky",
       "emailNoAddress": "Klient nemá e-mailovou adresu. Doplňte ji v kartě klienta.",
-      "emailPdfFailed": "PDF se nepodařilo připravit, e-mail je bez přílohy.",
       "fakturoidNoExpenses": "Export neobsahuje žádné náklady.",
       "fakturoidExpensesNothingNew": "Všechny náklady z exportu už v aplikaci jsou.",
       "fakturoidExpensesImported": "Naimportováno: {summary}.",
@@ -1079,8 +1078,8 @@
       "discardConfirm": "You have unsaved changes. Discard them?",
       "pdfOpen": "Open the PDF",
       "emailSend": "Send by e-mail",
-      "emailPreparing": "Preparing…",
-      "emailAttachHint": "The PDF was downloaded as {name} — attach it to the draft."
+      "dragHelp": "Drag into the e-mail",
+      "dragPrompt": "Drag the invoice into the open e-mail"
     },
     "settings": {
       "sectionTitle": "Preferences",
@@ -1339,7 +1338,6 @@
       "aresOffline": "ARES is unavailable, you are offline.",
       "expenseItemsAmountRequired": "Enter a price on at least one line",
       "emailNoAddress": "This client has no e-mail address. Add one on the client's page.",
-      "emailPdfFailed": "The PDF could not be prepared; the draft has no attachment.",
       "fakturoidNoExpenses": "The export contains no expenses.",
       "fakturoidExpensesNothingNew": "Every expense in the export is already here.",
       "fakturoidExpensesImported": "Imported: {summary}.",

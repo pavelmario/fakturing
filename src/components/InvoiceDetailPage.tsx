@@ -1,7 +1,7 @@
-import { use, useMemo, useState } from "react";
+import { use, useMemo, useRef, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
-import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
+import { PDFDownloadLink } from "@react-pdf/renderer";
 import {
   ArrowLeft,
   Copy,
@@ -151,7 +151,9 @@ export function InvoiceDetailPage({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [payingOpen, setPayingOpen] = useState(false);
-  const [emailing, setEmailing] = useState(false);
+  /* Raised while a compose window is open and waiting for the invoice. */
+  const [dragPrompt, setDragPrompt] = useState(false);
+  const previewRef = useRef<HTMLDivElement | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
 
   const storedItems = useMemo(() => parseItems(invoice?.items), [invoice]);
@@ -421,72 +423,82 @@ export function InvoiceDetailPage({
   };
 
   /**
-   * Hands the covering e-mail to whatever mail client the machine has.
+   * The covering e-mail, worded from the template.
    *
-   * The app sends nothing itself: this fills the template and opens a draft,
-   * so what leaves the mailbox has still been read by a person. `mailto:`
-   * cannot carry an attachment, so the PDF is written to disk first — the
-   * file is waiting in Downloads by the time the compose window is up.
+   * The app sends nothing itself; it hands a draft to the machine's own mail
+   * client. Which handover is used is not a preference but a limit of the
+   * platform, and no single one carries everything:
+   *
+   * - the system share sheet takes the invoice and the text, and has nowhere
+   *   to put the recipient;
+   * - an `.eml` file carries all four, and has to be opened from Downloads
+   *   rather than opening the client itself;
+   * - `mailto:` prefills the recipient and the text, and cannot attach.
+   *
+   * So the button shares where the browser can share, writes the draft file
+   * where it cannot, and falls back to `mailto:` when there is no invoice to
+   * attach in the first place.
    */
-  const sendByEmail = async () => {
+  const emailParts = () => {
     const address = (selectedClientRecord?.email ?? "").trim();
+    const vars = {
+      cislo: invoice.invoiceNumber ?? "",
+      klient: invoice.clientName ?? "",
+      /* Never the discrete-mode mask: this figure is going to the client,
+         who is entitled to read it. */
+      castka: formatMoney(storedTotal, locale, invoiceCurrency),
+      splatnost: formatDate(form.dueDate?.toISOString() ?? null, locale),
+      datum: formatDate(invoice.issueDate, locale),
+      dodavatel: profile?.name ?? "",
+      vs: variableSymbol(invoice.invoiceNumber ?? ""),
+    };
+    const fill = (
+      fromClient: string | null | undefined,
+      fromProfile: string | null | undefined,
+      fallback: string,
+    ) => fillEmailTemplate(pickTemplate(fromClient, fromProfile, fallback), vars);
+
+    return {
+      address,
+      subject: fill(
+        selectedClientRecord?.emailSubject,
+        profile?.invoiceEmailSubject,
+        t("settings.emailSubjectDefault"),
+      ),
+      body: fill(
+        selectedClientRecord?.emailBody,
+        profile?.invoiceEmailBody,
+        t("settings.emailBodyDefault"),
+      ),
+    };
+  };
+
+  /**
+   * Opens the mail client on a draft addressed to the client.
+   *
+   * `mailto:` is what actually launches a mail client, and it cannot carry an
+   * attachment — the RFC has no field for one. The invoice goes in by being
+   * dragged out of the preview below into the compose window, which puts no
+   * file on disk on the way.
+   */
+  const sendByEmail = () => {
+    const { address, subject, body } = emailParts();
     if (!address) {
       notify(t("alerts.emailNoAddress"), "error");
       return;
     }
-
-    setEmailing(true);
-    try {
-      const vars = {
-        cislo: invoice.invoiceNumber ?? "",
-        klient: invoice.clientName ?? "",
-        /* Never the discrete-mode mask: this figure is going to the client,
-           who is entitled to read it. */
-        castka: formatMoney(storedTotal, locale, invoiceCurrency),
-        splatnost: formatDate(form.dueDate?.toISOString() ?? null, locale),
-        datum: formatDate(invoice.issueDate, locale),
-        dodavatel: profile?.name ?? "",
-        vs: variableSymbol(invoice.invoiceNumber ?? ""),
-      };
-      const subject = fillEmailTemplate(
-        pickTemplate(
-          selectedClientRecord?.emailSubject,
-          profile?.invoiceEmailSubject,
-          t("settings.emailSubjectDefault"),
-        ),
-        vars,
-      );
-      const body = fillEmailTemplate(
-        pickTemplate(
-          selectedClientRecord?.emailBody,
-          profile?.invoiceEmailBody,
-          t("settings.emailBodyDefault"),
-        ),
-        vars,
-      );
-
-      let attached = false;
-      try {
-        const blob = await pdf(pdfDocument).toBlob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = fileName;
-        link.click();
-        window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
-        attached = true;
-      } catch (error) {
-        console.error("Invoice PDF render error:", error);
-        notify(t("alerts.emailPdfFailed"), "error");
-      }
-
-      window.location.href = buildMailto(address, subject, body);
-      if (attached) {
-        notify(t("invoiceDetail.emailAttachHint", { name: fileName }), "info");
-      }
-    } finally {
-      setEmailing(false);
-    }
+    window.location.href = buildMailto(address, subject, body);
+    /* The draft is open somewhere behind this tab; the sheet below is the
+       next thing to do, so it says so until the invoice is picked up. */
+    setDragPrompt(true);
+    window.setTimeout(
+      () =>
+        previewRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        }),
+      150,
+    );
   };
 
   /* Duplicating opens a prefilled new invoice to confirm, rather than silently
@@ -577,15 +589,9 @@ export function InvoiceDetailPage({
               </>
             )}
           </PDFDownloadLink>
-          <button
-            className="btn-secondary"
-            onClick={sendByEmail}
-            disabled={emailing}
-          >
+          <button className="btn-secondary" onClick={sendByEmail}>
             <Mail />
-            {emailing
-              ? t("invoiceDetail.emailPreparing")
-              : t("invoiceDetail.emailSend")}
+            {t("invoiceDetail.emailSend")}
           </button>
           {isPaid ? (
             <button className="btn-secondary" onClick={undoPayment}>
@@ -679,8 +685,14 @@ export function InvoiceDetailPage({
             />
           </>
         ) : (
-          <div className="saved">
-            <InvoicePdfPreview document={pdfDocument} title={fileName} />
+          <div className="saved" ref={previewRef}>
+            <InvoicePdfPreview
+              document={pdfDocument}
+              title={fileName}
+              dragFileName={fileName}
+              prompt={dragPrompt}
+              onDragged={() => setDragPrompt(false)}
+            />
           </div>
         )}
       </div>
