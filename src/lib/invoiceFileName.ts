@@ -20,6 +20,8 @@ export const FILENAME_DEFAULT = "faktura-{cislo}";
 export type FileNameParts = {
   number: string;
   client: string;
+  /** What the client itself asks to be called in a filename, if anything. */
+  clientAlias?: string | null;
   supplier: string;
   /** The invoice's issue date — date tokens are derived from it. */
   issueDate?: Date | null;
@@ -67,6 +69,9 @@ const sanitize = (value: string): string =>
     .replace(/-{2,}/g, "-")
     .replace(/^[-.]+|[-.]+$/g, "");
 
+/** What `{klient}` becomes when the client has not chosen its own spelling. */
+export const defaultClientAlias = (name: string): string => compact(name);
+
 /** Back-compat: the two legacy preset values map onto templates. */
 export const normalizeFileNameTemplate = (
   stored: string | null | undefined,
@@ -93,9 +98,12 @@ export const buildInvoiceFileName = (
       : new Date();
   const yyyy = String(date.getFullYear());
   const mmdd = `${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
+  /* The alias is typed by hand, so it keeps its own shape — "AlzaCZ" was
+     capitalised on purpose. Only the derived default is folded down. */
+  const alias = parts.clientAlias?.trim();
   const filled = pattern
     .replace(/\{cislo\}/gi, compactNumber(parts.number))
-    .replace(/\{klient\}/gi, compact(parts.client))
+    .replace(/\{klient\}/gi, alias ? sanitize(alias) : compact(parts.client))
     .replace(/\{dodavatel\}/gi, compact(parts.supplier))
     .replace(/\{rrrrmmdd\}/gi, `${yyyy}${mmdd}`)
     .replace(/\{rrmmdd\}/gi, `${yyyy.slice(2)}${mmdd}`)

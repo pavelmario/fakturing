@@ -1,7 +1,11 @@
+import { useRef } from "react";
 import { Search } from "lucide-react";
 import { useI18n } from "../../i18n";
 import { useAres } from "../../lib/useAres";
 import type { ClientFormValues } from "../../lib/clientForm";
+import { defaultClientAlias } from "../../lib/invoiceFileName";
+import { EMAIL_TOKENS } from "../../lib/invoiceEmail";
+import { insertToken } from "../../lib/insertToken";
 
 type ClientFormProps = {
   values: ClientFormValues;
@@ -17,6 +21,7 @@ type ClientFormProps = {
  */
 export function ClientForm({ values, onChange, nameError }: ClientFormProps) {
   const { t } = useI18n();
+  const emailBodyRef = useRef<HTMLTextAreaElement | null>(null);
   const ares = useAres(t, (result) =>
     onChange({
       ...(result.name ? { name: result.name } : {}),
@@ -148,6 +153,71 @@ export function ClientForm({ values, onChange, nameError }: ClientFormProps) {
           className="form-textarea"
           rows={3}
         />
+      </section>
+
+      {/* How this client's invoices leave the app: what the file is called
+          and what the covering mail says. Both are optional — left blank,
+          the client follows whatever Nastavení says. */}
+      <section className="compose-block">
+        <h2 className="compose-heading">{t("clientsForm.deliveryTitle")}</h2>
+
+        <label htmlFor="clientFileAlias" className="form-label">
+          {t("clientsForm.fileAliasLabel")}
+        </label>
+        <input
+          id="clientFileAlias"
+          type="text"
+          value={values.fileNameAlias}
+          onChange={(e) => onChange({ fileNameAlias: e.target.value })}
+          placeholder={defaultClientAlias(values.name) || "alza"}
+          className="form-input mono"
+        />
+        <p className="field-hint">{t("clientsForm.fileAliasHint")}</p>
+
+        <label htmlFor="clientEmailSubject" className="form-label mt-3">
+          {t("clientsForm.emailSubjectLabel")}
+        </label>
+        <input
+          id="clientEmailSubject"
+          type="text"
+          value={values.emailSubject}
+          onChange={(e) => onChange({ emailSubject: e.target.value })}
+          placeholder={t("settings.emailSubjectDefault")}
+          className="form-input"
+        />
+
+        <label htmlFor="clientEmailBody" className="form-label mt-3">
+          {t("clientsForm.emailBodyLabel")}
+        </label>
+        <textarea
+          id="clientEmailBody"
+          ref={emailBodyRef}
+          value={values.emailBody}
+          onChange={(e) => onChange({ emailBody: e.target.value })}
+          placeholder={t("settings.emailBodyDefault")}
+          className="form-textarea"
+          rows={6}
+        />
+        <div className="token-help">
+          {EMAIL_TOKENS.map((token) => (
+            <button
+              key={token}
+              type="button"
+              className="token"
+              onClick={() =>
+                insertToken(
+                  emailBodyRef.current,
+                  values.emailBody,
+                  token,
+                  (next) => onChange({ emailBody: next }),
+                )
+              }
+            >
+              {token}
+            </button>
+          ))}
+        </div>
+        <p className="field-hint">{t("clientsForm.emailTemplateHint")}</p>
       </section>
     </div>
   );

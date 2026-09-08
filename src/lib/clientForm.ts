@@ -7,6 +7,11 @@ export type ClientFormValues = {
   companyIdentificationNumber: string;
   vatNumber: string;
   note: string;
+  /** What `{klient}` becomes in an exported filename. */
+  fileNameAlias: string;
+  /* Blank means the covering e-mail is worded the way Settings words it. */
+  emailSubject: string;
+  emailBody: string;
 };
 
 export const emptyClient = (): ClientFormValues => ({
@@ -18,4 +23,7 @@ export const emptyClient = (): ClientFormValues => ({
   companyIdentificationNumber: "",
   vatNumber: "",
   note: "",
+  fileNameAlias: "",
+  emailSubject: "",
+  emailBody: "",
 });

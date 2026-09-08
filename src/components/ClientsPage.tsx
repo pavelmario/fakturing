@@ -34,6 +34,9 @@ export function ClientsPage({ onClientCreated }: ClientsPageProps) {
       companyIdentificationNumber: toNull(values.companyIdentificationNumber),
       vatNumber: toNull(values.vatNumber),
       note: toNull(values.note),
+      fileNameAlias: toNull(values.fileNameAlias),
+      emailSubject: toNull(values.emailSubject),
+      emailBody: toNull(values.emailBody),
       deleted: Evolu.sqliteFalse,
     });
     setIsSaving(false);

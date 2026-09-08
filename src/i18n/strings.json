@@ -60,7 +60,13 @@
       "identityTitle": "Subjekt",
       "addressTitle": "Adresa",
       "contactTitle": "Kontakt",
-      "aresHint": "Zadejte IČO a načtěte údaje z rejstříku ARES."
+      "aresHint": "Zadejte IČO a načtěte údaje z rejstříku ARES.",
+      "deliveryTitle": "Odeslání faktury",
+      "fileAliasLabel": "Zkratka do názvu souboru",
+      "fileAliasHint": "Co dosadí značka {klient} do názvu PDF. Prázdné = jméno klienta bez mezer.",
+      "emailSubjectLabel": "Předmět e-mailu",
+      "emailBodyLabel": "Text e-mailu",
+      "emailTemplateHint": "Prázdné pole převezme šablonu z Nastavení."
     },
     "clientDetail": {
       "title": "Detail klienta",
@@ -327,7 +333,10 @@
       "editingBanner": "Upravujete fakturu. Změny se uloží až po potvrzení.",
       "editPaidConfirm": "Tato faktura je označena jako uhrazená. Opravdu ji chcete upravit?",
       "discardConfirm": "Máte neuložené změny. Opravdu je chcete zahodit?",
-      "pdfOpen": "Otevřít PDF"
+      "pdfOpen": "Otevřít PDF",
+      "emailSend": "Poslat e-mailem",
+      "emailPreparing": "Připravuji…",
+      "emailAttachHint": "PDF je stažené jako {name} — přiložte ho k rozepsanému e-mailu."
     },
     "settings": {
       "sectionTitle": "Předvolby",
@@ -472,7 +481,13 @@
       "invoiceNumberPreview": "Další číslo: {number}",
       "supplierVatPrefillLabel": "Našeptávač DIČ dodavatelů",
       "supplierVatPrefillPlaceholder": "CZ123456 | Acme, s.r.o.\nCZ654321 | Emca, a.s.",
-      "supplierVatPrefillHint": "Jeden dodavatel na řádek ve tvaru DIČ | název."
+      "supplierVatPrefillHint": "Jeden dodavatel na řádek ve tvaru DIČ | název.",
+      "emailTitle": "Průvodní e-mail",
+      "emailHint": "Šablona, ze které se sestaví e-mail k faktuře. U jednotlivého klienta ji lze přepsat.",
+      "emailSubjectLabel": "Předmět",
+      "emailBodyLabel": "Text",
+      "emailSubjectDefault": "Faktura {cislo}",
+      "emailBodyDefault": "Dobrý den,\n\nv příloze posílám fakturu {cislo} na částku {castka} se splatností {splatnost}.\n\nDěkuji,\n{dodavatel}"
     },
     "alerts": {
       "confirmResetSeed": "Chystáte se resetovat lokální data a vygenerovat nový seed zálohy. Chcete pokračovat?",
@@ -569,7 +584,9 @@
       "expenseUpdated": "Náklad byl úspěšně aktualizován!",
       "expenseDeleted": "Náklad byl úspěšně smazán.",
       "aresOffline": "ARES není dostupný, jste offline.",
-      "expenseItemsAmountRequired": "Vyplňte cenu alespoň u jedné položky"
+      "expenseItemsAmountRequired": "Vyplňte cenu alespoň u jedné položky",
+      "emailNoAddress": "Klient nemá e-mailovou adresu. Doplňte ji v kartě klienta.",
+      "emailPdfFailed": "PDF se nepodařilo připravit, e-mail je bez přílohy."
     },
     "pwa": {
       "updateAvailable": "Je k dispozici nová verze aplikace.",
@@ -769,7 +786,13 @@
       "identityTitle": "Entity",
       "addressTitle": "Address",
       "contactTitle": "Contact",
-      "aresHint": "Enter the company number to pull details from the ARES register."
+      "aresHint": "Enter the company number to pull details from the ARES register.",
+      "deliveryTitle": "Invoice delivery",
+      "fileAliasLabel": "File name alias",
+      "fileAliasHint": "What {klient} becomes in the PDF's name. Blank uses the client's name without spaces.",
+      "emailSubjectLabel": "E-mail subject",
+      "emailBodyLabel": "E-mail body",
+      "emailTemplateHint": "Left blank, the template from Settings is used."
     },
     "clientDetail": {
       "title": "Client details",
@@ -1036,7 +1059,10 @@
       "editingBanner": "You are editing this invoice. Changes are saved only when you confirm.",
       "editPaidConfirm": "This invoice is marked as paid. Edit it anyway?",
       "discardConfirm": "You have unsaved changes. Discard them?",
-      "pdfOpen": "Open the PDF"
+      "pdfOpen": "Open the PDF",
+      "emailSend": "Send by e-mail",
+      "emailPreparing": "Preparing…",
+      "emailAttachHint": "The PDF was downloaded as {name} — attach it to the draft."
     },
     "settings": {
       "sectionTitle": "Preferences",
@@ -1181,7 +1207,13 @@
       "invoiceNumberPreview": "Next number: {number}",
       "supplierVatPrefillLabel": "Supplier VAT prefill",
       "supplierVatPrefillPlaceholder": "CZ123456 | Acme, Inc.\nCZ654321 | Emca, corp.",
-      "supplierVatPrefillHint": "One supplier per line, as VAT ID | name."
+      "supplierVatPrefillHint": "One supplier per line, as VAT ID | name.",
+      "emailTitle": "Covering e-mail",
+      "emailHint": "The template an invoice's e-mail is built from. A client can override it.",
+      "emailSubjectLabel": "Subject",
+      "emailBodyLabel": "Body",
+      "emailSubjectDefault": "Invoice {cislo}",
+      "emailBodyDefault": "Hello,\n\nplease find attached invoice {cislo} for {castka}, due {splatnost}.\n\nThank you,\n{dodavatel}"
     },
     "alerts": {
       "confirmResetSeed": "You are about to reset local data and generate a new backup seed. Continue?",
@@ -1278,7 +1310,9 @@
       "expenseUpdated": "Expense updated successfully!",
       "expenseDeleted": "Expense deleted successfully.",
       "aresOffline": "ARES is unavailable, you are offline.",
-      "expenseItemsAmountRequired": "Enter a price on at least one line"
+      "expenseItemsAmountRequired": "Enter a price on at least one line",
+      "emailNoAddress": "This client has no e-mail address. Add one on the client's page.",
+      "emailPdfFailed": "The PDF could not be prepared; the draft has no attachment."
     },
     "pwa": {
       "updateAvailable": "A new version of the app is available.",

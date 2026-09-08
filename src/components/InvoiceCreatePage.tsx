@@ -353,6 +353,7 @@ export function InvoiceCreatePage({
   const savedFileName = buildInvoiceFileName(profile?.invoiceNamingFormat, {
     number: String(saved?.invoiceNumber ?? ""),
     client: String(saved?.clientName ?? ""),
+    clientAlias: selectedClientRecord?.fileNameAlias ?? null,
     supplier: profile?.name ?? "",
     issueDate: saved?.issueDate ? new Date(String(saved.issueDate)) : null,
   });

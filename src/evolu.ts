@@ -51,6 +51,10 @@ export const Schema = {
     invoiceNumberFormat: Evolu.nullOr(Evolu.TrimmedString100),
     taxOfficeCode: Evolu.nullOr(Evolu.TrimmedString100),
     taxOfficeWorkplaceCode: Evolu.nullOr(Evolu.TrimmedString100),
+    /* The covering e-mail an invoice is sent with. A client may override
+       both, so these are the wording used when it does not. */
+    invoiceEmailSubject: Evolu.nullOr(Evolu.TrimmedString1000),
+    invoiceEmailBody: Evolu.nullOr(Evolu.TrimmedString1000),
   },
   /* Several accounts, e.g. one per currency. The legacy single account on
      userProfile stays as a fallback for anyone who has not added one yet. */
@@ -74,6 +78,11 @@ export const Schema = {
     companyIdentificationNumber: Evolu.nullOr(Evolu.TrimmedString100),
     vatNumber: Evolu.nullOr(Evolu.TrimmedString100),
     note: Evolu.nullOr(Evolu.TrimmedString1000),
+    /** What `{klient}` becomes in a filename; the name, compacted, if unset. */
+    fileNameAlias: Evolu.nullOr(Evolu.TrimmedString100),
+    /* This client's own covering e-mail, overriding the profile's wording. */
+    emailSubject: Evolu.nullOr(Evolu.TrimmedString1000),
+    emailBody: Evolu.nullOr(Evolu.TrimmedString1000),
     deleted: Evolu.nullOr(Evolu.SqliteBoolean),
   },
   invoice: {
@@ -168,6 +177,8 @@ export type UserProfileInput = {
   mempoolUrl?: string;
   taxOfficeCode?: string;
   taxOfficeWorkplaceCode?: string;
+  invoiceEmailSubject?: string;
+  invoiceEmailBody?: string;
 };
 
 const evolu = createEvolu(evoluReactWebDeps)(Schema, {

@@ -1,12 +1,13 @@
 import { use, useMemo, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
-import { PDFDownloadLink } from "@react-pdf/renderer";
+import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
 import {
   ArrowLeft,
   Copy,
   Download,
   ExternalLink,
+  Mail,
   Pencil,
   RotateCcw,
   Trash2,
@@ -30,6 +31,12 @@ import {
   type InvoiceStatus,
 } from "../lib/invoice";
 import { buildInvoiceFileName } from "../lib/invoiceFileName";
+import {
+  buildMailto,
+  fillEmailTemplate,
+  pickTemplate,
+  variableSymbol,
+} from "../lib/invoiceEmail";
 import { useInvoiceForm } from "../lib/useInvoiceForm";
 import { DEFAULT_CURRENCY, formatAmount, formatMoney } from "../lib/money";
 import type { BankAccountRow } from "../lib/bankAccounts";
@@ -143,6 +150,7 @@ export function InvoiceDetailPage({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [payingOpen, setPayingOpen] = useState(false);
+  const [emailing, setEmailing] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
 
   const storedItems = useMemo(() => parseItems(invoice?.items), [invoice]);
@@ -228,6 +236,7 @@ export function InvoiceDetailPage({
   const fileName = buildInvoiceFileName(profile?.invoiceNamingFormat, {
     number: invoice.invoiceNumber ?? "",
     client: invoice.clientName ?? "",
+    clientAlias: selectedClientRecord?.fileNameAlias ?? null,
     supplier: profile?.name ?? "",
     issueDate: invoice.issueDate ? new Date(invoice.issueDate) : null,
   })
@@ -412,6 +421,75 @@ export function InvoiceDetailPage({
 
   /* Duplicating opens a prefilled new invoice to confirm, rather than silently
      writing a second document to the ledger. */
+  /**
+   * Hands the covering e-mail to whatever mail client the machine has.
+   *
+   * The app sends nothing itself: this fills the template and opens a draft,
+   * so what leaves the mailbox has still been read by a person. `mailto:`
+   * cannot carry an attachment, so the PDF is written to disk first — the
+   * file is waiting in Downloads by the time the compose window is up.
+   */
+  const sendByEmail = async () => {
+    const address = (selectedClientRecord?.email ?? "").trim();
+    if (!address) {
+      notify(t("alerts.emailNoAddress"), "error");
+      return;
+    }
+
+    setEmailing(true);
+    try {
+      const vars = {
+        cislo: invoice.invoiceNumber ?? "",
+        klient: invoice.clientName ?? "",
+        /* Never the discrete-mode mask: this figure is going to the client,
+           who is entitled to read it. */
+        castka: formatMoney(storedTotal, locale, invoiceCurrency),
+        splatnost: formatDate(form.dueDate?.toISOString() ?? null, locale),
+        datum: formatDate(invoice.issueDate, locale),
+        dodavatel: profile?.name ?? "",
+        vs: variableSymbol(invoice.invoiceNumber ?? ""),
+      };
+      const subject = fillEmailTemplate(
+        pickTemplate(
+          selectedClientRecord?.emailSubject,
+          profile?.invoiceEmailSubject,
+          t("settings.emailSubjectDefault"),
+        ),
+        vars,
+      );
+      const body = fillEmailTemplate(
+        pickTemplate(
+          selectedClientRecord?.emailBody,
+          profile?.invoiceEmailBody,
+          t("settings.emailBodyDefault"),
+        ),
+        vars,
+      );
+
+      let attached = false;
+      try {
+        const blob = await pdf(pdfDocument).toBlob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+        attached = true;
+      } catch (error) {
+        console.error("Invoice PDF render error:", error);
+        notify(t("alerts.emailPdfFailed"), "error");
+      }
+
+      window.location.href = buildMailto(address, subject, body);
+      if (attached) {
+        notify(t("invoiceDetail.emailAttachHint", { name: fileName }), "info");
+      }
+    } finally {
+      setEmailing(false);
+    }
+  };
+
   const duplicate = () => {
     const search = new URLSearchParams({
       clientName: invoice.clientName ?? "",
@@ -496,6 +574,16 @@ export function InvoiceDetailPage({
               </>
             )}
           </PDFDownloadLink>
+          <button
+            className="btn-secondary"
+            onClick={sendByEmail}
+            disabled={emailing}
+          >
+            <Mail />
+            {emailing
+              ? t("invoiceDetail.emailPreparing")
+              : t("invoiceDetail.emailSend")}
+          </button>
           {isPaid ? (
             <button className="btn-secondary" onClick={undoPayment}>
               <RotateCcw />

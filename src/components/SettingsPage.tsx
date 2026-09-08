@@ -28,6 +28,7 @@ import {
   nextSequence,
 } from "../lib/invoiceNumber";
 import { insertToken } from "../lib/insertToken";
+import { EMAIL_TOKENS } from "../lib/invoiceEmail";
 import {
   matchBankAccount,
   matchClient,
@@ -58,6 +59,8 @@ export function SettingsPage({
   const [discreteMode, setDiscreteMode] = useState<boolean>(false);
   const [expenses, setExpenses] = useState<boolean>(false);
   const [supplierVatPrefill, setSupplierVatPrefill] = useState<string>("");
+  const [invoiceEmailSubject, setInvoiceEmailSubject] = useState<string>("");
+  const [invoiceEmailBody, setInvoiceEmailBody] = useState<string>("");
   const [language, setLanguage] = useState<"cz" | "en">("cz");
   const { t, tp, locale } = useI18n(language);
   const confirmDialog = useConfirm();
@@ -106,6 +109,7 @@ export function SettingsPage({
   /* The token buttons write into these, at the caret. */
   const numberFormatRef = useRef<HTMLInputElement | null>(null);
   const namingFormatRef = useRef<HTMLInputElement | null>(null);
+  const emailBodyRef = useRef<HTMLTextAreaElement | null>(null);
 
   const profileQuery = useMemo(
     () =>
@@ -139,6 +143,12 @@ export function SettingsPage({
             "companyIdentificationNumber",
             "vatNumber",
             "note",
+            /* Listed by the export headers, so they have to be selected too —
+               a header with nothing under it is how a restore hands back an
+               address book with its filenames and its wording gone. */
+            "fileNameAlias",
+            "emailSubject",
+            "emailBody",
           ])
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
@@ -375,6 +385,8 @@ export function SettingsPage({
       normalizeFileNameTemplate(profile.invoiceNamingFormat),
     );
     setInvoiceNumberFormat(profile.invoiceNumberFormat ?? NUMBER_DEFAULT);
+    setInvoiceEmailSubject(profile.invoiceEmailSubject ?? "");
+    setInvoiceEmailBody(profile.invoiceEmailBody ?? "");
   }, [profile]);
 
   useEffect(() => {
@@ -588,6 +600,8 @@ export function SettingsPage({
             toNullable(row.invoiceNumberFormat) ?? NUMBER_DEFAULT,
           taxOfficeCode: toNullable(row.taxOfficeCode),
           taxOfficeWorkplaceCode: toNullable(row.taxOfficeWorkplaceCode),
+          invoiceEmailSubject: toNullable(row.invoiceEmailSubject),
+          invoiceEmailBody: toNullable(row.invoiceEmailBody),
           language: row.language?.trim().toLowerCase() === "en" ? "en" : "cz",
         };
 
@@ -757,6 +771,11 @@ export function SettingsPage({
             ),
             vatNumber: toNullable(row.vatNumber),
             note: toNullable(row.note),
+            /* A client's delivery settings ride along, or a restore hands
+               back an address book with its filenames and its wording gone. */
+            fileNameAlias: toNullable(row.fileNameAlias),
+            emailSubject: toNullable(row.emailSubject),
+            emailBody: toNullable(row.emailBody),
             deleted: Evolu.sqliteFalse,
           };
 
@@ -1293,6 +1312,8 @@ export function SettingsPage({
         mempoolUrl: toNullable(mempoolUrl),
         invoiceNamingFormat: toNullable(invoiceNamingFormat),
         invoiceNumberFormat: toNullable(invoiceNumberFormat),
+        invoiceEmailSubject: toNullable(invoiceEmailSubject),
+        invoiceEmailBody: toNullable(invoiceEmailBody),
         language: (language || "cz").toString().trim().toLowerCase(),
       };
 
@@ -1435,6 +1456,8 @@ export function SettingsPage({
     "mempoolUrl",
     "invoiceNamingFormat",
     "invoiceNumberFormat",
+    "invoiceEmailSubject",
+    "invoiceEmailBody",
     "taxOfficeCode",
     "taxOfficeWorkplaceCode",
     "updatedAt",
@@ -1450,6 +1473,9 @@ export function SettingsPage({
     "companyIdentificationNumber",
     "vatNumber",
     "note",
+    "fileNameAlias",
+    "emailSubject",
+    "emailBody",
   ];
 
   const invoicesExportHeaders = [
@@ -1559,6 +1585,8 @@ export function SettingsPage({
         profile?.invoiceNamingFormat,
       ),
       invoiceNumberFormat: profile?.invoiceNumberFormat ?? NUMBER_DEFAULT,
+      invoiceEmailSubject: profile?.invoiceEmailSubject ?? "",
+      invoiceEmailBody: profile?.invoiceEmailBody ?? "",
     }),
     [profile],
   );
@@ -1574,6 +1602,8 @@ export function SettingsPage({
       mempoolUrl,
       invoiceNamingFormat,
       invoiceNumberFormat,
+      invoiceEmailSubject,
+      invoiceEmailBody,
     }) !== JSON.stringify(storedValues);
 
   /* One sample document behind both previews below, so the filename and the
@@ -2074,6 +2104,56 @@ export function SettingsPage({
                   ? t("settings.exportNone")
                   : t("settings.exportAll")}
               </button>
+            </div>
+          </section>
+
+          {/* ---- Covering e-mail ------------------------------------- */}
+          <section className="compose-block">
+            <h2 className="compose-heading">{t("settings.emailTitle")}</h2>
+            <p className="field-hint mb-2">{t("settings.emailHint")}</p>
+
+            <label htmlFor="invoiceEmailSubject" className="form-label">
+              {t("settings.emailSubjectLabel")}
+            </label>
+            <input
+              id="invoiceEmailSubject"
+              type="text"
+              value={invoiceEmailSubject}
+              onChange={(e) => setInvoiceEmailSubject(e.target.value)}
+              placeholder={t("settings.emailSubjectDefault")}
+              className="form-input"
+            />
+
+            <label htmlFor="invoiceEmailBody" className="form-label mt-3">
+              {t("settings.emailBodyLabel")}
+            </label>
+            <textarea
+              id="invoiceEmailBody"
+              ref={emailBodyRef}
+              value={invoiceEmailBody}
+              onChange={(e) => setInvoiceEmailBody(e.target.value)}
+              placeholder={t("settings.emailBodyDefault")}
+              className="form-textarea"
+              rows={8}
+            />
+            <div className="token-help">
+              {EMAIL_TOKENS.map((token) => (
+                <button
+                  key={token}
+                  type="button"
+                  className="token"
+                  onClick={() =>
+                    insertToken(
+                      emailBodyRef.current,
+                      invoiceEmailBody,
+                      token,
+                      setInvoiceEmailBody,
+                    )
+                  }
+                >
+                  {token}
+                </button>
+              ))}
             </div>
           </section>
 

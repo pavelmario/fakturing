@@ -212,6 +212,9 @@ export function ClientDetailPage({
     companyIdentificationNumber: client.companyIdentificationNumber ?? "",
     vatNumber: client.vatNumber ?? "",
     note: client.note ?? "",
+    fileNameAlias: client.fileNameAlias ?? "",
+    emailSubject: client.emailSubject ?? "",
+    emailBody: client.emailBody ?? "",
   });
 
   const values = draft ?? toForm();
@@ -252,6 +255,9 @@ export function ClientDetailPage({
       companyIdentificationNumber: toNull(values.companyIdentificationNumber),
       vatNumber: toNull(values.vatNumber),
       note: toNull(values.note),
+      fileNameAlias: toNull(values.fileNameAlias),
+      emailSubject: toNull(values.emailSubject),
+      emailBody: toNull(values.emailBody),
     });
     setIsSaving(false);
     if (!result.ok) {
