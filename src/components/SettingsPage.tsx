@@ -45,6 +45,7 @@ import {
 } from "../lib/expenseForm";
 import { formatAmount } from "../lib/money";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { DonatePanel } from "./invoices/DonatePanel";
 
@@ -1500,8 +1501,9 @@ export function SettingsPage({
     reader.readAsText(file);
   };
 
-  // Save data via Evolu (local-first + sync)
-  const handleSave = async () => {
+  /* Save data via Evolu (local-first + sync). Reports whether it went
+     through, so the unsaved-changes guard can offer to save on the way out. */
+  const handleSave = async (): Promise<boolean> => {
     setSaveError(null);
 
     setIsSaving(true);
@@ -1531,7 +1533,7 @@ export function SettingsPage({
          this page updates an existing row and never creates one. */
       if (!profile?.id) {
         setSaveError(t("settings.profileFirst"));
-        return;
+        return false;
       }
 
       const result = evolu.update("userProfile", { id: profile.id, ...payload });
@@ -1540,13 +1542,15 @@ export function SettingsPage({
         const formatted = formatTypeError(result.error);
         console.error("Validation error:", result.error);
         notify(t("alerts.settingsValidationError", { details: formatted }), "error");
-        return;
+        return false;
       }
 
       onSettingsSaved();
+      return true;
     } catch (error) {
       console.error("Error saving settings:", error);
       notify(t("alerts.settingsSaveFailed"), "error");
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -1815,6 +1819,9 @@ export function SettingsPage({
       invoiceEmailSubject,
       invoiceEmailBody,
     }) !== JSON.stringify(storedValues);
+  /* A reconnect or a data reset reloads the page, and the browser's own
+     prompt covers that — everything else here is a route change. */
+  useUnsavedGuard(dirty, () => handleSave());
 
   /* One sample document behind both previews below, so the filename and the
      number they show are the same document — and it is the document that

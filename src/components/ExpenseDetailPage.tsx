@@ -4,10 +4,12 @@ import { useQuery } from "@evolu/react";
 import { ArrowLeft, Pencil, Repeat, Trash2 } from "lucide-react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { ExpenseForm } from "./expenses/ExpenseForm";
 import { InvoiceSummary } from "./invoices/InvoiceSummary";
 import {
+  emptyExpense,
   expenseFormTotals,
   itemToForm,
   type ExpenseFormValues,
@@ -112,6 +114,9 @@ export function ExpenseDetailPage({
 
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<ExpenseFormValues | null>(null);
+  /* Tracked rather than derived: the guard runs above the not-found return,
+     where the record a draft would be compared against may not exist. */
+  const [touched, setTouched] = useState(false);
   const [errors, setErrors] = useState<ExpenseErrors>({});
   const [noteOpen, setNoteOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -125,6 +130,72 @@ export function ExpenseDetailPage({
   const plainMoney = (value: number) =>
     formatMoney(value, locale, DEFAULT_CURRENCY);
   const amount = (value: number) => formatAmount(value, locale);
+
+  /* The form mapping, the save and the guard all sit above the not-found
+     return: the guard is a hook, so it cannot be registered after one, and
+     it offers to save on the way out — which needs the save to exist by
+     then. Both tolerate a missing document rather than assuming one. */
+  const storedItems = expenseItems(expense?.items);
+  const stored = expenseAmounts(expense ?? {});
+  const showQuantity = usesQuantity(storedItems);
+
+  const toForm = (): ExpenseFormValues => ({
+    ...emptyExpense(isVatPayer),
+    supplierName: expense?.supplierName ?? "",
+    supplierVat: expense?.supplierVat ?? "",
+    supplierIco: expense?.supplierIco ?? "",
+    description: expense?.description ?? "",
+    expenseDate: expense ? toDateInput(expense.expenseDate) : "",
+    expenseNumber: expense?.expenseNumber ?? "",
+    note: expense?.note ?? "",
+    amountWithoutVat:
+      expense?.amountWithoutVat != null ? String(expense.amountWithoutVat) : "",
+    /* A blank rate makes every amount handler divide by 1, so correcting the
+       total on a document written before the rate column was filled used to
+       collapse its VAT to zero. Falling back to the standard rate is what the
+       control statement already assumes about such a document. */
+    vatRate:
+      expense?.vatRate != null
+        ? String(expense.vatRate)
+        : isVatPayer
+          ? "21"
+          : "0",
+    amountWithVat:
+      expense?.amountWithVat != null ? String(expense.amountWithVat) : "",
+    items: storedItems.map(itemToForm),
+  });
+
+  const values = draft ?? toForm();
+  const totals = expenseFormTotals(values, isVatPayer);
+
+  /* Reports whether it went through, so the unsaved-changes guard can offer
+     to save on the way out and keep you here when the form does not pass. */
+  const handleSave = (): boolean => {
+    if (!expense) return false;
+    const found = validateExpense(values, isVatPayer, t);
+    setErrors(found);
+    if (Object.keys(found).length > 0) return false;
+
+    const payload = buildExpensePayload(values, isVatPayer);
+    if (!payload) {
+      setErrors({ expenseDate: t("alerts.expenseDateInvalid") });
+      return false;
+    }
+
+    setIsSaving(true);
+    const result = evolu.update("expense", { id: expense.id, ...payload });
+    setIsSaving(false);
+    if (!result.ok) {
+      notify(t("alerts.expenseSaveValidation"), "error");
+      return false;
+    }
+    setDraft(null);
+    setTouched(false);
+    setIsEditing(false);
+    return true;
+  };
+
+  const guard = useUnsavedGuard(touched, () => handleSave());
 
   if (!expense) {
     return (
@@ -143,60 +214,6 @@ export function ExpenseDetailPage({
     );
   }
 
-  const storedItems = expenseItems(expense.items);
-  const stored = expenseAmounts(expense);
-  const showQuantity = usesQuantity(storedItems);
-
-  const toForm = (): ExpenseFormValues => ({
-    supplierName: expense.supplierName ?? "",
-    supplierVat: expense.supplierVat ?? "",
-    supplierIco: expense.supplierIco ?? "",
-    description: expense.description ?? "",
-    expenseDate: toDateInput(expense.expenseDate),
-    expenseNumber: expense.expenseNumber ?? "",
-    note: expense.note ?? "",
-    amountWithoutVat:
-      expense.amountWithoutVat != null ? String(expense.amountWithoutVat) : "",
-    /* A blank rate makes every amount handler divide by 1, so correcting the
-       total on a document written before the rate column was filled used to
-       collapse its VAT to zero. Falling back to the standard rate is what the
-       control statement already assumes about such a document. */
-    vatRate:
-      expense.vatRate != null
-        ? String(expense.vatRate)
-        : isVatPayer
-          ? "21"
-          : "0",
-    amountWithVat:
-      expense.amountWithVat != null ? String(expense.amountWithVat) : "",
-    items: storedItems.map(itemToForm),
-  });
-
-  const values = draft ?? toForm();
-  const totals = expenseFormTotals(values, isVatPayer);
-
-  const handleSave = () => {
-    const found = validateExpense(values, isVatPayer, t);
-    setErrors(found);
-    if (Object.keys(found).length > 0) return;
-
-    const payload = buildExpensePayload(values, isVatPayer);
-    if (!payload) {
-      setErrors({ expenseDate: t("alerts.expenseDateInvalid") });
-      return;
-    }
-
-    setIsSaving(true);
-    const result = evolu.update("expense", { id: expense.id, ...payload });
-    setIsSaving(false);
-    if (!result.ok) {
-      notify(t("alerts.expenseSaveValidation"), "error");
-      return;
-    }
-    setDraft(null);
-    setIsEditing(false);
-  };
-
   const cancelEditing = async () => {
     if (draft && JSON.stringify(draft) !== JSON.stringify(toForm())) {
       const ok = await confirmDialog({
@@ -207,6 +224,7 @@ export function ExpenseDetailPage({
       if (!ok) return;
     }
     setDraft(null);
+    setTouched(false);
     setIsEditing(false);
   };
 
@@ -276,6 +294,7 @@ export function ExpenseDetailPage({
       notify(t("alerts.expenseDeleteFailed"), "error");
       return;
     }
+    guard.release();
     onExpenseDeleted();
   };
 
@@ -373,6 +392,7 @@ export function ExpenseDetailPage({
               onNoteOpenChange={setNoteOpen}
               onChange={(patch) => {
                 setErrors({});
+                setTouched(true);
                 setDraft((prev) => ({ ...(prev ?? toForm()), ...patch }));
               }}
               sidebarFooter={

@@ -41,6 +41,9 @@ The landing screen is a ledger, not a dashboard.
 - **Duplicate** opens a prefilled draft rather than silently writing a new record.
 - **PDF export** (A4, `@react-pdf/renderer`) with repeating table headers, totals
   that never orphan, and a filename built from your own template.
+- **Poslat e-mailem** fills the covering mail from your template and opens it in
+  whatever mail client the machine has, with the PDF already downloaded to
+  attach — the app sends nothing itself.
 - **Czech SPD payment QR** for CZK invoices; suppressed with a note for other
   currencies, because the SPD format encodes CZK only.
 - **Bitcoin invoices** — a BTC address per invoice, optionally read straight off a
@@ -56,6 +59,11 @@ outstanding (kept per currency, on separate lines, never summed across them), la
 issue date, and the full invoice history. **IČO lookup against ARES** prefills
 company details on both create and edit. Invoices reference clients by id, so
 renaming a client keeps its history.
+
+A client also carries how its invoices leave the app: what `{klient}` becomes in
+a PDF filename (blank falls back to the name without spaces), and its own
+subject and body for the covering e-mail. Both are overrides — left empty, the
+client follows Nastavení.
 
 ### Náklady — expenses
 
@@ -97,9 +105,10 @@ Everything that changes how the app behaves, grouped:
 | **Vzhled a jazyk** | theme, language, discrete mode (masks every amount) |
 | **Fakturace** | invoice number pattern, PDF filename pattern, per-unit billing default, PO requirement, expenses toggle |
 | **Evolu** | relay URL and connection state, seed phrase backup and restore |
+| **Průvodní e-mail** | subject and body an invoice's e-mail is built from, per-client overridable |
 | **Bitcoin** | mempool explorer URL |
 | **Export/Import dat (CSV)** | per-section checkboxes — settings, clients, invoices, expenses — exported together or separately; templates live in `public/` |
-| **Import z Fakturoidu** | a Fakturoid XML export becomes invoices and clients — see below |
+| **Import z Fakturoidu** | Fakturoid XML exports become invoices and clients, or expenses — see below |
 | **Nebezpečná zóna** | destructive resets |
 
 ---
@@ -123,6 +132,20 @@ counted in that summary rather than silently dropped. Line prices are taken net
 whichever way Fakturoid quoted them, and the due date comes from the dates on
 the document rather than its stated payment terms, so an invoice whose due date
 was moved by hand keeps the one the client actually saw.
+
+Costs come out of Fakturoid as their own export, and go in through their own
+picker. What is written is the supplier's document: its number — which is what
+the control statement reports — its taxable supply date rather than the day it
+was issued, and its lines. An expense already carrying that supplier's document
+number is left where it is, so overlapping exports are as safe as they are on
+the invoice side.
+
+A cost has no currency in this app, so a foreign document is stored in the total
+Fakturoid already converted, with the original recorded in its note; its lines
+are dropped with it, being still in euros. A foreign document the export never
+converted is skipped and counted rather than filed as though the number had been
+koruna all along. For a non-VAT payer the net line prices are grossed up on the
+way in, because the supplier charged VAT either way.
 
 Fakturoid has no Bitcoin payment method, so an invoice payable in BTC says so in
 its note — "Adresa pro příjem BTC: bc1…". That address is what marks the invoice
@@ -196,8 +219,14 @@ highest existing number sharing the pattern's fixed prefix, so a pattern with
 
 **PDF filenames** use their own tokens: `{cislo}`, `{klient}`, `{dodavatel}`,
 `{rok}`, `{rrmmdd}`, `{rrrrmmdd}`. Punctuation inside a token's value is stripped
-(`Jan Šetina` → `jansetina`) while the template's own separators are kept.
+(`Jan Šetina` → `jansetina`) while the template's own separators are kept — with
+one exception: the number keeps its own separator as a hyphen, so `2026/001`
+files as `2026-001` rather than `2026001`. `{klient}` is overridable per client.
 Default `faktura-{cislo}`.
+
+**The covering e-mail** takes `{cislo}`, `{klient}`, `{castka}`, `{splatnost}`,
+`{datum}`, `{dodavatel}` and `{vs}`. Clicking a token inserts it where the caret
+is, in every template field.
 
 **Currencies** offered: CZK, EUR, USD, GBP, PLN. Amounts are never converted.
 
@@ -272,8 +301,9 @@ npm run dev            # http://localhost:5173
 
 ```
 src/
-├── App.tsx                      # shell, nav, routes
-├── main.tsx                     # entry: Evolu + Router + ConfirmProvider
+├── App.tsx                      # shell: nav, theme, migrations, Outlet
+├── router.tsx, routes.tsx       # the route table and its page wrappers
+├── main.tsx                     # entry: Evolu + ConfirmProvider + RouterProvider
 ├── evolu.ts                     # schema, relay URL, Evolu instance
 ├── index.css                    # component layer
 ├── styles/tokens.css            # the design tokens (palette, type, radii)
@@ -295,6 +325,7 @@ src/
 │   ├── profile/BankAccounts.tsx # multiple accounts, one per currency
 │   ├── SettingsPage.tsx         # preferences, CSV, relay, seed
 │   ├── ConfirmProvider.tsx      # in-app confirm + notices (no native dialogs)
+│   ├── TokenButton.tsx          # one template token, inserted at the caret
 │   ├── PaymentDialog.tsx, OfflineBanner.tsx, PWAUpdatePrompt.tsx
 └── lib/                         # pure logic + hooks
     ├── invoice.ts               # totals, status, dates
@@ -303,9 +334,13 @@ src/
     ├── money.ts                 # currencies, formatting, SPD support
     ├── invoiceNumber.ts         # number patterns + next sequence
     ├── invoiceFileName.ts       # PDF filename templating
+    ├── invoiceEmail.ts          # covering-mail templates and the mailto
+    ├── fakturoidImport.ts       # Fakturoid XML: invoices, clients, expenses
+    ├── useUnsavedGuard.ts       # blocks navigation away from a dirty form
     ├── aging.ts, clientStats.ts # year series, per-client totals
     ├── bankAccounts.ts, useLegacyBankAccountMigration.ts
     ├── useInvoiceForm.ts, useAres.ts, useTrezorAddress.ts, useInvoiceQr.ts
+    ├── insertToken.ts, useExpensesEnabled.ts
     └── useTheme.ts, confirmContext.ts, useClientIdBackfill.ts
 ```
 
@@ -316,6 +351,8 @@ src/
   spinners — every control is in the app's own design language.
 - **Amounts are tabular.** Monospaced figures, aligned, and maskable via discrete
   mode for screen sharing.
+- **Nothing typed is lost silently.** Leaving a page with unsaved changes asks
+  first, whichever way you leave it — a tab, the back gesture, a closed tab.
 - **Migrations run silently.** Legacy single bank accounts and name-joined
   invoices are upgraded on load, without asking.
 - **Layout switches, it does not scale.** A table that will not fit is
@@ -324,7 +361,10 @@ src/
 
 ## Known gaps
 
-- **No invoice drafts** — an interrupted invoice is lost.
+- **No invoice drafts** — an interrupted invoice is lost, though leaving one
+  half-written now asks first.
+- **`mailto:` cannot attach**, so the covering e-mail opens with the PDF
+  downloaded beside it rather than already attached.
 - **Recurring expense templates are not in the CSV export** — they live in the
   synced database only. Expenses themselves round-trip in full, breakdown
   included.

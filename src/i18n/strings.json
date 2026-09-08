@@ -600,7 +600,11 @@
       "fakturoidNoExpenses": "Export neobsahuje žádné náklady.",
       "fakturoidExpensesNothingNew": "Všechny náklady z exportu už v aplikaci jsou.",
       "fakturoidExpensesImported": "Naimportováno: {summary}.",
-      "fakturoidExpensesPartial": "Tyto náklady se naimportovat nepodařilo: {numbers}."
+      "fakturoidExpensesPartial": "Tyto náklady se naimportovat nepodařilo: {numbers}.",
+      "unsavedTitle": "Máte neuložené změny",
+      "unsavedMessage": "Když teď odejdete, změny se ztratí.",
+      "unsavedLeave": "Odejít bez uložení",
+      "unsavedSave": "Uložit a odejít"
     },
     "pwa": {
       "updateAvailable": "Je k dispozici nová verze aplikace.",
@@ -1339,7 +1343,11 @@
       "fakturoidNoExpenses": "The export contains no expenses.",
       "fakturoidExpensesNothingNew": "Every expense in the export is already here.",
       "fakturoidExpensesImported": "Imported: {summary}.",
-      "fakturoidExpensesPartial": "These expenses could not be imported: {numbers}."
+      "fakturoidExpensesPartial": "These expenses could not be imported: {numbers}.",
+      "unsavedTitle": "You have unsaved changes",
+      "unsavedMessage": "Leaving now discards them.",
+      "unsavedLeave": "Leave without saving",
+      "unsavedSave": "Save and leave"
     },
     "pwa": {
       "updateAvailable": "A new version of the app is available.",

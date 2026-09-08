@@ -5,6 +5,7 @@ import { Pencil, Search } from "lucide-react";
 import { BankAccounts } from "./profile/BankAccounts";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { useAres } from "../lib/useAres";
 
@@ -170,6 +171,8 @@ export function ProfilePage({ onSaved }: ProfilePageProps) {
     onSaved();
     return true;
   };
+
+  useUnsavedGuard(dirty, () => handleSave());
 
   const cancelEditing = async () => {
     if (dirty && !(await confirmDialog({

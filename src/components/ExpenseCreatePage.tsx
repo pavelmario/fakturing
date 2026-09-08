@@ -3,6 +3,7 @@ import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { ExpenseForm } from "./expenses/ExpenseForm";
 import { InvoiceSummary } from "./invoices/InvoiceSummary";
 import {
@@ -79,20 +80,24 @@ export function ExpenseCreatePage({
   const [errors, setErrors] = useState<ExpenseErrors>({});
   const [noteOpen, setNoteOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [touched, setTouched] = useState(false);
 
   const totals = expenseFormTotals(values, isVatPayer);
   const money = (value: number) => formatMoney(value, locale, DEFAULT_CURRENCY);
   const amount = (value: number) => formatAmount(value, locale);
 
-  const handleSave = () => {
+  /* Writing the cost and leaving the page are separate: the guard saves
+     without going anywhere, because you are already on your way somewhere
+     the guard is about to take you. */
+  const persist = (): boolean => {
     const found = validateExpense(values, isVatPayer, t);
     setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) return false;
 
     const payload = buildExpensePayload(values, isVatPayer);
     if (!payload) {
       setErrors({ expenseDate: t("alerts.expenseDateInvalid") });
-      return;
+      return false;
     }
 
     setIsSaving(true);
@@ -105,10 +110,19 @@ export function ExpenseCreatePage({
     if (!result.ok) {
       console.error("Expense insert error:", result.error);
       notify(t("alerts.expenseSaveValidation"), "error");
-      return;
+      return false;
     }
+    setTouched(false);
+    return true;
+  };
+
+  const handleSave = () => {
+    if (!persist()) return;
+    guard.release();
     onExpenseCreated();
   };
+
+  const guard = useUnsavedGuard(touched, () => persist());
 
   return (
     <div className="page-shell">
@@ -126,6 +140,7 @@ export function ExpenseCreatePage({
           onNoteOpenChange={setNoteOpen}
           onChange={(patch) => {
             setErrors({});
+            setTouched(true);
             setValues((prev) => ({ ...prev, ...patch }));
           }}
           sidebarFooter={

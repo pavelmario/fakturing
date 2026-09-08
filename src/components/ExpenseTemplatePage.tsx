@@ -4,6 +4,7 @@ import { useQuery } from "@evolu/react";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { ExpenseForm } from "./expenses/ExpenseForm";
 import { InvoiceSummary } from "./invoices/InvoiceSummary";
@@ -147,6 +148,7 @@ export function ExpenseTemplatePage({
   const [errors, setErrors] = useState<ExpenseErrors>({});
   const [noteOpen, setNoteOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [touched, setTouched] = useState(false);
 
   const state = draft ?? seed();
   const totals = expenseFormTotals(state.values, isVatPayer);
@@ -155,29 +157,20 @@ export function ExpenseTemplatePage({
 
   const patch = (next: Partial<ReturnType<typeof seed>>) => {
     setErrors({});
+    setTouched(true);
     setDraft((prev) => ({ ...(prev ?? seed()), ...next }));
   };
 
-  if (!isNew && !template) {
-    return (
-      <div className="page-shell">
-        <div className="page-container-lg">
-          <button onClick={onDone} className="btn-ghost mb-3">
-            <ArrowLeft />
-            {t("common.backToList")}
-          </button>
-          <div className="empty-state">{t("expenseTemplates.notFound")}</div>
-        </div>
-      </div>
-    );
-  }
-
-  const handleSave = () => {
+  /* Writing the template and leaving the page are separate: the guard saves
+     without going anywhere, because you are already on your way somewhere
+     the guard is about to take you. It sits above the not-found return with
+     the guard, which is a hook and cannot be registered after one. */
+  const persist = (): boolean => {
     const found = validateExpense(state.values, isVatPayer, t, {
       requireDate: false,
     });
     setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) return false;
 
     const payload = buildTemplatePayload(
       state.values,
@@ -197,8 +190,31 @@ export function ExpenseTemplatePage({
     if (!result.ok) {
       console.error("Expense template save error:", result.error);
       notify(t("expenseTemplates.saveFailed"), "error");
-      return;
+      return false;
     }
+    setTouched(false);
+    return true;
+  };
+
+  const guard = useUnsavedGuard(touched, () => persist());
+
+  if (!isNew && !template) {
+    return (
+      <div className="page-shell">
+        <div className="page-container-lg">
+          <button onClick={onDone} className="btn-ghost mb-3">
+            <ArrowLeft />
+            {t("common.backToList")}
+          </button>
+          <div className="empty-state">{t("expenseTemplates.notFound")}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const handleSave = () => {
+    if (!persist()) return;
+    guard.release();
     onDone();
   };
 
@@ -218,6 +234,7 @@ export function ExpenseTemplatePage({
       notify(t("expenseTemplates.saveFailed"), "error");
       return;
     }
+    guard.release();
     onDone();
   };
 

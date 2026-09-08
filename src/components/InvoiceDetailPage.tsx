@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { InvoiceComposer } from "./invoices/InvoiceComposer";
 import { InvoiceSummary } from "./invoices/InvoiceSummary";
@@ -203,6 +204,8 @@ export function InvoiceDetailPage({
     { isVatPayer, billPerUnitDefault, locale, t },
   );
 
+  const guard = useUnsavedGuard(isEditing && form.dirty, () => handleSave());
+
   /* Discrete mode hides amounts wherever the app states them. The document
      preview still shows them — you opened the invoice itself. */
   const invoiceCurrency = invoice?.currency ?? DEFAULT_CURRENCY;
@@ -319,20 +322,16 @@ export function InvoiceDetailPage({
     setIsEditing(false);
   };
 
-  const leave = async () => {
-    if (isEditing && form.dirty && !(await confirmDialog({
-      title: t("invoiceDetail.discardConfirm"),
-      confirmLabel: t("invoiceDetail.cancelEdits"),
-      tone: "danger",
-    }))) {
-      return;
-    }
-    onBack();
-  };
+  /* No confirmation of its own any more: leaving with unsaved edits is
+     caught by the guard above, whichever way you leave — this button, a tab
+     in the nav, or the phone's back gesture. */
+  const leave = () => onBack();
 
-  const handleSave = async () => {
+  /* Reports whether it went through, so the unsaved-changes guard can offer
+     to save on the way out and keep you here when the form does not pass. */
+  const handleSave = async (): Promise<boolean> => {
     const found = form.validate();
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) return false;
 
     const formatTypeError = Evolu.createFormatTypeError();
     const issueDateResult = Evolu.dateToDateIso(
@@ -340,14 +339,14 @@ export function InvoiceDetailPage({
     );
     if (!issueDateResult.ok) {
       form.setErrors({ issueDate: t("alerts.issueDateInvalid") });
-      return;
+      return false;
     }
     const paymentDaysResult = Evolu.NonNegativeNumber.from(
       Number(form.values.paymentDays),
     );
     if (!paymentDaysResult.ok) {
       form.setErrors({ paymentDays: t("alerts.paymentDaysInvalid") });
-      return;
+      return false;
     }
 
     setIsSaving(true);
@@ -356,7 +355,7 @@ export function InvoiceDetailPage({
       if (!itemsResult.ok) {
         console.error("Items error:", formatTypeError(itemsResult.error));
         notify(t("alerts.invoiceItemsInvalid"), "error");
-        return;
+        return false;
       }
       const result = evolu.update("invoice", {
         id: invoice.id,
@@ -380,15 +379,17 @@ export function InvoiceDetailPage({
       if (!result.ok) {
         console.error("Update error:", formatTypeError(result.error));
         notify(t("alerts.invoiceSaveValidation"), "error");
-        return;
+        return false;
       }
       form.setDirty(false);
       setIsEditing(false);
       setFlash(t("alerts.invoiceUpdateSaved"));
       window.setTimeout(() => setFlash(null), 3000);
+      return true;
     } catch (error) {
       console.error("Error updating invoice:", error);
       notify(t("alerts.invoiceSaveFailed"), "error");
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -419,8 +420,6 @@ export function InvoiceDetailPage({
     if (!result.ok) notify(t("alerts.paymentCancelFailed"), "error");
   };
 
-  /* Duplicating opens a prefilled new invoice to confirm, rather than silently
-     writing a second document to the ledger. */
   /**
    * Hands the covering e-mail to whatever mail client the machine has.
    *
@@ -490,6 +489,8 @@ export function InvoiceDetailPage({
     }
   };
 
+  /* Duplicating opens a prefilled new invoice to confirm, rather than silently
+     writing a second document to the ledger. */
   const duplicate = () => {
     const search = new URLSearchParams({
       clientName: invoice.clientName ?? "",
@@ -527,6 +528,8 @@ export function InvoiceDetailPage({
       notify(t("alerts.invoiceDeleteFailed"), "error");
       return;
     }
+    /* The edits went with the invoice; nothing left to warn about. */
+    guard.release();
     onInvoiceDeleted();
   };
 

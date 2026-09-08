@@ -5,6 +5,7 @@ import { PDFDownloadLink } from "@react-pdf/renderer";
 import { ArrowDownToLine, Download, X } from "lucide-react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { InvoiceComposer } from "./invoices/InvoiceComposer";
 import { InvoiceSummary } from "./invoices/InvoiceSummary";
@@ -348,6 +349,10 @@ export function InvoiceCreatePage({
     clients.find((client) => client.name === form.effective.clientName) ??
     null;
 
+  /* Once saved the page shows the finished invoice, so what is in the form
+     is no longer anything to lose. */
+  useUnsavedGuard(form.dirty && saved === null, () => handleSave());
+
   /* Honour the filename template — the create flow used to hardcode this and
      silently ignore the preference. */
   const savedFileName = buildInvoiceFileName(profile?.invoiceNamingFormat, {
@@ -365,7 +370,9 @@ export function InvoiceCreatePage({
     bankAccountRows,
   );
 
-  const handleSave = async () => {
+  /* Reports whether it went through, so the unsaved-changes guard can offer
+     to save on the way out and keep you here when the form does not pass. */
+  const handleSave = async (): Promise<boolean> => {
     /* Validate the values that will actually be written — the number and the
        terms may still be derived defaults rather than typed state. */
     const found = form.validate({
@@ -375,7 +382,7 @@ export function InvoiceCreatePage({
       clientName: form.effective.clientName,
       issueDate: form.effective.issueDate,
     });
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) return false;
     if (
       isDuplicateNumber &&
       !(await confirmDialog({
@@ -383,21 +390,21 @@ export function InvoiceCreatePage({
         confirmLabel: t("invoiceCreate.save"),
       }))
     ) {
-      return;
+      return false;
     }
 
     const formatTypeError = Evolu.createFormatTypeError();
     const issueDateResult = Evolu.dateToDateIso(new Date(form.effective.issueDate));
     if (!issueDateResult.ok) {
       form.setErrors({ issueDate: t("alerts.issueDateInvalid") });
-      return;
+      return false;
     }
     const paymentDaysResult = Evolu.NonNegativeNumber.from(
       Number(form.effective.paymentDays),
     );
     if (!paymentDaysResult.ok) {
       form.setErrors({ paymentDays: t("alerts.paymentDaysInvalid") });
-      return;
+      return false;
     }
 
     setIsSaving(true);
@@ -406,7 +413,7 @@ export function InvoiceCreatePage({
       if (!itemsResult.ok) {
         console.error("Items error:", formatTypeError(itemsResult.error));
         notify(t("alerts.invoiceItemsInvalid"), "error");
-        return;
+        return false;
       }
 
       const payload = {
@@ -435,18 +442,20 @@ export function InvoiceCreatePage({
       if (!validation.ok) {
         console.error("Validation error:", formatTypeError(validation.error));
         notify(t("alerts.invoiceSaveValidation"), "error");
-        return;
+        return false;
       }
       const result = evolu.insert("invoice", payload);
       if (!result.ok) {
         console.error("Insert error:", formatTypeError(result.error));
         notify(t("alerts.invoiceSaveValidation"), "error");
-        return;
+        return false;
       }
       setSaved({ ...payload, items: form.normalizedItems });
+      return true;
     } catch (error) {
       console.error("Error saving invoice:", error);
       notify(t("alerts.invoiceSaveFailed"), "error");
+      return false;
     } finally {
       setIsSaving(false);
     }

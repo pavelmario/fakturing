@@ -1,12 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { AlertTriangle, X } from "lucide-react";
 import { useI18n } from "../i18n";
-import { ConfirmContext, type NoticeTone } from "../lib/confirmContext";
+import {
+  ConfirmContext,
+  type ConfirmAnswer,
+  type NoticeTone,
+} from "../lib/confirmContext";
 
 import type { ConfirmOptions } from "../lib/confirmContext";
 
-type Pending = ConfirmOptions & { resolve: (ok: boolean) => void };
+type Pending = ConfirmOptions & { resolve: (answer: ConfirmAnswer) => void };
 
 
 
@@ -20,13 +24,26 @@ type Pending = ConfirmOptions & { resolve: (ok: boolean) => void };
 export function ConfirmProvider({ children }: { children: ReactNode }) {
   const { t } = useI18n();
   const [pending, setPending] = useState<Pending | null>(null);
+  /* The same question, held outside state so a second one can answer the
+     first. Every confirm used to come from a click, and two could not
+     overlap; the unsaved-changes guard asks from an effect, so now they can —
+     and the replaced promise would otherwise never settle, leaving whatever
+     awaited it half-done. */
+  const pendingRef = useRef<Pending | null>(null);
   const [notices, setNotices] = useState<
     { id: number; message: string; tone: NoticeTone }[]
   >([]);
 
   const confirm = useCallback(
     (options: ConfirmOptions) =>
-      new Promise<boolean>((resolve) => setPending({ ...options, resolve })),
+      new Promise<ConfirmAnswer>((resolve) => {
+        /* Superseded means declined: the caller waiting on it gets the same
+           answer as if the dialog had been dismissed. */
+        pendingRef.current?.resolve(false);
+        const next = { ...options, resolve };
+        pendingRef.current = next;
+        setPending(next);
+      }),
     [],
   );
 
@@ -48,8 +65,9 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 
   const api = useMemo(() => ({ confirm, notify }), [confirm, notify]);
 
-  const close = (ok: boolean) => {
-    pending?.resolve(ok);
+  const close = (answer: ConfirmAnswer) => {
+    pending?.resolve(answer);
+    pendingRef.current = null;
     setPending(null);
   };
 
@@ -102,15 +120,31 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
               <button className="btn-secondary" onClick={() => close(false)}>
                 {t("common.cancel")}
               </button>
+              {/* With a third option the destructive one stops being the
+                  primary: "leave without saving" is what you pick on
+                  purpose, not what the focus falls on. */}
               <button
                 className={
-                  pending.tone === "danger" ? "btn-danger" : "btn-primary"
+                  pending.altLabel
+                    ? "btn-secondary"
+                    : pending.tone === "danger"
+                      ? "btn-danger"
+                      : "btn-primary"
                 }
                 onClick={() => close(true)}
-                autoFocus
+                autoFocus={!pending.altLabel}
               >
                 {pending.confirmLabel ?? t("common.confirm")}
               </button>
+              {pending.altLabel ? (
+                <button
+                  className="btn-primary"
+                  onClick={() => close("alt")}
+                  autoFocus
+                >
+                  {pending.altLabel}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>

@@ -4,9 +4,10 @@ import { useQuery } from "@evolu/react";
 import { ArrowLeft, Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { ClientForm } from "./clients/ClientForm";
-import type { ClientFormValues } from "../lib/clientForm";
+import { emptyClient, type ClientFormValues } from "../lib/clientForm";
 import { LedgerTable, type LedgerRow } from "./invoices/LedgerTable";
 import {
   daysUntilDue,
@@ -120,6 +121,9 @@ export function ClientDetailPage({
 
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<ClientFormValues | null>(null);
+  /* Tracked rather than derived: the guard runs above the not-found return,
+     where the record a draft would be compared against may not exist. */
+  const [touched, setTouched] = useState(false);
   const [nameError, setNameError] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -186,62 +190,36 @@ export function ClientDetailPage({
     return { invoiced, unpaid, count: rows.length };
   }, [rows]);
 
-  if (!client) {
-    return (
-      <div className="page-shell">
-        <div className="page-container-lg">
-          <div className="flex items-center justify-between mb-5">
-            <h1 className="page-title">{t("clientDetail.title")}</h1>
-            <button onClick={onBack} className="btn-secondary">
-              <ArrowLeft />
-              {t("common.backToList")}
-            </button>
-          </div>
-          <div className="empty-state">{t("clientDetail.notFound")}</div>
-        </div>
-      </div>
-    );
-  }
-
-  const toForm = (): ClientFormValues => ({
-    name: client.name ?? "",
-    email: client.email ?? "",
-    phone: client.phone ?? "",
-    addressLine1: client.addressLine1 ?? "",
-    addressLine2: client.addressLine2 ?? "",
-    companyIdentificationNumber: client.companyIdentificationNumber ?? "",
-    vatNumber: client.vatNumber ?? "",
-    note: client.note ?? "",
-    fileNameAlias: client.fileNameAlias ?? "",
-    emailSubject: client.emailSubject ?? "",
-    emailBody: client.emailBody ?? "",
-  });
+  /* The form mapping, the save and the guard all sit above the not-found
+     return: the guard is a hook, so it cannot be registered after one, and
+     it offers to save on the way out — which needs the save to exist by
+     then. Both tolerate a missing record rather than assuming one. */
+  const toForm = (): ClientFormValues =>
+    client
+      ? {
+          name: client.name ?? "",
+          email: client.email ?? "",
+          phone: client.phone ?? "",
+          addressLine1: client.addressLine1 ?? "",
+          addressLine2: client.addressLine2 ?? "",
+          companyIdentificationNumber: client.companyIdentificationNumber ?? "",
+          vatNumber: client.vatNumber ?? "",
+          note: client.note ?? "",
+          fileNameAlias: client.fileNameAlias ?? "",
+          emailSubject: client.emailSubject ?? "",
+          emailBody: client.emailBody ?? "",
+        }
+      : emptyClient();
 
   const values = draft ?? toForm();
 
-  const startEditing = () => {
-    setDraft(toForm());
-    setNameError(undefined);
-    setIsEditing(true);
-  };
-
-  const cancelEditing = async () => {
-    if (draft && JSON.stringify(draft) !== JSON.stringify(toForm())) {
-      const ok = await confirmDialog({
-        title: t("invoiceDetail.discardConfirm"),
-        confirmLabel: t("invoiceDetail.cancelEdits"),
-        tone: "danger",
-      });
-      if (!ok) return;
-    }
-    setDraft(null);
-    setIsEditing(false);
-  };
-
-  const handleSave = () => {
+  /* Reports whether it went through, so the unsaved-changes guard can offer
+     to save on the way out and keep you here when the form does not pass. */
+  function handleSave(): boolean {
+    if (!client) return false;
     if (!values.name.trim()) {
       setNameError(t("alerts.clientNameRequired"));
-      return;
+      return false;
     }
     setIsSaving(true);
     const toNull = (value: string) => value.trim() || null;
@@ -262,9 +240,50 @@ export function ClientDetailPage({
     setIsSaving(false);
     if (!result.ok) {
       notify(t("alerts.clientSaveValidation"), "error");
-      return;
+      return false;
     }
     setDraft(null);
+    setTouched(false);
+    setIsEditing(false);
+    return true;
+  }
+
+  const guard = useUnsavedGuard(touched, () => handleSave());
+
+  if (!client) {
+    return (
+      <div className="page-shell">
+        <div className="page-container-lg">
+          <div className="flex items-center justify-between mb-5">
+            <h1 className="page-title">{t("clientDetail.title")}</h1>
+            <button onClick={onBack} className="btn-secondary">
+              <ArrowLeft />
+              {t("common.backToList")}
+            </button>
+          </div>
+          <div className="empty-state">{t("clientDetail.notFound")}</div>
+        </div>
+      </div>
+    );
+  }
+
+  const startEditing = () => {
+    setDraft(toForm());
+    setNameError(undefined);
+    setIsEditing(true);
+  };
+
+  const cancelEditing = async () => {
+    if (draft && JSON.stringify(draft) !== JSON.stringify(toForm())) {
+      const ok = await confirmDialog({
+        title: t("invoiceDetail.discardConfirm"),
+        confirmLabel: t("invoiceDetail.cancelEdits"),
+        tone: "danger",
+      });
+      if (!ok) return;
+    }
+    setDraft(null);
+    setTouched(false);
     setIsEditing(false);
   };
 
@@ -285,6 +304,7 @@ export function ClientDetailPage({
       notify(t("alerts.clientDeleteFailed"), "error");
       return;
     }
+    guard.release();
     onClientDeleted();
   };
 
@@ -409,6 +429,7 @@ export function ClientDetailPage({
               nameError={nameError}
               onChange={(patch) => {
                 setNameError(undefined);
+                setTouched(true);
                 setDraft((prev) => ({ ...(prev ?? toForm()), ...patch }));
               }}
             />
