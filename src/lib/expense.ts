@@ -205,6 +205,23 @@ export const expenseVatBands = (expense: ExpenseAmountSource): VatBands => {
   return bands;
 };
 
+/**
+ * The same bands in koruna.
+ *
+ * The control statement is filed in koruna whatever the document was billed
+ * in, so a foreign document is reported at the rate it was put in the books
+ * at — the one stored on the expense, never one this app worked out.
+ */
+export const scaleBands = (bands: VatBands, rate: number): VatBands =>
+  rate === 1
+    ? bands
+    : {
+        zakl_dane1: round2(bands.zakl_dane1 * rate),
+        dan1: round2(bands.dan1 * rate),
+        zakl_dane2: round2(bands.zakl_dane2 * rate),
+        dan2: round2(bands.dan2 * rate),
+      };
+
 export const addBands = (into: VatBands, from: VatBands): void => {
   into.zakl_dane1 += from.zakl_dane1;
   into.dan1 += from.dan1;

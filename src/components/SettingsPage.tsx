@@ -43,7 +43,7 @@ import {
   trim1000,
   type ExpenseFormValues,
 } from "../lib/expenseForm";
-import { formatAmount } from "../lib/money";
+import { DEFAULT_CURRENCY, formatMoney } from "../lib/money";
 import { useI18n } from "../i18n";
 import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
@@ -213,6 +213,8 @@ export function SettingsPage({
           .select([
             "id",
             "expenseNumber",
+            "currency",
+            "exchangeRate",
             "supplierName",
             "supplierVat",
             "supplierIco",
@@ -1065,8 +1067,17 @@ export function SettingsPage({
             return;
           }
 
+          const restoredRate = Number(row.exchangeRate);
+          const restoredRateResult =
+            row.exchangeRate?.trim() && restoredRate > 0
+              ? Evolu.NonNegativeNumber.from(restoredRate)
+              : null;
           const payload = {
             expenseNumber: toNullable(row.expenseNumber),
+            currency: toNullable(row.currency),
+            exchangeRate: restoredRateResult?.ok
+              ? restoredRateResult.value
+              : null,
             supplierName: toNullable(row.supplierName),
             supplierVat: toNullable(row.supplierVat),
             supplierIco: toNullable(row.supplierIco),
@@ -1356,7 +1367,6 @@ export function SettingsPage({
         const left = (
           [
             [duplicates, "fakturoidSkipDuplicates"],
-            [parsed.skipped.foreignCurrency, "fakturoidSkipForeign"],
             [parsed.skipped.unusable, "fakturoidSkipUnusable"],
           ] as const
         )
@@ -1387,6 +1397,18 @@ export function SettingsPage({
              for whom the net figure is the gross one. */
           const values: ExpenseFormValues = {
             supplierName: trim100(expense.supplierName),
+            currency: expense.currency ?? "",
+            /* Fakturoid converted the document already; the rate it used is
+               that conversion over the document's own total, which is the
+               rate this cost is in the books at. */
+            exchangeRate:
+              expense.homeTotal != null && expense.amountWithVat > 0
+                ? String(
+                    Math.round(
+                      (expense.homeTotal / expense.amountWithVat) * 10000,
+                    ) / 10000,
+                  )
+                : "",
             supplierVat: trim100(expense.supplierVat ?? ""),
             supplierIco: trim100(expense.supplierIco ?? ""),
             description: trim100(expense.description),
@@ -1395,10 +1417,16 @@ export function SettingsPage({
             note: trim1000(
               [
                 expense.note ?? "",
-                expense.originalCurrency
+                /* The koruna figure Fakturoid had converted the document to:
+                   the cost keeps its own currency, and the VAT return still
+                   wants this number. */
+                expense.homeTotal != null
                   ? t("settings.fakturoidExpenseConverted", {
-                      amount: formatAmount(expense.originalTotal ?? 0, locale),
-                      currency: expense.originalCurrency,
+                      amount: formatMoney(
+                        expense.homeTotal,
+                        locale,
+                        DEFAULT_CURRENCY,
+                      ),
                     })
                   : "",
               ]
@@ -1453,8 +1481,17 @@ export function SettingsPage({
             continue;
           }
 
+          const typedRate = Number(values.exchangeRate);
+          const exchangeRate =
+            values.currency &&
+            values.currency !== DEFAULT_CURRENCY &&
+            typedRate > 0
+              ? Evolu.NonNegativeNumber.from(typedRate)
+              : null;
           const result = evolu.insert("expense", {
             expenseNumber: values.expenseNumber || null,
+            currency: values.currency || null,
+            exchangeRate: exchangeRate?.ok ? exchangeRate.value : null,
             supplierName: values.supplierName || null,
             supplierVat: values.supplierVat || null,
             supplierIco: values.supplierIco || null,
@@ -1724,6 +1761,8 @@ export function SettingsPage({
   const expensesExportHeaders = [
     "id",
     "expenseNumber",
+    "currency",
+    "exchangeRate",
     "supplierName",
     "supplierVat",
     "supplierIco",

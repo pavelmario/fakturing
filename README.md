@@ -87,6 +87,14 @@ what:
   composer uses. Without it you type the total off the receipt and the base
   back-computes; with it the lines are the truth and the total is their sum.
   Mixed rates on one document are reported per band in the control statement.
+- **Měna a kurz** — a cost keeps the currency it was billed in, the same way
+  an invoice does, and the app converts nothing on its own. What it will use
+  is the rate *you* put the document in the books at: type it, or load the
+  ČNB rate for the document's date with one button. With a rate the cost
+  counts in the koruna totals and goes into the control statement converted;
+  without one it stays on a line of its own and the export says how many
+  documents it left behind. A recurring cost in euros is stamped with the
+  bank's rate for the day it is booked.
 - **Pravidelné náklady** — warehouse rent, hosting, the accountant. Saved as a
   template (from scratch, or from an expense you are already looking at) and
   booked into a period from a checklist that shows what this month is still
@@ -144,12 +152,12 @@ was issued, and its lines. An expense already carrying that supplier's document
 number is left where it is, so overlapping exports are as safe as they are on
 the invoice side.
 
-A cost has no currency in this app, so a foreign document is stored in the total
-Fakturoid already converted, with the original recorded in its note; its lines
-are dropped with it, being still in euros. A foreign document the export never
-converted is skipped and counted rather than filed as though the number had been
-koruna all along. For a non-VAT payer the net line prices are grossed up on the
-way in, because the supplier charged VAT either way.
+A document keeps the currency it was billed in — nothing here is converted —
+and where Fakturoid also carried a converted total, the rate it used comes in
+with it (that total over the document's own) and the figure itself goes into
+the note. For a non-VAT payer
+the net line prices are grossed up on the way in, because the supplier charged
+VAT either way.
 
 Fakturoid has no Bitcoin payment method, so an invoice payable in BTC says so in
 its note — "Adresa pro příjem BTC: bc1…". That address is what marks the invoice
@@ -232,7 +240,9 @@ Default `faktura-{cislo}`.
 `{datum}`, `{dodavatel}` and `{vs}`. Clicking a token inserts it where the caret
 is, in every template field.
 
-**Currencies** offered: CZK, EUR, USD, GBP, PLN. Amounts are never converted.
+**Currencies** offered: CZK, EUR, USD, GBP, PLN, on invoices and on costs
+alike. Amounts are never converted — totals state each currency separately
+rather than inventing a rate.
 
 **Relay** defaults to `wss://free.evoluhq.com` and is overridable in settings
 (stored under `invoiceApp_relayUrl`). It only ever carries encrypted messages —
@@ -244,6 +254,21 @@ accepts the connection and answers, but stores nothing — verified against
 `1.1.2-preview.6`, whose `evolu_message`, `evolu_timestamp` and `evolu_writeKey`
 tables stayed empty after a real edit. A relay built from Evolu at the matching
 version would work; the setting is there and takes any `ws://` or `wss://` URL.
+
+**Exchange rates** come from the ČNB's daily table, which sends no CORS
+headers — a browser cannot read it directly however public the data is. The
+request goes through this origin at `/api/cnb/*` and the host rewrites it onto
+`api.cnb.cz/cnbapi/*`: `vercel.json` for Vercel, `public/_redirects` for
+Netlify, `vite.config.ts` for dev and preview. Cloudflare Pages cannot proxy
+another host from `_redirects`.
+
+What comes back is told apart rather than collapsed into "it did not work",
+because each answer asks something different of you: being offline, the host
+not forwarding the path at all, the bank not answering, a date before the
+series, a currency it does not quote. A weekend or a holiday is not a failure
+— the bank answers with the last table published, which is the rate in force
+that day, and the app says which day that was. A day's table is cached in
+`localStorage`, since a published rate never changes.
 
 **Security headers** are set in four places that must stay in step:
 `public/_headers` (Netlify, Cloudflare Pages), `vercel.json`, and `server` /
@@ -339,6 +364,7 @@ src/
     ├── invoiceNumber.ts         # number patterns + next sequence
     ├── invoiceFileName.ts       # PDF filename templating
     ├── invoiceEmail.ts          # covering-mail templates and the mailto
+    ├── exchangeRate.ts          # the koruna value of a foreign document
     ├── fakturoidImport.ts       # Fakturoid XML: invoices, clients, expenses
     ├── useUnsavedGuard.ts       # blocks navigation away from a dirty form
     ├── aging.ts, clientStats.ts # year series, per-client totals

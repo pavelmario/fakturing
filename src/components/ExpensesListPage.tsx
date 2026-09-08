@@ -6,6 +6,7 @@ import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
 import { formatDate } from "../lib/invoice";
 import { DEFAULT_CURRENCY, formatAmount, formatMoney } from "../lib/money";
+import { fetchCnbRate, rateOf, toHome } from "../lib/exchangeRate";
 import { useNotify } from "../lib/confirmContext";
 import { useCompactLayout } from "../lib/useCompactLayout";
 import {
@@ -14,6 +15,7 @@ import {
   expenseAmountsOf,
   expenseItems,
   expenseVatBands,
+  scaleBands,
   hasNothingToReport,
   supplierLabel,
   type ExpenseItem,
@@ -33,6 +35,8 @@ type ExpensesListPageProps = {
 
 type ExpenseRow = {
   id: string;
+  currency: string | null;
+  exchangeRate: number | null;
   amountWithoutVat: number | null;
   amountWithVat: number | null;
   vatRate: number | null;
@@ -56,7 +60,11 @@ type ExpenseRow = {
  * parser passes an array straight through, so the helpers that take a whole
  * row still work and no longer re-read anything.
  */
-type DecoratedExpense = Omit<ExpenseRow, "items"> & {
+type DecoratedExpense = Omit<ExpenseRow, "items" | "currency"> & {
+  /** Resolved once: a row written before costs had a currency is CZK. */
+  currency: string;
+  /** Koruna per unit, `null` where a foreign document has no rate. */
+  rate: number | null;
   items: ExpenseItem[];
   amounts: { net: number; vat: number; gross: number };
   lineCount: number;
@@ -176,6 +184,8 @@ export function ExpensesListPage({
         const items = expenseItems(expense.items);
         return {
           ...expense,
+          currency: expense.currency ?? DEFAULT_CURRENCY,
+          rate: rateOf(expense),
           items,
           amounts: expenseAmountsOf(items, expense),
           lineCount: items.length,
@@ -253,35 +263,69 @@ export function ExpensesListPage({
     return base.filter((expense) => expense.haystack.includes(needle));
   }, [browseAll, dateRangeExpenses, expenses, needle]);
 
+  /**
+   * The period, in koruna, with whatever cannot be stated in koruna beside it.
+   *
+   * Nothing is converted here: a foreign document counts at the rate stored on
+   * it, the one its owner put it in the books at. Without a rate the app has
+   * no business guessing, so the document is still counted as a document and
+   * its own total is stated on a line of its own rather than quietly left out.
+   */
   const totals = useMemo(() => {
     let base = 0;
     let gross = 0;
+    const foreign = new Map<string, number>();
     for (const expense of dateRangeExpenses) {
-      gross += expense.amounts.gross;
-      base += expense.amounts.net;
+      if (expense.rate == null) {
+        foreign.set(
+          expense.currency,
+          (foreign.get(expense.currency) ?? 0) + expense.amounts.gross,
+        );
+        continue;
+      }
+      gross += toHome(expense.amounts.gross, expense.rate);
+      base += toHome(expense.amounts.net, expense.rate);
     }
-    return { base, vat: gross - base, gross, count: dateRangeExpenses.length };
+    return {
+      base,
+      vat: gross - base,
+      gross,
+      foreign,
+      count: dateRangeExpenses.length,
+    };
   }, [dateRangeExpenses]);
 
-  const yearTotal = useMemo(
-    () =>
-      expenses.reduce((sum, expense) => {
-        if (!expense.expenseDate) return sum;
-        const date = new Date(expense.expenseDate);
-        if (Number.isNaN(date.getTime()) || date.getFullYear() !== period.year) {
-          return sum;
-        }
-        return sum + expense.amounts.gross;
-      }, 0),
-    [expenses, period.year],
-  );
+  const yearTotal = useMemo(() => {
+    let gross = 0;
+    const foreign = new Map<string, number>();
+    for (const expense of expenses) {
+      if (!expense.expenseDate) continue;
+      const date = new Date(expense.expenseDate);
+      if (Number.isNaN(date.getTime()) || date.getFullYear() !== period.year) {
+        continue;
+      }
+      if (expense.rate == null) {
+        foreign.set(
+          expense.currency,
+          (foreign.get(expense.currency) ?? 0) + expense.amounts.gross,
+        );
+        continue;
+      }
+      gross += toHome(expense.amounts.gross, expense.rate);
+    }
+    return { gross, foreign };
+  }, [expenses, period.year]);
 
-  const money = (value: number) =>
+  const money = (value: number, currency: string = DEFAULT_CURRENCY) =>
     isDiscreteMode
       ? t("common.discreteMask")
-      : formatMoney(value, locale, DEFAULT_CURRENCY);
+      : formatMoney(value, locale, currency);
   const amount = (value: number) =>
     isDiscreteMode ? t("common.discreteMask") : formatAmount(value, locale);
+  /* Bare figures in the koruna column, the code spelled out where a document
+     is billed in something else — the column can no longer name one. */
+  const rowAmount = (value: number, currency: string) =>
+    currency === DEFAULT_CURRENCY ? amount(value) : money(value, currency);
 
   const shiftPeriod = (delta: number) => {
     const next = new Date(period.year, period.month + delta, 1);
@@ -320,6 +364,7 @@ export function ExpensesListPage({
       description: template.description || template.name || "",
       expenseDate: dateResult.value,
       expenseNumber: null,
+      currency: template.currency,
       supplierName: template.supplierName,
       supplierVat: template.supplierVat,
       supplierIco: template.supplierIco,
@@ -331,8 +376,25 @@ export function ExpensesListPage({
       templateId: template.id,
       deleted: Evolu.sqliteFalse,
     });
-    if (result.ok) generated.current.add(stamp);
-    return result.ok;
+    if (!result.ok) return false;
+    generated.current.add(stamp);
+
+    /* A template repeats; the rate does not. The booked document is stamped
+       with the bank's rate for its own day, a moment later — silently, since
+       a cost with no rate is a state the page already states plainly. A
+       period the bank has not reached yet simply has no rate: it answers
+       with the newest table it has, which belongs to another day. */
+    if (template.currency && template.currency !== DEFAULT_CURRENCY) {
+      const id = result.value.id;
+      void fetchCnbRate(template.currency, iso)
+        .then((lookup) => {
+          if (!lookup.ok || lookup.validFor > iso) return;
+          const value = Evolu.NonNegativeNumber.from(lookup.rate);
+          if (value.ok) evolu.update("expense", { id, exchangeRate: value.value });
+        })
+        .catch((error) => console.error("CNB rate error:", error));
+    }
+    return true;
   };
 
   const runGeneration = (chosen: readonly ExpenseTemplateRow[]) => {
@@ -388,12 +450,27 @@ export function ExpensesListPage({
 
     /* Purchases carrying no tax give nothing to deduct, so they are not part
        of the statement — including its 10 000 Kč threshold and the supplier
-       details that threshold demands. */
+       details that threshold demands.
+
+       A document billed in another currency is reported in koruna at the rate
+       stored on it — the one it was put in the books at. One without a rate
+       cannot be: writing 250 into a return as though euros were crowns is the
+       one outcome worth being loud about, so it is left out and said so
+       below. The 10 000 threshold is a koruna figure too, and applies to the
+       converted amount. */
+    /* Only the ones a rate would actually bring in: a document carrying no
+       tax is out of the statement either way, and counting it here asked for
+       rates that would not change the export by a byte. */
+    const foreignInPeriod = dateRangeExpenses.filter(
+      (e) => e.rate == null && !hasNothingToReport(e),
+    ).length;
     const reportable = dateRangeExpenses.filter(
-      (e) => !hasNothingToReport(e),
+      (e) => e.rate != null && !hasNothingToReport(e),
     );
-    const above10k = reportable.filter((e) => e.amounts.gross > 10000);
-    const atOrBelow10k = reportable.filter((e) => e.amounts.gross <= 10000);
+    const inHome = (e: DecoratedExpense) =>
+      toHome(e.amounts.gross, e.rate ?? 1);
+    const above10k = reportable.filter((e) => inHome(e) > 10000);
+    const atOrBelow10k = reportable.filter((e) => inHome(e) <= 10000);
 
     const missingInfo = above10k.some(
       (e) => !e.supplierVat?.toString().trim() || !e.expenseNumber?.toString().trim(),
@@ -409,7 +486,7 @@ export function ExpensesListPage({
       /* One document can carry both rates — VetaB2 has attributes for each,
          so an itemised expense is reported per band rather than flattened
          onto whichever rate happens to sit on the document. */
-      const bands = expenseVatBands(e);
+      const bands = scaleBands(expenseVatBands(e), e.rate ?? 1);
       if (bandsAreEmpty(bands)) continue;
       const dicDod = stripCzPrefix(e.supplierVat?.toString() ?? "");
       const cEvidDd = escapeXmlAttr(e.expenseNumber?.toString() ?? "");
@@ -443,7 +520,7 @@ export function ExpensesListPage({
     const b3Sums = { zakl_dane1: 0, dan1: 0, zakl_dane2: 0, dan2: 0 };
     for (const e of atOrBelow10k) {
       if (e.amounts.gross <= 0) continue;
-      addBands(b3Sums, expenseVatBands(e));
+      addBands(b3Sums, scaleBands(expenseVatBands(e), e.rate ?? 1));
     }
 
     const hasB3 = !bandsAreEmpty(b3Sums);
@@ -504,6 +581,15 @@ export function ExpensesListPage({
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+
+    /* Said out loud rather than left to be noticed: a document the statement
+       does not carry is one the accountant has to convert by hand. */
+    if (foreignInPeriod > 0) {
+      notify(
+        t("expensesList.exportXmlForeignSkipped", { count: foreignInPeriod }),
+        "info",
+      );
+    }
   };
 
   /** What the row is filed under: who it was from, and for what. */
@@ -566,6 +652,11 @@ export function ExpensesListPage({
                 {t("expensesList.periodTotal")}
               </div>
               <div className="ystrip-figure">{money(totals.gross)}</div>
+              {[...totals.foreign].map(([code, value]) => (
+                <div key={code} className="ystrip-figure-alt">
+                  + {money(value, code)}
+                </div>
+              ))}
               <div className="ystrip-cell-meta">
                 <span className="num">{totals.count}</span>{" "}
                 {tp("expensesList.expenseCount", totals.count)}
@@ -588,7 +679,12 @@ export function ExpensesListPage({
               <div className="ystrip-cell-label">
                 {t("expensesList.yearTotal", { year: period.year })}
               </div>
-              <div className="ystrip-figure">{money(yearTotal)}</div>
+              <div className="ystrip-figure">{money(yearTotal.gross)}</div>
+              {[...yearTotal.foreign].map(([code, value]) => (
+                <div key={code} className="ystrip-figure-alt">
+                  + {money(value, code)}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -677,9 +773,9 @@ export function ExpensesListPage({
                       <th className="num-col">{t("expensesList.colVat")}</th>
                     </>
                   ) : null}
-                  <th className="num-col">
-                    {t("expensesList.colTotal")} · {DEFAULT_CURRENCY}
-                  </th>
+                  {/* No currency in the header any more: a row states its
+                      own when it is not the home one. */}
+                  <th className="num-col">{t("expensesList.colTotal")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -738,14 +834,24 @@ export function ExpensesListPage({
                       {isVatPayer ? (
                         <>
                           <td className="ledger-amount">
-                            {amount(amounts.net)}
+                            {rowAmount(amounts.net, expense.currency)}
                           </td>
                           <td className="ledger-amount">
-                            {amount(amounts.vat)}
+                            {rowAmount(amounts.vat, expense.currency)}
                           </td>
                         </>
                       ) : null}
-                      <td className="ledger-amount">{amount(amounts.gross)}</td>
+                      <td className="ledger-amount">
+                        {rowAmount(amounts.gross, expense.currency)}
+                        {/* What the totals below count it as — the row is the
+                            document, the second line is the koruna. */}
+                        {expense.currency !== DEFAULT_CURRENCY &&
+                        expense.rate != null ? (
+                          <span className="ledger-alt">
+                            {money(toHome(amounts.gross, expense.rate))}
+                          </span>
+                        ) : null}
+                      </td>
                     </tr>
                   );
                 })}
@@ -773,10 +879,14 @@ export function ExpensesListPage({
                         <span className="lcard-client">
                           {supplier || expense.description}
                         </span>
-                        {/* The table's header carries the currency
-                            ("Celkem · CZK") and is hidden here. */}
                         <span className="lcard-amount num">
-                          {money(amounts.gross)}
+                          {money(amounts.gross, expense.currency)}
+                          {expense.currency !== DEFAULT_CURRENCY &&
+                          expense.rate != null ? (
+                            <span className="ledger-alt">
+                              {money(toHome(amounts.gross, expense.rate))}
+                            </span>
+                          ) : null}
                         </span>
                       </span>
                       <span className="lcard-line lcard-meta">

@@ -67,6 +67,7 @@ const commonColumns = (values: ExpenseFormValues, isVatPayer: boolean) => {
 
   return {
     description: effectiveDescription(values),
+    currency: trim100(values.currency) || null,
     supplierName: trim100(values.supplierName) || null,
     supplierVat: trim100(values.supplierVat) || null,
     supplierIco: trim100(values.supplierIco) || null,
@@ -85,10 +86,22 @@ export const buildExpensePayload = (
 ) => {
   const dateResult = Evolu.dateToDateIso(new Date(values.expenseDate));
   if (!dateResult.ok) return null;
+  const currency = trim100(values.currency);
+  const rate = Number(values.exchangeRate);
+  const rateResult =
+    Number.isFinite(rate) && rate > 0
+      ? Evolu.NonNegativeNumber.from(rate)
+      : null;
   return {
     ...commonColumns(values, isVatPayer),
     expenseNumber: trim100(values.expenseNumber) || null,
     expenseDate: dateResult.value,
+    /* Only where it means anything: a rate on a koruna document is noise,
+       and a template has no date to have been converted on. */
+    exchangeRate:
+      currency && currency !== "CZK" && rateResult?.ok
+        ? rateResult.value
+        : null,
   };
 };
 

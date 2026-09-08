@@ -25,6 +25,7 @@ import { collectSuppliers } from "../lib/supplierOptions";
 import { parseSupplierVatPrefill } from "../supplierVatPrefill";
 import { formatDate, usesQuantity } from "../lib/invoice";
 import { DEFAULT_CURRENCY, formatAmount, formatMoney } from "../lib/money";
+import { toHome } from "../lib/exchangeRate";
 
 const ExpenseId = Evolu.id("Expense");
 
@@ -122,13 +123,6 @@ export function ExpenseDetailPage({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const money = (value: number) =>
-    profile?.discreteMode === Evolu.sqliteTrue
-      ? t("common.discreteMask")
-      : formatMoney(value, locale, DEFAULT_CURRENCY);
-  /* The form states amounts you are typing, so it is never masked. */
-  const plainMoney = (value: number) =>
-    formatMoney(value, locale, DEFAULT_CURRENCY);
   const amount = (value: number) => formatAmount(value, locale);
 
   /* The form mapping, the save and the guard all sit above the not-found
@@ -142,6 +136,12 @@ export function ExpenseDetailPage({
   const toForm = (): ExpenseFormValues => ({
     ...emptyExpense(isVatPayer),
     supplierName: expense?.supplierName ?? "",
+    /* Read back like every other column: without these, opening the editor
+       showed a 500 EUR document as koruna and saving it — even unchanged —
+       wrote the currency and the rate away. */
+    currency: expense?.currency ?? "",
+    exchangeRate:
+      expense?.exchangeRate != null ? String(expense.exchangeRate) : "",
     supplierVat: expense?.supplierVat ?? "",
     supplierIco: expense?.supplierIco ?? "",
     description: expense?.description ?? "",
@@ -167,6 +167,16 @@ export function ExpenseDetailPage({
 
   const values = draft ?? toForm();
   const totals = expenseFormTotals(values, isVatPayer);
+
+  /* The document's own currency, and the draft's while it is being edited —
+     switching the currency should restate the totals, not wait for a save. */
+  const currency = values.currency || DEFAULT_CURRENCY;
+  const money = (value: number) =>
+    profile?.discreteMode === Evolu.sqliteTrue
+      ? t("common.discreteMask")
+      : formatMoney(value, locale, currency);
+  /* The form states amounts you are typing, so it is never masked. */
+  const plainMoney = (value: number) => formatMoney(value, locale, currency);
 
   /* Reports whether it went through, so the unsaved-changes guard can offer
      to save on the way out and keep you here when the form does not pass. */
@@ -320,6 +330,21 @@ export function ExpenseDetailPage({
           </div>
           <div className="inv-money">
             <div className="inv-total num">{money(stored.gross)}</div>
+            {/* What the period totals and the control statement count it as,
+                at the rate this document was put in the books at. */}
+            {expense.currency &&
+            expense.currency !== DEFAULT_CURRENCY &&
+            expense.exchangeRate ? (
+              <div className="settings-help-text">
+                {t("expenseForm.rateConverted", {
+                  amount: formatMoney(
+                    toHome(stored.gross, Number(expense.exchangeRate)),
+                    locale,
+                    DEFAULT_CURRENCY,
+                  ),
+                })}
+              </div>
+            ) : null}
             {isVatPayer && stored.net > 0 ? (
               <div className="settings-help-text">
                 {t("expensesList.periodBase", { amount: money(stored.net) })}

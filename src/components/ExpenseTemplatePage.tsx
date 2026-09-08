@@ -124,6 +124,10 @@ export function ExpenseTemplatePage({
     return {
       values: {
         supplierName: template.supplierName ?? "",
+        currency: template.currency ?? "",
+        /* A template repeats; a rate belongs to the day a document was
+           converted, so a booked cost gets its own. */
+        exchangeRate: "",
         supplierVat: template.supplierVat ?? "",
         supplierIco: template.supplierIco ?? "",
         description: template.description ?? "",
@@ -152,7 +156,8 @@ export function ExpenseTemplatePage({
 
   const state = draft ?? seed();
   const totals = expenseFormTotals(state.values, isVatPayer);
-  const money = (value: number) => formatMoney(value, locale, DEFAULT_CURRENCY);
+  const money = (value: number) =>
+    formatMoney(value, locale, state.values.currency || DEFAULT_CURRENCY);
   const amount = (value: number) => formatAmount(value, locale);
 
   const patch = (next: Partial<ReturnType<typeof seed>>) => {

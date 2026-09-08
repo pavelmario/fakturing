@@ -116,6 +116,15 @@ export const Schema = {
   expense: {
     id: Evolu.id("Expense"),
     expenseNumber: Evolu.nullOr(Evolu.TrimmedString100),
+    /** One currency per document; amounts are never converted. Null is CZK. */
+    currency: Evolu.nullOr(Evolu.TrimmedString100),
+    /**
+     * Koruna per one unit of that currency — the rate this document was put
+     * in the books at. Without one a foreign cost stays outside the koruna
+     * totals and outside the control statement, because the app has no rate
+     * of its own to invent.
+     */
+    exchangeRate: Evolu.nullOr(Evolu.NonNegativeNumber),
     /** Snapshot of the supplier's name as it was on the document. */
     supplierName: Evolu.nullOr(Evolu.TrimmedString100),
     supplierVat: Evolu.nullOr(Evolu.TrimmedString100),
@@ -138,6 +147,7 @@ export const Schema = {
   expenseTemplate: {
     id: Evolu.id("ExpenseTemplate"),
     name: Evolu.NonEmptyTrimmedString100,
+    currency: Evolu.nullOr(Evolu.TrimmedString100),
     supplierName: Evolu.nullOr(Evolu.TrimmedString100),
     supplierVat: Evolu.nullOr(Evolu.TrimmedString100),
     supplierIco: Evolu.nullOr(Evolu.TrimmedString100),

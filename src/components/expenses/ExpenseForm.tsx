@@ -1,5 +1,5 @@
-import { useId, type ReactNode } from "react";
-import { ChevronRight, ListPlus, X } from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
+import { ChevronRight, Landmark, ListPlus, X } from "lucide-react";
 import { useI18n } from "../../i18n";
 import { DateField } from "../invoices/DateField";
 import { SelectField } from "../invoices/SelectField";
@@ -13,6 +13,10 @@ import {
 import { round2 } from "../../lib/expense";
 import { emptyItem, type InvoiceItemForm } from "../../lib/invoiceItemForm";
 import { findSupplier, type SupplierOption } from "../../lib/supplierOptions";
+import { CURRENCIES, DEFAULT_CURRENCY, formatMoney } from "../../lib/money";
+import { fetchCnbRate, toHome } from "../../lib/exchangeRate";
+import { formatDate } from "../../lib/invoice";
+import { useNotify } from "../../lib/confirmContext";
 
 type ExpenseFormProps = {
   values: ExpenseFormValues;
@@ -61,7 +65,14 @@ export function ExpenseForm({
   noteOpen,
   onNoteOpenChange,
 }: ExpenseFormProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const notify = useNotify();
+  const [loadingRate, setLoadingRate] = useState(false);
+  const currencyOptions = CURRENCIES.includes(
+    values.currency as (typeof CURRENCIES)[number],
+  )
+    ? CURRENCIES
+    : [...CURRENCIES, values.currency].filter(Boolean);
   const listId = useId();
   const itemised = hasFilledItems(values.items);
 
@@ -399,6 +410,115 @@ export function ExpenseForm({
               {isVatPayer ? (
                 <p className="field-hint">{t("expenseForm.numberHint")}</p>
               ) : null}
+            </>
+          ) : null}
+
+          {/* A cost is billed in a currency the same way an invoice is, and
+              nothing here converts one into another. */}
+          <label htmlFor="expenseCurrency" className="form-label mt-3">
+            {t("invoiceCreate.currencyLabel")}
+          </label>
+          <SelectField
+            id="expenseCurrency"
+            value={values.currency || DEFAULT_CURRENCY}
+            ariaLabel={t("invoiceCreate.currencyLabel")}
+            /* An imported document may be in a currency this list does not
+               offer — the bank quotes some thirty. Showing it keeps the
+               picker honest about what the document says, instead of
+               displaying the first option and overwriting the truth on the
+               next touch. */
+            options={currencyOptions.map((code) => ({
+              value: code,
+              label: code,
+            }))}
+            onChange={(next) => onChange({ currency: next })}
+          />
+          {/* A foreign document is worth koruna too — at the rate it was put
+              in the books at. Without one it stays out of the koruna totals
+              and out of the control statement, because the app has no rate of
+              its own to invent. */}
+          {values.currency && values.currency !== DEFAULT_CURRENCY ? (
+            <>
+              <label htmlFor="expenseRate" className="form-label mt-3">
+                {t("expenseForm.exchangeRateLabel", {
+                  currency: values.currency,
+                })}
+              </label>
+              <div className="input-affix">
+                <input
+                  id="expenseRate"
+                  type="text"
+                  inputMode="decimal"
+                  value={values.exchangeRate}
+                  placeholder={t("expenseForm.ratePlaceholder")}
+                  onChange={(e) => onChange({ exchangeRate: e.target.value })}
+                  className="form-input mono"
+                />
+                <button
+                  type="button"
+                  className="input-affix-btn"
+                  disabled={loadingRate}
+                  title={t("expenseForm.rateLoad")}
+                  aria-label={t("expenseForm.rateLoad")}
+                  onClick={async () => {
+                    setLoadingRate(true);
+                    try {
+                      const day =
+                        values.expenseDate ||
+                        new Date().toISOString().slice(0, 10);
+                      const lookup = await fetchCnbRate(values.currency, day);
+                      if (!lookup.ok) {
+                        /* Each reason asks something different of you: wait,
+                           type it, or stop expecting this host to answer. */
+                        notify(
+                          t(`expenseForm.rateFailed.${lookup.reason}`, {
+                            currency: values.currency,
+                            date: formatDate(day, locale),
+                          }),
+                          "error",
+                        );
+                        return;
+                      }
+                      onChange({ exchangeRate: String(lookup.rate) });
+                      /* A weekend or a holiday has no table of its own; the
+                         rate in force is the last one published, and which
+                         day that was is worth saying. */
+                      if (lookup.validFor !== day) {
+                        notify(
+                          t("expenseForm.rateFromDay", {
+                            date: formatDate(lookup.validFor, locale),
+                          }),
+                          "info",
+                        );
+                      }
+                    } catch (error) {
+                      console.error("CNB rate error:", error);
+                      notify(t("expenseForm.rateFailed.unreachable"), "error");
+                    } finally {
+                      setLoadingRate(false);
+                    }
+                  }}
+                >
+                  <Landmark />
+                </button>
+              </div>
+              <p className="field-hint">
+                {Number(values.exchangeRate) > 0
+                  ? t("expenseForm.rateConverted", {
+                      amount: formatMoney(
+                        toHome(
+                          Number(
+                            expenseAmountColumns(values, isVatPayer)
+                              .amountWithVat,
+                          ),
+                          Number(values.exchangeRate),
+                        ),
+                        locale,
+                        DEFAULT_CURRENCY,
+                      ),
+                    })
+                  : t("expenseForm.rateMissing")}
+              </p>
             </>
           ) : null}
         </div>

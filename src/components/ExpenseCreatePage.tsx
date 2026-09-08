@@ -83,7 +83,8 @@ export function ExpenseCreatePage({
   const [touched, setTouched] = useState(false);
 
   const totals = expenseFormTotals(values, isVatPayer);
-  const money = (value: number) => formatMoney(value, locale, DEFAULT_CURRENCY);
+  const money = (value: number) =>
+    formatMoney(value, locale, values.currency || DEFAULT_CURRENCY);
   const amount = (value: number) => formatAmount(value, locale);
 
   /* Writing the cost and leaving the page are separate: the guard saves

@@ -199,7 +199,8 @@
       },
       "numberMissing": "chybí číslo",
       "numberMissingHint": "Doklad nad 10 000 Kč potřebuje pro kontrolní hlášení DIČ dodavatele i číslo dokladu.",
-      "vatMissing": "chybí DIČ"
+      "vatMissing": "chybí DIČ",
+      "exportXmlForeignSkipped": "Do hlášení nevstoupily doklady bez kurzu ({count}). Doplňte u nich kurz a export zopakujte."
     },
     "expenseCreate": {
       "sectionTitle": "Nový",
@@ -489,15 +490,14 @@
       "emailBodyDefault": "Dobrý den,\n\nv příloze posílám fakturu {cislo} na částku {castka} se splatností {splatnost}.\n\nDěkuji,\n{dodavatel}",
       "fakturoidPickInvoices": "Vybrat XML s fakturami",
       "fakturoidPickExpenses": "Vybrat XML s náklady",
-      "fakturoidExpensesHint": "Náklady se z Fakturoidu exportují zvlášť. Doklad v cizí měně se uloží v přepočtu na koruny, jinak se přeskočí.",
+      "fakturoidExpensesHint": "Náklady se z Fakturoidu exportují zvlášť. Doklad si nese svou měnu, stejně jako faktura — nic se nepřepočítává.",
       "fakturoidCountExpenses": {
         "one": "{count} náklad",
         "few": "{count} náklady",
         "many": "{count} nákladů"
       },
-      "fakturoidSkipForeign": "cizí měna bez přepočtu: {count}",
       "fakturoidExpensesConfirmTitle": "Importovat náklady z Fakturoidu?",
-      "fakturoidExpenseConverted": "Původní částka {amount} {currency}."
+      "fakturoidExpenseConverted": "Přepočet z Fakturoidu: {amount}."
     },
     "alerts": {
       "confirmResetSeed": "Chystáte se resetovat lokální data a vygenerovat nový seed zálohy. Chcete pokračovat?",
@@ -687,7 +687,22 @@
       "breakdownHint": "Rozpis položek stejně jako na faktuře",
       "numberHint": "Číslo z dokladu dodavatele; nad 10 000 Kč je povinné.",
       "noteLabel": "Poznámka",
-      "notePlaceholder": "Interní poznámka k nákladu"
+      "notePlaceholder": "Interní poznámka k nákladu",
+      "currencyHint": "Částky se nikde nepřepočítávají — kurz níže říká, kolik je doklad v korunách.",
+      "ratePlaceholder": "24,20",
+      "rateLoad": "Načíst kurz ČNB ke dni dokladu",
+      "rateConverted": "V korunách: {amount}. Tuto částku použije souhrn i kontrolní hlášení.",
+      "rateMissing": "Bez kurzu doklad nevstoupí do korunových součtů ani do kontrolního hlášení.",
+      "rateFailed": {
+        "offline": "Jste offline, kurz ČNB teď načíst nejde. Zadejte ho ručně.",
+        "unreachable": "Spojení s ČNB se nepodařilo navázat. Zkuste to znovu, nebo kurz zadejte ručně.",
+        "notProxied": "Tahle instalace kurzy z ČNB nepřeposílá (chybí přesměrování na hostingu). Zadejte kurz ručně.",
+        "unavailable": "ČNB teď neodpovídá. Zkuste to za chvíli, nebo kurz zadejte ručně.",
+        "noTable": "ČNB pro {date} kurzovní lístek nevydala. Zadejte kurz ručně.",
+        "noRate": "ČNB kurz pro {currency} nevydává. Zadejte ho ručně."
+      },
+      "rateFromDay": "Použit kurz ČNB z {date} — pro víkendy a svátky platí poslední vydaný.",
+      "exchangeRateLabel": "Kurz — 1 {currency} v Kč"
     },
     "profile": {
       "title": "Profil",
@@ -942,7 +957,8 @@
       },
       "numberMissing": "no number",
       "numberMissingHint": "A document over CZK 10,000 needs the supplier's VAT ID and document number for the control statement.",
-      "vatMissing": "no VAT ID"
+      "vatMissing": "no VAT ID",
+      "exportXmlForeignSkipped": "Documents with no exchange rate ({count}) are not in the statement. Give them a rate and export again."
     },
     "expenseCreate": {
       "sectionTitle": "New",
@@ -1232,14 +1248,13 @@
       "emailBodyDefault": "Hello,\n\nplease find attached invoice {cislo} for {castka}, due {splatnost}.\n\nThank you,\n{dodavatel}",
       "fakturoidPickInvoices": "Pick the invoices XML",
       "fakturoidPickExpenses": "Pick the expenses XML",
-      "fakturoidExpensesHint": "Fakturoid exports expenses separately. A document in a foreign currency is stored converted to koruna, or skipped if the export carries no converted total.",
+      "fakturoidExpensesHint": "Fakturoid exports expenses separately. A document keeps the currency it was billed in, the way an invoice does — nothing is converted.",
       "fakturoidCountExpenses": {
         "one": "{count} expense",
         "many": "{count} expenses"
       },
-      "fakturoidSkipForeign": "foreign currency, not converted: {count}",
       "fakturoidExpensesConfirmTitle": "Import expenses from Fakturoid?",
-      "fakturoidExpenseConverted": "Originally {amount} {currency}."
+      "fakturoidExpenseConverted": "Fakturoid's conversion: {amount}."
     },
     "alerts": {
       "confirmResetSeed": "You are about to reset local data and generate a new backup seed. Continue?",
@@ -1429,7 +1444,22 @@
       "breakdownHint": "Line items, the same as on an invoice",
       "numberHint": "The supplier's document number; required above CZK 10,000.",
       "noteLabel": "Note",
-      "notePlaceholder": "Internal note about this cost"
+      "notePlaceholder": "Internal note about this cost",
+      "currencyHint": "Nothing is converted anywhere — the rate below says what the document is in koruna.",
+      "ratePlaceholder": "24.20",
+      "rateLoad": "Load the ČNB rate for the document's date",
+      "rateConverted": "In koruna: {amount}. This is the figure the totals and the control statement use.",
+      "rateMissing": "Without a rate the document stays out of the koruna totals and the control statement.",
+      "rateFailed": {
+        "offline": "You are offline, so the ČNB rate cannot be loaded. Type it in instead.",
+        "unreachable": "The ČNB could not be reached. Try again, or type the rate in.",
+        "notProxied": "This installation does not forward ČNB rates (the host has no rewrite for it). Type the rate in.",
+        "unavailable": "The ČNB is not answering. Try again shortly, or type the rate in.",
+        "noTable": "The ČNB published no table for {date}. Type the rate in.",
+        "noRate": "The ČNB does not quote {currency}. Type the rate in."
+      },
+      "rateFromDay": "Used the ČNB rate for {date} — a weekend or holiday takes the last one published.",
+      "exchangeRateLabel": "Rate — 1 {currency} in CZK"
     },
     "profile": {
       "title": "Profile",

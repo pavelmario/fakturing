@@ -773,6 +773,15 @@
     text-overflow: ellipsis;
   }
 
+  /* The koruna a foreign document counts as, under the amount it was billed
+     in. Quiet, because the document is the number above it. */
+  .ledger-alt {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--ink-faint);
+  }
+
   .ledger-amount {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;

@@ -1,0 +1,6 @@
+# Netlify reads this from the publish directory. api.cnb.cz sends no CORS
+# headers, so the daily exchange rates are proxied through this origin; the
+# same rewrite lives in vercel.json and in vite.config.ts for dev and preview.
+# Cloudflare Pages does not proxy to another host from here — there the rate
+# is typed by hand, which the field allows for.
+/api/cnb/*  https://api.cnb.cz/cnbapi/:splat  200

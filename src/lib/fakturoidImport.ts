@@ -90,16 +90,19 @@ export type FakturoidExpense = {
   amountWithoutVat: number;
   vatRate: number;
   amountWithVat: number;
-  /** Set only when the document was not in the home currency. */
-  originalCurrency: string | null;
-  originalTotal: number | null;
+  /** The document's own currency; null is the home one. */
+  currency: string | null;
+  /**
+   * What Fakturoid converted the document to, where that differs — kept for
+   * the note, because a VAT return still wants the koruna figure even though
+   * the cost itself stays in the currency it was billed in.
+   */
+  homeTotal: number | null;
 };
 
 export type FakturoidExpenseSkipped = {
   /** Missing a supplier, a date or any amount at all. */
   unusable: number;
-  /** In a foreign currency the export gave no home-currency total for. */
-  foreignCurrency: number;
 };
 
 export type FakturoidExpenseExport = {
@@ -143,9 +146,7 @@ const numberValue = (value: string, fallback = 0): number => {
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
 
-/* What an expense is stored in. The app keeps no currency on a cost — they
-   exist to be totalled for a Czech VAT return — so the home currency is the
-   one everything is expected to already be in. */
+/** What a converted total is converted *to* — this app's own currency. */
 const HOME_CURRENCY = "CZK";
 
 /**
@@ -383,12 +384,10 @@ const firstText = (element: Element, ...tags: string[]): string => {
  * date is what puts it in a VAT period, and that is the DUZP, not the day the
  * supplier happened to write the invoice.
  *
- * A document in a foreign currency is stored in the home-currency total
- * Fakturoid converted it to, because this app's costs have no currency of
- * their own — 250 EUR filed as 250 Kč would quietly understate the year by
- * five thousand crowns. Its lines are dropped with it: they are still in
- * euros, and a breakdown that does not add up to the total is worse than
- * none. Without a converted total the document is skipped and counted.
+ * A document keeps the currency it was billed in, the way an invoice does —
+ * nothing here is ever converted. Where Fakturoid also carried a converted
+ * total, it comes through as `homeTotal` for the note, since the VAT return
+ * still wants the koruna figure.
  */
 export const parseFakturoidExpenseXml = (
   xml: string,
@@ -406,7 +405,7 @@ export const parseFakturoidExpenseXml = (
     root.nodeName === "expense" ? [root] : childrenNamed(root, "expense");
 
   const expenses: FakturoidExpense[] = [];
-  const skipped: FakturoidExpenseSkipped = { unusable: 0, foreignCurrency: 0 };
+  const skipped: FakturoidExpenseSkipped = { unusable: 0 };
 
   for (const element of elements) {
     const supplierName = clip(
@@ -425,24 +424,19 @@ export const parseFakturoidExpenseXml = (
     const total = numberValue(childText(element, "total"));
     const subtotal = numberValue(childText(element, "subtotal"));
     const nativeTotal = numberValue(childText(element, "native_total"));
-    const nativeSubtotal = numberValue(childText(element, "native_subtotal"));
-    const foreign = Boolean(currency) && currency !== HOME_CURRENCY;
-    if (foreign && nativeTotal <= 0) {
-      skipped.foreignCurrency += 1;
-      continue;
-    }
-    /* Fakturoid writes the native figures for every document, equal to the
-       document's own when it was issued in the account's currency — so it is
-       the two differing, not the currency code, that means a conversion
-       happened and that the lines below are in the other currency. */
-    const converted =
-      foreign && round2(nativeTotal) !== round2(total);
 
-    const items = converted ? [] : readItems(element);
-    const amountWithVat = converted ? nativeTotal : total || nativeTotal;
-    const amountWithoutVat = converted
-      ? nativeSubtotal || nativeTotal
-      : subtotal || nativeSubtotal || amountWithVat;
+    /* Stored in the currency it was billed in, like an invoice: this app
+       converts nothing, and a 50 EUR receipt filed as 50 Kč would be worse
+       than one that says what it is. Fakturoid's own conversion is kept for
+       the note — the VAT return still wants koruna. */
+    const items = readItems(element);
+    /* The converted total stands in for a missing one only where the two are
+       the same money. On a foreign document it is koruna, and 12 100 filed
+       as euros is a cost twenty-four times its size — such a document has no
+       amount this import can trust, so it is skipped and counted. */
+    const foreign = Boolean(currency) && currency !== HOME_CURRENCY;
+    const amountWithVat = total || (foreign ? 0 : nativeTotal);
+    const amountWithoutVat = subtotal || amountWithVat;
     if (items.length === 0 && amountWithVat <= 0) {
       skipped.unusable += 1;
       continue;
@@ -477,8 +471,11 @@ export const parseFakturoidExpenseXml = (
         summaryRate(element) ||
         impliedRate(amountWithoutVat, amountWithVat),
       amountWithVat: round2(amountWithVat),
-      originalCurrency: converted ? currency : null,
-      originalTotal: converted ? round2(total) : null,
+      currency: orNull(currency),
+      homeTotal:
+        nativeTotal > 0 && round2(nativeTotal) !== round2(total)
+          ? round2(nativeTotal)
+          : null,
     });
   }
 

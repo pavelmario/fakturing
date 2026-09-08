@@ -4,6 +4,7 @@ import { useI18n } from "../../i18n";
 export type ExpenseTemplateRow = {
   id: string;
   name: string | null;
+  currency: string | null;
   supplierName: string | null;
   supplierVat: string | null;
   supplierIco: string | null;
@@ -21,7 +22,7 @@ type RecurringPanelProps = {
   /** Templates already booked into the period on screen. */
   booked: ReadonlySet<string>;
   periodLabel: string;
-  money: (value: number) => string;
+  money: (value: number, currency?: string) => string;
   onGenerate: (template: ExpenseTemplateRow) => void;
   onGenerateMissing: () => void;
   onEdit: (templateId: string) => void;
@@ -107,7 +108,10 @@ export function RecurringPanel({
                   </span>
                 </button>
                 <span className="rec-amount num">
-                  {money(Number(template.amountWithVat ?? 0))}
+                  {money(
+                    Number(template.amountWithVat ?? 0),
+                    template.currency ?? undefined,
+                  )}
                 </span>
                 {done ? (
                   <span className="rec-done">
