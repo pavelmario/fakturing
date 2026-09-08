@@ -5,7 +5,7 @@ import { useAres } from "../../lib/useAres";
 import type { ClientFormValues } from "../../lib/clientForm";
 import { defaultClientAlias } from "../../lib/invoiceFileName";
 import { EMAIL_TOKENS } from "../../lib/invoiceEmail";
-import { insertToken } from "../../lib/insertToken";
+import { TokenButton } from "../TokenButton";
 
 type ClientFormProps = {
   values: ClientFormValues;
@@ -200,21 +200,13 @@ export function ClientForm({ values, onChange, nameError }: ClientFormProps) {
         />
         <div className="token-help">
           {EMAIL_TOKENS.map((token) => (
-            <button
+            <TokenButton
               key={token}
-              type="button"
-              className="token"
-              onClick={() =>
-                insertToken(
-                  emailBodyRef.current,
-                  values.emailBody,
-                  token,
-                  (next) => onChange({ emailBody: next }),
-                )
-              }
-            >
-              {token}
-            </button>
+              token={token}
+              field={emailBodyRef}
+              value={values.emailBody}
+              onChange={(next) => onChange({ emailBody: next })}
+            />
           ))}
         </div>
         <p className="field-hint">{t("clientsForm.emailTemplateHint")}</p>

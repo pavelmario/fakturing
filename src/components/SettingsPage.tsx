@@ -27,7 +27,7 @@ import {
   formatInvoiceNumber,
   nextSequence,
 } from "../lib/invoiceNumber";
-import { insertToken } from "../lib/insertToken";
+import { TokenButton } from "./TokenButton";
 import { EMAIL_TOKENS } from "../lib/invoiceEmail";
 import {
   matchBankAccount,
@@ -1966,21 +1966,13 @@ export function SettingsPage({
             />
             <div className="token-help">
               {NUMBER_TOKENS.map((token) => (
-                <button
+                <TokenButton
                   key={token}
-                  type="button"
-                  className="token"
-                  onClick={() =>
-                    insertToken(
-                      numberFormatRef.current,
-                      invoiceNumberFormat,
-                      token,
-                      setInvoiceNumberFormat,
-                    )
-                  }
-                >
-                  {token}
-                </button>
+                  token={token}
+                  field={numberFormatRef}
+                  value={invoiceNumberFormat}
+                  onChange={setInvoiceNumberFormat}
+                />
               ))}
             </div>
             <p className="field-hint">
@@ -2001,21 +1993,13 @@ export function SettingsPage({
             />
             <div className="token-help">
               {FILENAME_TOKENS.map((token) => (
-                <button
+                <TokenButton
                   key={token}
-                  type="button"
-                  className="token"
-                  onClick={() =>
-                    insertToken(
-                      namingFormatRef.current,
-                      invoiceNamingFormat,
-                      token,
-                      setInvoiceNamingFormat,
-                    )
-                  }
-                >
-                  {token}
-                </button>
+                  token={token}
+                  field={namingFormatRef}
+                  value={invoiceNamingFormat}
+                  onChange={setInvoiceNamingFormat}
+                />
               ))}
             </div>
             <p className="field-hint">
@@ -2348,21 +2332,13 @@ export function SettingsPage({
             />
             <div className="token-help">
               {EMAIL_TOKENS.map((token) => (
-                <button
+                <TokenButton
                   key={token}
-                  type="button"
-                  className="token"
-                  onClick={() =>
-                    insertToken(
-                      emailBodyRef.current,
-                      invoiceEmailBody,
-                      token,
-                      setInvoiceEmailBody,
-                    )
-                  }
-                >
-                  {token}
-                </button>
+                  token={token}
+                  field={emailBodyRef}
+                  value={invoiceEmailBody}
+                  onChange={setInvoiceEmailBody}
+                />
               ))}
             </div>
           </section>
