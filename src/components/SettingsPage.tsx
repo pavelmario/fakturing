@@ -25,7 +25,9 @@ import {
   NUMBER_DEFAULT,
   NUMBER_TOKENS,
   formatInvoiceNumber,
+  nextSequence,
 } from "../lib/invoiceNumber";
+import { insertToken } from "../lib/insertToken";
 import {
   matchBankAccount,
   matchClient,
@@ -101,6 +103,9 @@ export function SettingsPage({
   const importExpensesInputRef = useRef<HTMLInputElement | null>(null);
   const importBankAccountsInputRef = useRef<HTMLInputElement | null>(null);
   const importFakturoidInputRef = useRef<HTMLInputElement | null>(null);
+  /* The token buttons write into these, at the caret. */
+  const numberFormatRef = useRef<HTMLInputElement | null>(null);
+  const namingFormatRef = useRef<HTMLInputElement | null>(null);
 
   const profileQuery = useMemo(
     () =>
@@ -1572,11 +1577,17 @@ export function SettingsPage({
     }) !== JSON.stringify(storedValues);
 
   /* One sample document behind both previews below, so the filename and the
-     number they show are the same document. */
+     number they show are the same document — and it is the document that
+     would really be issued next: the preview used to invent sequence 7, so
+     "Next number" named an invoice nobody was about to write. */
   const previewDate = new Date();
   const numberPreview = formatInvoiceNumber(
     invoiceNumberFormat,
-    7,
+    nextSequence(
+      invoiceNumberFormat,
+      invoices.map((row) => row.invoiceNumber),
+      previewDate,
+    ),
     previewDate,
   );
 
@@ -1706,6 +1717,7 @@ export function SettingsPage({
             </label>
             <input
               id="invoiceNumberFormat"
+              ref={numberFormatRef}
               type="text"
               value={invoiceNumberFormat}
               onChange={(e) => setInvoiceNumberFormat(e.target.value)}
@@ -1719,7 +1731,12 @@ export function SettingsPage({
                   type="button"
                   className="token"
                   onClick={() =>
-                    setInvoiceNumberFormat((current) => `${current}${token}`)
+                    insertToken(
+                      numberFormatRef.current,
+                      invoiceNumberFormat,
+                      token,
+                      setInvoiceNumberFormat,
+                    )
                   }
                 >
                   {token}
@@ -1735,6 +1752,7 @@ export function SettingsPage({
             </label>
             <input
               id="invoiceNamingFormat"
+              ref={namingFormatRef}
               type="text"
               value={invoiceNamingFormat}
               onChange={(e) => setInvoiceNamingFormat(e.target.value)}
@@ -1747,11 +1765,14 @@ export function SettingsPage({
                   key={token}
                   type="button"
                   className="token"
-                  onClick={() => {
-                    setInvoiceNamingFormat(
-                      (current) => `${current}${token}`,
-                    );
-                  }}
+                  onClick={() =>
+                    insertToken(
+                      namingFormatRef.current,
+                      invoiceNamingFormat,
+                      token,
+                      setInvoiceNamingFormat,
+                    )
+                  }
                 >
                   {token}
                 </button>
