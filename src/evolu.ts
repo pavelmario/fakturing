@@ -51,6 +51,10 @@ export const Schema = {
     invoiceNumberFormat: Evolu.nullOr(Evolu.TrimmedString100),
     taxOfficeCode: Evolu.nullOr(Evolu.TrimmedString100),
     taxOfficeWorkplaceCode: Evolu.nullOr(Evolu.TrimmedString100),
+    /* The covering e-mail an invoice is sent with. A client may override
+       both, so these are the wording used when it does not. */
+    invoiceEmailSubject: Evolu.nullOr(Evolu.TrimmedString1000),
+    invoiceEmailBody: Evolu.nullOr(Evolu.TrimmedString1000),
   },
   /* Several accounts, e.g. one per currency. The legacy single account on
      userProfile stays as a fallback for anyone who has not added one yet. */
@@ -74,6 +78,11 @@ export const Schema = {
     companyIdentificationNumber: Evolu.nullOr(Evolu.TrimmedString100),
     vatNumber: Evolu.nullOr(Evolu.TrimmedString100),
     note: Evolu.nullOr(Evolu.TrimmedString1000),
+    /** What `{klient}` becomes in a filename; the name, compacted, if unset. */
+    fileNameAlias: Evolu.nullOr(Evolu.TrimmedString100),
+    /* This client's own covering e-mail, overriding the profile's wording. */
+    emailSubject: Evolu.nullOr(Evolu.TrimmedString1000),
+    emailBody: Evolu.nullOr(Evolu.TrimmedString1000),
     deleted: Evolu.nullOr(Evolu.SqliteBoolean),
   },
   invoice: {
@@ -107,6 +116,15 @@ export const Schema = {
   expense: {
     id: Evolu.id("Expense"),
     expenseNumber: Evolu.nullOr(Evolu.TrimmedString100),
+    /** One currency per document; amounts are never converted. Null is CZK. */
+    currency: Evolu.nullOr(Evolu.TrimmedString100),
+    /**
+     * Koruna per one unit of that currency — the rate this document was put
+     * in the books at. Without one a foreign cost stays outside the koruna
+     * totals and outside the control statement, because the app has no rate
+     * of its own to invent.
+     */
+    exchangeRate: Evolu.nullOr(Evolu.NonNegativeNumber),
     /** Snapshot of the supplier's name as it was on the document. */
     supplierName: Evolu.nullOr(Evolu.TrimmedString100),
     supplierVat: Evolu.nullOr(Evolu.TrimmedString100),
@@ -129,6 +147,7 @@ export const Schema = {
   expenseTemplate: {
     id: Evolu.id("ExpenseTemplate"),
     name: Evolu.NonEmptyTrimmedString100,
+    currency: Evolu.nullOr(Evolu.TrimmedString100),
     supplierName: Evolu.nullOr(Evolu.TrimmedString100),
     supplierVat: Evolu.nullOr(Evolu.TrimmedString100),
     supplierIco: Evolu.nullOr(Evolu.TrimmedString100),
@@ -168,6 +187,8 @@ export type UserProfileInput = {
   mempoolUrl?: string;
   taxOfficeCode?: string;
   taxOfficeWorkplaceCode?: string;
+  invoiceEmailSubject?: string;
+  invoiceEmailBody?: string;
 };
 
 const evolu = createEvolu(evoluReactWebDeps)(Schema, {

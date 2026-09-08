@@ -4,9 +4,10 @@ import { useQuery } from "@evolu/react";
 import { ArrowLeft, Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { ClientForm } from "./clients/ClientForm";
-import type { ClientFormValues } from "../lib/clientForm";
+import { emptyClient, type ClientFormValues } from "../lib/clientForm";
 import { LedgerTable, type LedgerRow } from "./invoices/LedgerTable";
 import {
   daysUntilDue,
@@ -120,6 +121,9 @@ export function ClientDetailPage({
 
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<ClientFormValues | null>(null);
+  /* Tracked rather than derived: the guard runs above the not-found return,
+     where the record a draft would be compared against may not exist. */
+  const [touched, setTouched] = useState(false);
   const [nameError, setNameError] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -186,6 +190,66 @@ export function ClientDetailPage({
     return { invoiced, unpaid, count: rows.length };
   }, [rows]);
 
+  /* The form mapping, the save and the guard all sit above the not-found
+     return: the guard is a hook, so it cannot be registered after one, and
+     it offers to save on the way out — which needs the save to exist by
+     then. Both tolerate a missing record rather than assuming one. */
+  const toForm = (): ClientFormValues =>
+    client
+      ? {
+          name: client.name ?? "",
+          email: client.email ?? "",
+          phone: client.phone ?? "",
+          addressLine1: client.addressLine1 ?? "",
+          addressLine2: client.addressLine2 ?? "",
+          companyIdentificationNumber: client.companyIdentificationNumber ?? "",
+          vatNumber: client.vatNumber ?? "",
+          note: client.note ?? "",
+          fileNameAlias: client.fileNameAlias ?? "",
+          emailSubject: client.emailSubject ?? "",
+          emailBody: client.emailBody ?? "",
+        }
+      : emptyClient();
+
+  const values = draft ?? toForm();
+
+  /* Reports whether it went through, so the unsaved-changes guard can offer
+     to save on the way out and keep you here when the form does not pass. */
+  function handleSave(): boolean {
+    if (!client) return false;
+    if (!values.name.trim()) {
+      setNameError(t("alerts.clientNameRequired"));
+      return false;
+    }
+    setIsSaving(true);
+    const toNull = (value: string) => value.trim() || null;
+    const result = evolu.update("client", {
+      id: client.id,
+      name: values.name.trim(),
+      email: toNull(values.email),
+      phone: toNull(values.phone),
+      addressLine1: toNull(values.addressLine1),
+      addressLine2: toNull(values.addressLine2),
+      companyIdentificationNumber: toNull(values.companyIdentificationNumber),
+      vatNumber: toNull(values.vatNumber),
+      note: toNull(values.note),
+      fileNameAlias: toNull(values.fileNameAlias),
+      emailSubject: toNull(values.emailSubject),
+      emailBody: toNull(values.emailBody),
+    });
+    setIsSaving(false);
+    if (!result.ok) {
+      notify(t("alerts.clientSaveValidation"), "error");
+      return false;
+    }
+    setDraft(null);
+    setTouched(false);
+    setIsEditing(false);
+    return true;
+  }
+
+  const guard = useUnsavedGuard(touched, () => handleSave());
+
   if (!client) {
     return (
       <div className="page-shell">
@@ -203,19 +267,6 @@ export function ClientDetailPage({
     );
   }
 
-  const toForm = (): ClientFormValues => ({
-    name: client.name ?? "",
-    email: client.email ?? "",
-    phone: client.phone ?? "",
-    addressLine1: client.addressLine1 ?? "",
-    addressLine2: client.addressLine2 ?? "",
-    companyIdentificationNumber: client.companyIdentificationNumber ?? "",
-    vatNumber: client.vatNumber ?? "",
-    note: client.note ?? "",
-  });
-
-  const values = draft ?? toForm();
-
   const startEditing = () => {
     setDraft(toForm());
     setNameError(undefined);
@@ -232,33 +283,7 @@ export function ClientDetailPage({
       if (!ok) return;
     }
     setDraft(null);
-    setIsEditing(false);
-  };
-
-  const handleSave = () => {
-    if (!values.name.trim()) {
-      setNameError(t("alerts.clientNameRequired"));
-      return;
-    }
-    setIsSaving(true);
-    const toNull = (value: string) => value.trim() || null;
-    const result = evolu.update("client", {
-      id: client.id,
-      name: values.name.trim(),
-      email: toNull(values.email),
-      phone: toNull(values.phone),
-      addressLine1: toNull(values.addressLine1),
-      addressLine2: toNull(values.addressLine2),
-      companyIdentificationNumber: toNull(values.companyIdentificationNumber),
-      vatNumber: toNull(values.vatNumber),
-      note: toNull(values.note),
-    });
-    setIsSaving(false);
-    if (!result.ok) {
-      notify(t("alerts.clientSaveValidation"), "error");
-      return;
-    }
-    setDraft(null);
+    setTouched(false);
     setIsEditing(false);
   };
 
@@ -279,6 +304,7 @@ export function ClientDetailPage({
       notify(t("alerts.clientDeleteFailed"), "error");
       return;
     }
+    guard.release();
     onClientDeleted();
   };
 
@@ -403,6 +429,7 @@ export function ClientDetailPage({
               nameError={nameError}
               onChange={(patch) => {
                 setNameError(undefined);
+                setTouched(true);
                 setDraft((prev) => ({ ...(prev ?? toForm()), ...patch }));
               }}
             />

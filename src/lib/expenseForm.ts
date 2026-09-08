@@ -13,6 +13,10 @@ import { emptyItem, type InvoiceItemForm } from "./invoiceItemForm";
  */
 export type ExpenseFormValues = {
   supplierName: string;
+  /** Blank means the home currency, the same as an invoice's. */
+  currency: string;
+  /** Koruna per one unit of that currency; blank for a koruna document. */
+  exchangeRate: string;
   supplierVat: string;
   supplierIco: string;
   description: string;
@@ -29,6 +33,8 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export const emptyExpense = (isVatPayer: boolean): ExpenseFormValues => ({
   supplierName: "",
+  currency: "",
+  exchangeRate: "",
   supplierVat: "",
   supplierIco: "",
   description: "",

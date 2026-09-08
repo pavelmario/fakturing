@@ -13,5 +13,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/cnb/:path*",
+      "destination": "https://api.cnb.cz/cnbapi/:path*"
+    }
   ]
 }

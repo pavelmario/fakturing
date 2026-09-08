@@ -773,6 +773,15 @@
     text-overflow: ellipsis;
   }
 
+  /* The koruna a foreign document counts as, under the amount it was billed
+     in. Quiet, because the document is the number above it. */
+  .ledger-alt {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--ink-faint);
+  }
+
   .ledger-amount {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
@@ -3004,6 +3013,99 @@
     border-radius: var(--r-sm);
     overflow: hidden;
     background: var(--surface-3);
+  }
+
+  /* A draggable sheet: the viewer inside must not take the pointer, or the
+     drag never starts on it. Reading the document at full size is what the
+     link below the frame is for, which is why it appears with this. */
+  .pdf-frame[draggable="true"] {
+    cursor: grab;
+  }
+
+  .pdf-frame[draggable="true"]:active {
+    cursor: grabbing;
+  }
+
+  .pdf-frame[draggable="true"] iframe {
+    pointer-events: none;
+  }
+
+  /* Shown only while a compose window is open and waiting for the invoice:
+     the sheet dims and asks for the drag, in the middle where someone coming
+     back to the tab is looking. Nothing at rest — a caption sitting on the
+     document for the other 99 % of the time is decoration. */
+  .pdf-preview[data-prompt="true"] .pdf-frame::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--paper) 62%, transparent);
+    pointer-events: none;
+  }
+
+  .pdf-drag-hint {
+    position: absolute;
+    /* Above the scrim: both are positioned, so without this the dimming
+       paints over the banner — which is how it came out washed out and grey
+       on the very sheet it is meant to stand off. */
+    z-index: 1;
+    inset: auto auto 50% 50%;
+    transform: translate(-50%, 50%);
+    max-width: calc(100% - 24px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0.75rem 1.15rem;
+    /* The app's one accent, filled: this is a call to action for the few
+       seconds it exists, and dashed says where the file is going. */
+    border: 2px dashed var(--accent-ink);
+    border-radius: var(--r-sm);
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: var(--shadow-pop);
+    animation: drag-hint-in 180ms ease-out;
+  }
+
+  .pdf-drag-hint svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2.25;
+  }
+
+  @keyframes drag-hint-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 50%) scale(0.94);
+    }
+  }
+
+  /* A slow breath under the banner, so an eye coming back to the tab lands
+     on it. Two seconds of movement, then it holds still. */
+  .pdf-preview[data-prompt="true"] .pdf-frame {
+    animation: drag-frame-pulse 1s ease-in-out 2;
+  }
+
+  @keyframes drag-frame-pulse {
+    50% {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pdf-drag-hint,
+    .pdf-preview[data-prompt="true"] .pdf-frame {
+      animation: none;
+    }
+  }
+
+  .pdf-preview[data-draggable="true"] .pdf-open {
+    display: inline-flex;
   }
 
   .pdf-frame iframe {

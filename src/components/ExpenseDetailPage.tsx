@@ -4,10 +4,12 @@ import { useQuery } from "@evolu/react";
 import { ArrowLeft, Pencil, Repeat, Trash2 } from "lucide-react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { ExpenseForm } from "./expenses/ExpenseForm";
 import { InvoiceSummary } from "./invoices/InvoiceSummary";
 import {
+  emptyExpense,
   expenseFormTotals,
   itemToForm,
   type ExpenseFormValues,
@@ -23,6 +25,7 @@ import { collectSuppliers } from "../lib/supplierOptions";
 import { parseSupplierVatPrefill } from "../supplierVatPrefill";
 import { formatDate, usesQuantity } from "../lib/invoice";
 import { DEFAULT_CURRENCY, formatAmount, formatMoney } from "../lib/money";
+import { toHome } from "../lib/exchangeRate";
 
 const ExpenseId = Evolu.id("Expense");
 
@@ -112,19 +115,97 @@ export function ExpenseDetailPage({
 
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<ExpenseFormValues | null>(null);
+  /* Tracked rather than derived: the guard runs above the not-found return,
+     where the record a draft would be compared against may not exist. */
+  const [touched, setTouched] = useState(false);
   const [errors, setErrors] = useState<ExpenseErrors>({});
   const [noteOpen, setNoteOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const amount = (value: number) => formatAmount(value, locale);
+
+  /* The form mapping, the save and the guard all sit above the not-found
+     return: the guard is a hook, so it cannot be registered after one, and
+     it offers to save on the way out — which needs the save to exist by
+     then. Both tolerate a missing document rather than assuming one. */
+  const storedItems = expenseItems(expense?.items);
+  const stored = expenseAmounts(expense ?? {});
+  const showQuantity = usesQuantity(storedItems);
+
+  const toForm = (): ExpenseFormValues => ({
+    ...emptyExpense(isVatPayer),
+    supplierName: expense?.supplierName ?? "",
+    /* Read back like every other column: without these, opening the editor
+       showed a 500 EUR document as koruna and saving it — even unchanged —
+       wrote the currency and the rate away. */
+    currency: expense?.currency ?? "",
+    exchangeRate:
+      expense?.exchangeRate != null ? String(expense.exchangeRate) : "",
+    supplierVat: expense?.supplierVat ?? "",
+    supplierIco: expense?.supplierIco ?? "",
+    description: expense?.description ?? "",
+    expenseDate: expense ? toDateInput(expense.expenseDate) : "",
+    expenseNumber: expense?.expenseNumber ?? "",
+    note: expense?.note ?? "",
+    amountWithoutVat:
+      expense?.amountWithoutVat != null ? String(expense.amountWithoutVat) : "",
+    /* A blank rate makes every amount handler divide by 1, so correcting the
+       total on a document written before the rate column was filled used to
+       collapse its VAT to zero. Falling back to the standard rate is what the
+       control statement already assumes about such a document. */
+    vatRate:
+      expense?.vatRate != null
+        ? String(expense.vatRate)
+        : isVatPayer
+          ? "21"
+          : "0",
+    amountWithVat:
+      expense?.amountWithVat != null ? String(expense.amountWithVat) : "",
+    items: storedItems.map(itemToForm),
+  });
+
+  const values = draft ?? toForm();
+  const totals = expenseFormTotals(values, isVatPayer);
+
+  /* The document's own currency, and the draft's while it is being edited —
+     switching the currency should restate the totals, not wait for a save. */
+  const currency = values.currency || DEFAULT_CURRENCY;
   const money = (value: number) =>
     profile?.discreteMode === Evolu.sqliteTrue
       ? t("common.discreteMask")
-      : formatMoney(value, locale, DEFAULT_CURRENCY);
+      : formatMoney(value, locale, currency);
   /* The form states amounts you are typing, so it is never masked. */
-  const plainMoney = (value: number) =>
-    formatMoney(value, locale, DEFAULT_CURRENCY);
-  const amount = (value: number) => formatAmount(value, locale);
+  const plainMoney = (value: number) => formatMoney(value, locale, currency);
+
+  /* Reports whether it went through, so the unsaved-changes guard can offer
+     to save on the way out and keep you here when the form does not pass. */
+  const handleSave = (): boolean => {
+    if (!expense) return false;
+    const found = validateExpense(values, isVatPayer, t);
+    setErrors(found);
+    if (Object.keys(found).length > 0) return false;
+
+    const payload = buildExpensePayload(values, isVatPayer);
+    if (!payload) {
+      setErrors({ expenseDate: t("alerts.expenseDateInvalid") });
+      return false;
+    }
+
+    setIsSaving(true);
+    const result = evolu.update("expense", { id: expense.id, ...payload });
+    setIsSaving(false);
+    if (!result.ok) {
+      notify(t("alerts.expenseSaveValidation"), "error");
+      return false;
+    }
+    setDraft(null);
+    setTouched(false);
+    setIsEditing(false);
+    return true;
+  };
+
+  const guard = useUnsavedGuard(touched, () => handleSave());
 
   if (!expense) {
     return (
@@ -143,60 +224,6 @@ export function ExpenseDetailPage({
     );
   }
 
-  const storedItems = expenseItems(expense.items);
-  const stored = expenseAmounts(expense);
-  const showQuantity = usesQuantity(storedItems);
-
-  const toForm = (): ExpenseFormValues => ({
-    supplierName: expense.supplierName ?? "",
-    supplierVat: expense.supplierVat ?? "",
-    supplierIco: expense.supplierIco ?? "",
-    description: expense.description ?? "",
-    expenseDate: toDateInput(expense.expenseDate),
-    expenseNumber: expense.expenseNumber ?? "",
-    note: expense.note ?? "",
-    amountWithoutVat:
-      expense.amountWithoutVat != null ? String(expense.amountWithoutVat) : "",
-    /* A blank rate makes every amount handler divide by 1, so correcting the
-       total on a document written before the rate column was filled used to
-       collapse its VAT to zero. Falling back to the standard rate is what the
-       control statement already assumes about such a document. */
-    vatRate:
-      expense.vatRate != null
-        ? String(expense.vatRate)
-        : isVatPayer
-          ? "21"
-          : "0",
-    amountWithVat:
-      expense.amountWithVat != null ? String(expense.amountWithVat) : "",
-    items: storedItems.map(itemToForm),
-  });
-
-  const values = draft ?? toForm();
-  const totals = expenseFormTotals(values, isVatPayer);
-
-  const handleSave = () => {
-    const found = validateExpense(values, isVatPayer, t);
-    setErrors(found);
-    if (Object.keys(found).length > 0) return;
-
-    const payload = buildExpensePayload(values, isVatPayer);
-    if (!payload) {
-      setErrors({ expenseDate: t("alerts.expenseDateInvalid") });
-      return;
-    }
-
-    setIsSaving(true);
-    const result = evolu.update("expense", { id: expense.id, ...payload });
-    setIsSaving(false);
-    if (!result.ok) {
-      notify(t("alerts.expenseSaveValidation"), "error");
-      return;
-    }
-    setDraft(null);
-    setIsEditing(false);
-  };
-
   const cancelEditing = async () => {
     if (draft && JSON.stringify(draft) !== JSON.stringify(toForm())) {
       const ok = await confirmDialog({
@@ -207,6 +234,7 @@ export function ExpenseDetailPage({
       if (!ok) return;
     }
     setDraft(null);
+    setTouched(false);
     setIsEditing(false);
   };
 
@@ -276,6 +304,7 @@ export function ExpenseDetailPage({
       notify(t("alerts.expenseDeleteFailed"), "error");
       return;
     }
+    guard.release();
     onExpenseDeleted();
   };
 
@@ -301,6 +330,21 @@ export function ExpenseDetailPage({
           </div>
           <div className="inv-money">
             <div className="inv-total num">{money(stored.gross)}</div>
+            {/* What the period totals and the control statement count it as,
+                at the rate this document was put in the books at. */}
+            {expense.currency &&
+            expense.currency !== DEFAULT_CURRENCY &&
+            expense.exchangeRate ? (
+              <div className="settings-help-text">
+                {t("expenseForm.rateConverted", {
+                  amount: formatMoney(
+                    toHome(stored.gross, Number(expense.exchangeRate)),
+                    locale,
+                    DEFAULT_CURRENCY,
+                  ),
+                })}
+              </div>
+            ) : null}
             {isVatPayer && stored.net > 0 ? (
               <div className="settings-help-text">
                 {t("expensesList.periodBase", { amount: money(stored.net) })}
@@ -373,6 +417,7 @@ export function ExpenseDetailPage({
               onNoteOpenChange={setNoteOpen}
               onChange={(patch) => {
                 setErrors({});
+                setTouched(true);
                 setDraft((prev) => ({ ...(prev ?? toForm()), ...patch }));
               }}
               sidebarFooter={

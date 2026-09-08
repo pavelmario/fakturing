@@ -68,6 +68,48 @@ export type FakturoidExport = {
   skipped: FakturoidSkipped;
 };
 
+/**
+ * A cost, the way this app stores one: from whom, and for what.
+ *
+ * Fakturoid exports expenses in the same shape as invoices with the parties
+ * swapped — `supplier_name` where an invoice carries `client_name` — so the
+ * line reader and the date handling below are shared between the two.
+ */
+export type FakturoidExpense = {
+  /** The supplier's own document number, which is what the VAT return wants. */
+  expenseNumber: string | null;
+  supplierName: string;
+  supplierIco: string | null;
+  supplierVat: string | null;
+  description: string;
+  /** The taxable supply date where the export has one, else the issue date. */
+  expenseDate: string;
+  note: string | null;
+  items: FakturoidItem[];
+  /** Read off the document, for the costs entered without a breakdown. */
+  amountWithoutVat: number;
+  vatRate: number;
+  amountWithVat: number;
+  /** The document's own currency; null is the home one. */
+  currency: string | null;
+  /**
+   * What Fakturoid converted the document to, where that differs — kept for
+   * the note, because a VAT return still wants the koruna figure even though
+   * the cost itself stays in the currency it was billed in.
+   */
+  homeTotal: number | null;
+};
+
+export type FakturoidExpenseSkipped = {
+  /** Missing a supplier, a date or any amount at all. */
+  unusable: number;
+};
+
+export type FakturoidExpenseExport = {
+  expenses: FakturoidExpense[];
+  skipped: FakturoidExpenseSkipped;
+};
+
 export class FakturoidParseError extends Error {
   override name = "FakturoidParseError";
 }
@@ -100,6 +142,26 @@ const numberValue = (value: string, fallback = 0): number => {
   if (!value) return fallback;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const round2 = (value: number): number => Math.round(value * 100) / 100;
+
+/** What a converted total is converted *to* — this app's own currency. */
+const HOME_CURRENCY = "CZK";
+
+/**
+ * The rate a net and a gross figure imply, snapped to a legal one.
+ *
+ * The last resort for a document with neither lines nor a VAT summary: a
+ * cost stored with a rate of nothing would be reported to the tax office as
+ * a zero-rated supply.
+ */
+const impliedRate = (net: number, gross: number): number => {
+  if (net <= 0 || gross <= net) return 0;
+  const implied = (gross / net - 1) * 100;
+  const legal = [21, 12, 15, 10];
+  const nearest = legal.find((rate) => Math.abs(rate - implied) < 0.6);
+  return nearest ?? round2(implied);
 };
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -269,6 +331,155 @@ export const parseFakturoidXml = (xml: string): FakturoidExport => {
     invoices,
     skipped,
   };
+};
+
+/**
+ * The rate carrying the most money — the rule the expense form already
+ * applies when it stamps one rate on a document whose lines carry several.
+ */
+const dominantLineRate = (items: readonly FakturoidItem[]): number => {
+  const byRate = new Map<number, number>();
+  for (const item of items) {
+    if (!(item.vat > 0)) continue;
+    byRate.set(item.vat, (byRate.get(item.vat) ?? 0) + item.amount * item.unitPrice);
+  }
+  if (byRate.size === 0) return 0;
+  return [...byRate.entries()].sort((a, b) => b[1] - a[1])[0][0];
+};
+
+/** The rate off the export's own VAT summary, for a document with no lines. */
+const summaryRate = (expense: Element): number => {
+  const [summary] = childrenNamed(expense, "vat_rates_summary");
+  if (!summary) return 0;
+  let rate = 0;
+  let largestBase = -1;
+  for (const entry of Array.from(summary.children)) {
+    const entryRate = numberValue(childText(entry, "vat_rate"));
+    const base = numberValue(childText(entry, "base"));
+    if (entryRate > 0 && base > largestBase) {
+      rate = entryRate;
+      largestBase = base;
+    }
+  }
+  return rate;
+};
+
+/** The first tag of the list that has anything in it. */
+const firstText = (element: Element, ...tags: string[]): string => {
+  for (const tag of tags) {
+    const value = childText(element, tag);
+    if (value) return value;
+  }
+  return "";
+};
+
+/**
+ * Fakturoid's expense export.
+ *
+ * The same file shape as the invoice one with the parties swapped, so it
+ * shares the line reader and the date handling. Two things are decided here
+ * rather than passed on:
+ *
+ * The date is the taxable supply date where the export has one. An expense's
+ * date is what puts it in a VAT period, and that is the DUZP, not the day the
+ * supplier happened to write the invoice.
+ *
+ * A document keeps the currency it was billed in, the way an invoice does —
+ * nothing here is ever converted. Where Fakturoid also carried a converted
+ * total, it comes through as `homeTotal` for the note, since the VAT return
+ * still wants the koruna figure.
+ */
+export const parseFakturoidExpenseXml = (
+  xml: string,
+): FakturoidExpenseExport => {
+  const doc = new DOMParser().parseFromString(xml, "application/xml");
+  if (doc.getElementsByTagName("parsererror").length > 0) {
+    throw new FakturoidParseError("the file is not well-formed XML");
+  }
+
+  const root = doc.documentElement;
+  if (root.nodeName !== "expenses" && root.nodeName !== "expense") {
+    throw new FakturoidParseError(`unexpected root element <${root.nodeName}>`);
+  }
+  const elements =
+    root.nodeName === "expense" ? [root] : childrenNamed(root, "expense");
+
+  const expenses: FakturoidExpense[] = [];
+  const skipped: FakturoidExpenseSkipped = { unusable: 0 };
+
+  for (const element of elements) {
+    const supplierName = clip(
+      firstText(element, "supplier_name", "subject_name", "client_name"),
+      100,
+    );
+    const expenseDate =
+      asDate(childText(element, "taxable_fulfillment_due")) ??
+      asDate(childText(element, "issued_on"));
+    if (!supplierName || !expenseDate) {
+      skipped.unusable += 1;
+      continue;
+    }
+
+    const currency = childText(element, "currency").toUpperCase();
+    const total = numberValue(childText(element, "total"));
+    const subtotal = numberValue(childText(element, "subtotal"));
+    const nativeTotal = numberValue(childText(element, "native_total"));
+
+    /* Stored in the currency it was billed in, like an invoice: this app
+       converts nothing, and a 50 EUR receipt filed as 50 Kč would be worse
+       than one that says what it is. Fakturoid's own conversion is kept for
+       the note — the VAT return still wants koruna. */
+    const items = readItems(element);
+    /* The converted total stands in for a missing one only where the two are
+       the same money. On a foreign document it is koruna, and 12 100 filed
+       as euros is a cost twenty-four times its size — such a document has no
+       amount this import can trust, so it is skipped and counted. */
+    const foreign = Boolean(currency) && currency !== HOME_CURRENCY;
+    const amountWithVat = total || (foreign ? 0 : nativeTotal);
+    const amountWithoutVat = subtotal || amountWithVat;
+    if (items.length === 0 && amountWithVat <= 0) {
+      skipped.unusable += 1;
+      continue;
+    }
+
+    const description =
+      clip(
+        firstText(element, "description") ||
+          items.find((item) => item.description)?.description ||
+          supplierName,
+        100,
+      ) || supplierName;
+
+    expenses.push({
+      expenseNumber: orNull(
+        clip(firstText(element, "original_number", "number", "variable_symbol"), 100),
+      ),
+      supplierName,
+      supplierIco: orNull(
+        clip(firstText(element, "supplier_registration_no", "registration_no"), 100),
+      ),
+      supplierVat: orNull(
+        clip(firstText(element, "supplier_vat_no", "vat_no"), 100),
+      ),
+      description,
+      expenseDate,
+      note: orNull(clip(childText(element, "note"), 1000)),
+      items,
+      amountWithoutVat: round2(amountWithoutVat),
+      vatRate:
+        (items.length > 0 ? dominantLineRate(items) : 0) ||
+        summaryRate(element) ||
+        impliedRate(amountWithoutVat, amountWithVat),
+      amountWithVat: round2(amountWithVat),
+      currency: orNull(currency),
+      homeTotal:
+        nativeTotal > 0 && round2(nativeTotal) !== round2(total)
+          ? round2(nativeTotal)
+          : null,
+    });
+  }
+
+  return { expenses, skipped };
 };
 
 export type ExistingClient = {

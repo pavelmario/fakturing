@@ -60,7 +60,13 @@
       "identityTitle": "Subjekt",
       "addressTitle": "Adresa",
       "contactTitle": "Kontakt",
-      "aresHint": "Zadejte IČO a načtěte údaje z rejstříku ARES."
+      "aresHint": "Zadejte IČO a načtěte údaje z rejstříku ARES.",
+      "deliveryTitle": "Odeslání faktury",
+      "fileAliasLabel": "Zkratka do názvu souboru",
+      "fileAliasHint": "Co dosadí značka {klient} do názvu PDF. Prázdné = jméno klienta bez mezer.",
+      "emailSubjectLabel": "Předmět e-mailu",
+      "emailBodyLabel": "Text e-mailu",
+      "emailTemplateHint": "Prázdné pole převezme šablonu z Nastavení."
     },
     "clientDetail": {
       "title": "Detail klienta",
@@ -193,7 +199,8 @@
       },
       "numberMissing": "chybí číslo",
       "numberMissingHint": "Doklad nad 10 000 Kč potřebuje pro kontrolní hlášení DIČ dodavatele i číslo dokladu.",
-      "vatMissing": "chybí DIČ"
+      "vatMissing": "chybí DIČ",
+      "exportXmlForeignSkipped": "Do hlášení nevstoupily doklady bez kurzu ({count}). Doplňte u nich kurz a export zopakujte."
     },
     "expenseCreate": {
       "sectionTitle": "Nový",
@@ -327,7 +334,10 @@
       "editingBanner": "Upravujete fakturu. Změny se uloží až po potvrzení.",
       "editPaidConfirm": "Tato faktura je označena jako uhrazená. Opravdu ji chcete upravit?",
       "discardConfirm": "Máte neuložené změny. Opravdu je chcete zahodit?",
-      "pdfOpen": "Otevřít PDF"
+      "pdfOpen": "Otevřít PDF",
+      "emailSend": "Poslat e-mailem",
+      "dragHelp": "Přetáhněte do e-mailu",
+      "dragPrompt": "Přetáhněte fakturu do rozepsaného e-mailu"
     },
     "settings": {
       "sectionTitle": "Předvolby",
@@ -438,7 +448,6 @@
       "template": "Šablona",
       "fakturoidTitle": "Import z Fakturoidu",
       "fakturoidHint": "Ve Fakturoidu vyexportujte faktury ve formátu Fakturoid XML a soubor nahrajte sem. Klienti se spárují podle IČO, proformy a storna se přeskočí.",
-      "fakturoidPick": "Vybrat XML soubor",
       "fakturoidConfirmTitle": "Importovat z Fakturoidu?",
       "fakturoidConfirmLabel": "Importovat",
       "fakturoidCountInvoices": {
@@ -472,7 +481,23 @@
       "invoiceNumberPreview": "Další číslo: {number}",
       "supplierVatPrefillLabel": "Našeptávač DIČ dodavatelů",
       "supplierVatPrefillPlaceholder": "CZ123456 | Acme, s.r.o.\nCZ654321 | Emca, a.s.",
-      "supplierVatPrefillHint": "Jeden dodavatel na řádek ve tvaru DIČ | název."
+      "supplierVatPrefillHint": "Jeden dodavatel na řádek ve tvaru DIČ | název.",
+      "emailTitle": "Průvodní e-mail",
+      "emailHint": "Šablona, ze které se sestaví e-mail k faktuře. U jednotlivého klienta ji lze přepsat.",
+      "emailSubjectLabel": "Předmět",
+      "emailBodyLabel": "Text",
+      "emailSubjectDefault": "Faktura {cislo}",
+      "emailBodyDefault": "Dobrý den,\n\nv příloze posílám fakturu {cislo} na částku {castka} se splatností {splatnost}.\n\nDěkuji,\n{dodavatel}",
+      "fakturoidPickInvoices": "Vybrat XML s fakturami",
+      "fakturoidPickExpenses": "Vybrat XML s náklady",
+      "fakturoidExpensesHint": "Náklady se z Fakturoidu exportují zvlášť. Doklad si nese svou měnu, stejně jako faktura — nic se nepřepočítává.",
+      "fakturoidCountExpenses": {
+        "one": "{count} náklad",
+        "few": "{count} náklady",
+        "many": "{count} nákladů"
+      },
+      "fakturoidExpensesConfirmTitle": "Importovat náklady z Fakturoidu?",
+      "fakturoidExpenseConverted": "Přepočet z Fakturoidu: {amount}."
     },
     "alerts": {
       "confirmResetSeed": "Chystáte se resetovat lokální data a vygenerovat nový seed zálohy. Chcete pokračovat?",
@@ -569,7 +594,16 @@
       "expenseUpdated": "Náklad byl úspěšně aktualizován!",
       "expenseDeleted": "Náklad byl úspěšně smazán.",
       "aresOffline": "ARES není dostupný, jste offline.",
-      "expenseItemsAmountRequired": "Vyplňte cenu alespoň u jedné položky"
+      "expenseItemsAmountRequired": "Vyplňte cenu alespoň u jedné položky",
+      "emailNoAddress": "Klient nemá e-mailovou adresu. Doplňte ji v kartě klienta.",
+      "fakturoidNoExpenses": "Export neobsahuje žádné náklady.",
+      "fakturoidExpensesNothingNew": "Všechny náklady z exportu už v aplikaci jsou.",
+      "fakturoidExpensesImported": "Naimportováno: {summary}.",
+      "fakturoidExpensesPartial": "Tyto náklady se naimportovat nepodařilo: {numbers}.",
+      "unsavedTitle": "Máte neuložené změny",
+      "unsavedMessage": "Když teď odejdete, změny se ztratí.",
+      "unsavedLeave": "Odejít bez uložení",
+      "unsavedSave": "Uložit a odejít"
     },
     "pwa": {
       "updateAvailable": "Je k dispozici nová verze aplikace.",
@@ -653,7 +687,22 @@
       "breakdownHint": "Rozpis položek stejně jako na faktuře",
       "numberHint": "Číslo z dokladu dodavatele; nad 10 000 Kč je povinné.",
       "noteLabel": "Poznámka",
-      "notePlaceholder": "Interní poznámka k nákladu"
+      "notePlaceholder": "Interní poznámka k nákladu",
+      "currencyHint": "Částky se nikde nepřepočítávají — kurz níže říká, kolik je doklad v korunách.",
+      "ratePlaceholder": "24,20",
+      "rateLoad": "Načíst kurz ČNB ke dni dokladu",
+      "rateConverted": "V korunách: {amount}. Tuto částku použije souhrn i kontrolní hlášení.",
+      "rateMissing": "Bez kurzu doklad nevstoupí do korunových součtů ani do kontrolního hlášení.",
+      "rateFailed": {
+        "offline": "Jste offline, kurz ČNB teď načíst nejde. Zadejte ho ručně.",
+        "unreachable": "Spojení s ČNB se nepodařilo navázat. Zkuste to znovu, nebo kurz zadejte ručně.",
+        "notProxied": "Tahle instalace kurzy z ČNB nepřeposílá (chybí přesměrování na hostingu). Zadejte kurz ručně.",
+        "unavailable": "ČNB teď neodpovídá. Zkuste to za chvíli, nebo kurz zadejte ručně.",
+        "noTable": "ČNB pro {date} kurzovní lístek nevydala. Zadejte kurz ručně.",
+        "noRate": "ČNB kurz pro {currency} nevydává. Zadejte ho ručně."
+      },
+      "rateFromDay": "Použit kurz ČNB z {date} — pro víkendy a svátky platí poslední vydaný.",
+      "exchangeRateLabel": "Kurz — 1 {currency} v Kč"
     },
     "profile": {
       "title": "Profil",
@@ -769,7 +818,13 @@
       "identityTitle": "Entity",
       "addressTitle": "Address",
       "contactTitle": "Contact",
-      "aresHint": "Enter the company number to pull details from the ARES register."
+      "aresHint": "Enter the company number to pull details from the ARES register.",
+      "deliveryTitle": "Invoice delivery",
+      "fileAliasLabel": "File name alias",
+      "fileAliasHint": "What {klient} becomes in the PDF's name. Blank uses the client's name without spaces.",
+      "emailSubjectLabel": "E-mail subject",
+      "emailBodyLabel": "E-mail body",
+      "emailTemplateHint": "Left blank, the template from Settings is used."
     },
     "clientDetail": {
       "title": "Client details",
@@ -902,7 +957,8 @@
       },
       "numberMissing": "no number",
       "numberMissingHint": "A document over CZK 10,000 needs the supplier's VAT ID and document number for the control statement.",
-      "vatMissing": "no VAT ID"
+      "vatMissing": "no VAT ID",
+      "exportXmlForeignSkipped": "Documents with no exchange rate ({count}) are not in the statement. Give them a rate and export again."
     },
     "expenseCreate": {
       "sectionTitle": "New",
@@ -1036,7 +1092,10 @@
       "editingBanner": "You are editing this invoice. Changes are saved only when you confirm.",
       "editPaidConfirm": "This invoice is marked as paid. Edit it anyway?",
       "discardConfirm": "You have unsaved changes. Discard them?",
-      "pdfOpen": "Open the PDF"
+      "pdfOpen": "Open the PDF",
+      "emailSend": "Send by e-mail",
+      "dragHelp": "Drag into the e-mail",
+      "dragPrompt": "Drag the invoice into the open e-mail"
     },
     "settings": {
       "sectionTitle": "Preferences",
@@ -1147,7 +1206,6 @@
       "template": "Template",
       "fakturoidTitle": "Import from Fakturoid",
       "fakturoidHint": "In Fakturoid, export your invoices as Fakturoid XML and upload the file here. Clients are matched on their company ID; proformas and cancelled invoices are skipped.",
-      "fakturoidPick": "Choose XML file",
       "fakturoidConfirmTitle": "Import from Fakturoid?",
       "fakturoidConfirmLabel": "Import",
       "fakturoidCountInvoices": {
@@ -1181,7 +1239,22 @@
       "invoiceNumberPreview": "Next number: {number}",
       "supplierVatPrefillLabel": "Supplier VAT prefill",
       "supplierVatPrefillPlaceholder": "CZ123456 | Acme, Inc.\nCZ654321 | Emca, corp.",
-      "supplierVatPrefillHint": "One supplier per line, as VAT ID | name."
+      "supplierVatPrefillHint": "One supplier per line, as VAT ID | name.",
+      "emailTitle": "Covering e-mail",
+      "emailHint": "The template an invoice's e-mail is built from. A client can override it.",
+      "emailSubjectLabel": "Subject",
+      "emailBodyLabel": "Body",
+      "emailSubjectDefault": "Invoice {cislo}",
+      "emailBodyDefault": "Hello,\n\nplease find attached invoice {cislo} for {castka}, due {splatnost}.\n\nThank you,\n{dodavatel}",
+      "fakturoidPickInvoices": "Pick the invoices XML",
+      "fakturoidPickExpenses": "Pick the expenses XML",
+      "fakturoidExpensesHint": "Fakturoid exports expenses separately. A document keeps the currency it was billed in, the way an invoice does — nothing is converted.",
+      "fakturoidCountExpenses": {
+        "one": "{count} expense",
+        "many": "{count} expenses"
+      },
+      "fakturoidExpensesConfirmTitle": "Import expenses from Fakturoid?",
+      "fakturoidExpenseConverted": "Fakturoid's conversion: {amount}."
     },
     "alerts": {
       "confirmResetSeed": "You are about to reset local data and generate a new backup seed. Continue?",
@@ -1278,7 +1351,16 @@
       "expenseUpdated": "Expense updated successfully!",
       "expenseDeleted": "Expense deleted successfully.",
       "aresOffline": "ARES is unavailable, you are offline.",
-      "expenseItemsAmountRequired": "Enter a price on at least one line"
+      "expenseItemsAmountRequired": "Enter a price on at least one line",
+      "emailNoAddress": "This client has no e-mail address. Add one on the client's page.",
+      "fakturoidNoExpenses": "The export contains no expenses.",
+      "fakturoidExpensesNothingNew": "Every expense in the export is already here.",
+      "fakturoidExpensesImported": "Imported: {summary}.",
+      "fakturoidExpensesPartial": "These expenses could not be imported: {numbers}.",
+      "unsavedTitle": "You have unsaved changes",
+      "unsavedMessage": "Leaving now discards them.",
+      "unsavedLeave": "Leave without saving",
+      "unsavedSave": "Save and leave"
     },
     "pwa": {
       "updateAvailable": "A new version of the app is available.",
@@ -1362,7 +1444,22 @@
       "breakdownHint": "Line items, the same as on an invoice",
       "numberHint": "The supplier's document number; required above CZK 10,000.",
       "noteLabel": "Note",
-      "notePlaceholder": "Internal note about this cost"
+      "notePlaceholder": "Internal note about this cost",
+      "currencyHint": "Nothing is converted anywhere — the rate below says what the document is in koruna.",
+      "ratePlaceholder": "24.20",
+      "rateLoad": "Load the ČNB rate for the document's date",
+      "rateConverted": "In koruna: {amount}. This is the figure the totals and the control statement use.",
+      "rateMissing": "Without a rate the document stays out of the koruna totals and the control statement.",
+      "rateFailed": {
+        "offline": "You are offline, so the ČNB rate cannot be loaded. Type it in instead.",
+        "unreachable": "The ČNB could not be reached. Try again, or type the rate in.",
+        "notProxied": "This installation does not forward ČNB rates (the host has no rewrite for it). Type the rate in.",
+        "unavailable": "The ČNB is not answering. Try again shortly, or type the rate in.",
+        "noTable": "The ČNB published no table for {date}. Type the rate in.",
+        "noRate": "The ČNB does not quote {currency}. Type the rate in."
+      },
+      "rateFromDay": "Used the ČNB rate for {date} — a weekend or holiday takes the last one published.",
+      "exchangeRateLabel": "Rate — 1 {currency} in CZK"
     },
     "profile": {
       "title": "Profile",

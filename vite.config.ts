@@ -37,6 +37,15 @@ export default defineConfig({
   server: {
     headers: securityHeaders,
     proxy: {
+      /* api.cnb.cz sends no CORS headers, so the exchange rates have to come
+         through this origin. The hosts do the same rewrite — see vercel.json
+         and public/_redirects. */
+      "/api/cnb": {
+        target: "https://api.cnb.cz",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api\/cnb/, "/cnbapi"),
+      },
       "/api/ares": {
         target: "https://ares.gov.cz",
         changeOrigin: true,
@@ -51,5 +60,19 @@ export default defineConfig({
   },
   preview: {
     headers: securityHeaders,
+    /* Same rewrite as the dev server: `npm run preview` is how the production
+       build is checked locally, and without it the rate lookup reports a host
+       that does not forward — which is exactly what preview would be. */
+    proxy: {
+      /* api.cnb.cz sends no CORS headers, so the exchange rates have to come
+         through this origin. The hosts do the same rewrite — see vercel.json
+         and public/_redirects. */
+      "/api/cnb": {
+        target: "https://api.cnb.cz",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api\/cnb/, "/cnbapi"),
+      },
+    },
   },
 });

@@ -2,6 +2,7 @@ import { useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { ClientForm } from "./clients/ClientForm";
 import { emptyClient, type ClientFormValues } from "../lib/clientForm";
 import { useNotify } from "../lib/confirmContext";
@@ -17,11 +18,17 @@ export function ClientsPage({ onClientCreated }: ClientsPageProps) {
   const [values, setValues] = useState<ClientFormValues>(emptyClient);
   const [nameError, setNameError] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
+  /* Anything typed is worth a question before it is thrown away; a form
+     touched and put back counts, which is the cheap side to err on. */
+  const [touched, setTouched] = useState(false);
 
-  const handleSave = () => {
+  /* Writing the client and leaving the page are separate: the guard saves
+     without going anywhere, because you are already on your way somewhere
+     the guard is about to take you. */
+  const persist = (): boolean => {
     if (!values.name.trim()) {
       setNameError(t("alerts.clientNameRequired"));
-      return;
+      return false;
     }
     setIsSaving(true);
     const toNull = (value: string) => value.trim() || null;
@@ -34,16 +41,28 @@ export function ClientsPage({ onClientCreated }: ClientsPageProps) {
       companyIdentificationNumber: toNull(values.companyIdentificationNumber),
       vatNumber: toNull(values.vatNumber),
       note: toNull(values.note),
+      fileNameAlias: toNull(values.fileNameAlias),
+      emailSubject: toNull(values.emailSubject),
+      emailBody: toNull(values.emailBody),
       deleted: Evolu.sqliteFalse,
     });
     setIsSaving(false);
     if (!result.ok) {
       console.error("Client insert error:", result.error);
       notify(t("alerts.clientSaveValidation"), "error");
-      return;
+      return false;
     }
+    setTouched(false);
+    return true;
+  };
+
+  const handleSave = () => {
+    if (!persist()) return;
+    guard.release();
     onClientCreated();
   };
+
+  const guard = useUnsavedGuard(touched, () => persist());
 
   return (
     <div className="page-shell">
@@ -54,6 +73,7 @@ export function ClientsPage({ onClientCreated }: ClientsPageProps) {
           nameError={nameError}
           onChange={(patch) => {
             setNameError(undefined);
+            setTouched(true);
             setValues((prev) => ({ ...prev, ...patch }));
           }}
         />

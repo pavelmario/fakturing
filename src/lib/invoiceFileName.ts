@@ -20,6 +20,8 @@ export const FILENAME_DEFAULT = "faktura-{cislo}";
 export type FileNameParts = {
   number: string;
   client: string;
+  /** What the client itself asks to be called in a filename, if anything. */
+  clientAlias?: string | null;
   supplier: string;
   /** The invoice's issue date — date tokens are derived from it. */
   issueDate?: Date | null;
@@ -41,6 +43,23 @@ const compact = (value: string): string =>
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9-]/g, "");
 
+/**
+ * An invoice number, made safe for a file without changing what it says.
+ *
+ * `compact` is right for a name — "Jan Šetina" belongs in a filename as
+ * `jansetina` — and wrong for a number: a Czech invoice is as often numbered
+ * `2026/001` as `2026-001`, and deleting the slash printed `2026001`, a
+ * number that appears on no invoice. The separator is kept, as a hyphen.
+ */
+const compactNumber = (value: string): string =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 /** Keeps the template's own separators; drops anything unsafe for a file. */
 const sanitize = (value: string): string =>
   value
@@ -49,6 +68,9 @@ const sanitize = (value: string): string =>
     .replace(/[^a-zA-Z0-9._-]/g, "-")
     .replace(/-{2,}/g, "-")
     .replace(/^[-.]+|[-.]+$/g, "");
+
+/** What `{klient}` becomes when the client has not chosen its own spelling. */
+export const defaultClientAlias = (name: string): string => compact(name);
 
 /** Back-compat: the two legacy preset values map onto templates. */
 export const normalizeFileNameTemplate = (
@@ -76,14 +98,17 @@ export const buildInvoiceFileName = (
       : new Date();
   const yyyy = String(date.getFullYear());
   const mmdd = `${pad(date.getMonth() + 1)}${pad(date.getDate())}`;
+  /* The alias is typed by hand, so it keeps its own shape — "AlzaCZ" was
+     capitalised on purpose. Only the derived default is folded down. */
+  const alias = parts.clientAlias?.trim();
   const filled = pattern
-    .replace(/\{cislo\}/gi, compact(parts.number))
-    .replace(/\{klient\}/gi, compact(parts.client))
+    .replace(/\{cislo\}/gi, compactNumber(parts.number))
+    .replace(/\{klient\}/gi, alias ? sanitize(alias) : compact(parts.client))
     .replace(/\{dodavatel\}/gi, compact(parts.supplier))
     .replace(/\{rrrrmmdd\}/gi, `${yyyy}${mmdd}`)
     .replace(/\{rrmmdd\}/gi, `${yyyy.slice(2)}${mmdd}`)
     .replace(/\{rok\}/gi, yyyy);
-  const name = sanitize(filled) || compact(parts.number) || "faktura";
+  const name = sanitize(filled) || compactNumber(parts.number) || "faktura";
   return `${name}.pdf`;
 };
 

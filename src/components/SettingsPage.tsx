@@ -25,13 +25,27 @@ import {
   NUMBER_DEFAULT,
   NUMBER_TOKENS,
   formatInvoiceNumber,
+  nextSequence,
 } from "../lib/invoiceNumber";
+import { TokenButton } from "./TokenButton";
+import { EMAIL_TOKENS } from "../lib/invoiceEmail";
 import {
   matchBankAccount,
   matchClient,
+  parseFakturoidExpenseXml,
   parseFakturoidXml,
 } from "../lib/fakturoidImport";
+import {
+  expenseAmountColumns,
+  itemToForm,
+  normalizeExpenseItems,
+  trim100,
+  trim1000,
+  type ExpenseFormValues,
+} from "../lib/expenseForm";
+import { DEFAULT_CURRENCY, formatMoney } from "../lib/money";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { DonatePanel } from "./invoices/DonatePanel";
 
@@ -56,6 +70,8 @@ export function SettingsPage({
   const [discreteMode, setDiscreteMode] = useState<boolean>(false);
   const [expenses, setExpenses] = useState<boolean>(false);
   const [supplierVatPrefill, setSupplierVatPrefill] = useState<string>("");
+  const [invoiceEmailSubject, setInvoiceEmailSubject] = useState<string>("");
+  const [invoiceEmailBody, setInvoiceEmailBody] = useState<string>("");
   const [language, setLanguage] = useState<"cz" | "en">("cz");
   const { t, tp, locale } = useI18n(language);
   const confirmDialog = useConfirm();
@@ -101,6 +117,11 @@ export function SettingsPage({
   const importExpensesInputRef = useRef<HTMLInputElement | null>(null);
   const importBankAccountsInputRef = useRef<HTMLInputElement | null>(null);
   const importFakturoidInputRef = useRef<HTMLInputElement | null>(null);
+  const importFakturoidExpensesInputRef = useRef<HTMLInputElement | null>(null);
+  /* The token buttons write into these, at the caret. */
+  const numberFormatRef = useRef<HTMLInputElement | null>(null);
+  const namingFormatRef = useRef<HTMLInputElement | null>(null);
+  const emailBodyRef = useRef<HTMLTextAreaElement | null>(null);
 
   const profileQuery = useMemo(
     () =>
@@ -134,6 +155,12 @@ export function SettingsPage({
             "companyIdentificationNumber",
             "vatNumber",
             "note",
+            /* Listed by the export headers, so they have to be selected too —
+               a header with nothing under it is how a restore hands back an
+               address book with its filenames and its wording gone. */
+            "fileNameAlias",
+            "emailSubject",
+            "emailBody",
           ])
           .where("ownerId", "=", owner.id)
           .where("isDeleted", "is not", Evolu.sqliteTrue)
@@ -186,6 +213,8 @@ export function SettingsPage({
           .select([
             "id",
             "expenseNumber",
+            "currency",
+            "exchangeRate",
             "supplierName",
             "supplierVat",
             "supplierIco",
@@ -370,6 +399,8 @@ export function SettingsPage({
       normalizeFileNameTemplate(profile.invoiceNamingFormat),
     );
     setInvoiceNumberFormat(profile.invoiceNumberFormat ?? NUMBER_DEFAULT);
+    setInvoiceEmailSubject(profile.invoiceEmailSubject ?? "");
+    setInvoiceEmailBody(profile.invoiceEmailBody ?? "");
   }, [profile]);
 
   useEffect(() => {
@@ -583,6 +614,8 @@ export function SettingsPage({
             toNullable(row.invoiceNumberFormat) ?? NUMBER_DEFAULT,
           taxOfficeCode: toNullable(row.taxOfficeCode),
           taxOfficeWorkplaceCode: toNullable(row.taxOfficeWorkplaceCode),
+          invoiceEmailSubject: toNullable(row.invoiceEmailSubject),
+          invoiceEmailBody: toNullable(row.invoiceEmailBody),
           language: row.language?.trim().toLowerCase() === "en" ? "en" : "cz",
         };
 
@@ -752,6 +785,11 @@ export function SettingsPage({
             ),
             vatNumber: toNullable(row.vatNumber),
             note: toNullable(row.note),
+            /* A client's delivery settings ride along, or a restore hands
+               back an address book with its filenames and its wording gone. */
+            fileNameAlias: toNullable(row.fileNameAlias),
+            emailSubject: toNullable(row.emailSubject),
+            emailBody: toNullable(row.emailBody),
             deleted: Evolu.sqliteFalse,
           };
 
@@ -1029,8 +1067,17 @@ export function SettingsPage({
             return;
           }
 
+          const restoredRate = Number(row.exchangeRate);
+          const restoredRateResult =
+            row.exchangeRate?.trim() && restoredRate > 0
+              ? Evolu.NonNegativeNumber.from(restoredRate)
+              : null;
           const payload = {
             expenseNumber: toNullable(row.expenseNumber),
+            currency: toNullable(row.currency),
+            exchangeRate: restoredRateResult?.ok
+              ? restoredRateResult.value
+              : null,
             supplierName: toNullable(row.supplierName),
             supplierVat: toNullable(row.supplierVat),
             supplierIco: toNullable(row.supplierIco),
@@ -1266,8 +1313,234 @@ export function SettingsPage({
     reader.readAsText(file);
   };
 
-  // Save data via Evolu (local-first + sync)
-  const handleSave = async () => {
+  /**
+   * The same export, on the costs side.
+   *
+   * Fakturoid keeps expenses in their own file, so this is a second picker
+   * rather than a smarter one — and the document it writes is the supplier's:
+   * its number, its taxable supply date, its lines. Anything already carrying
+   * that supplier's document number is left alone, so a wider export
+   * overlapping an earlier import adds only what is new.
+   */
+  const handleImportFakturoidExpensesXml = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        let parsed;
+        try {
+          parsed = parseFakturoidExpenseXml(String(reader.result ?? ""));
+        } catch (error) {
+          console.error("Fakturoid expense parse error:", error);
+          notify(t("alerts.fakturoidInvalidFile"), "error");
+          return;
+        }
+
+        if (parsed.expenses.length === 0) {
+          notify(t("alerts.fakturoidNoExpenses"), "error");
+          return;
+        }
+
+        /* Identity is the supplier's document number, not ours: two
+           suppliers numbering from one is ordinary. */
+        const keyOf = (supplier: string, number: string | null) =>
+          `${supplier.trim().toLocaleLowerCase()}|${(number ?? "").trim()}`;
+        const known = new Set(
+          expenseRows.map((row) =>
+            keyOf(String(row.supplierName ?? ""), row.expenseNumber),
+          ),
+        );
+        const fresh = parsed.expenses.filter(
+          (expense) =>
+            !known.has(keyOf(expense.supplierName, expense.expenseNumber)),
+        );
+        if (fresh.length === 0) {
+          notify(t("alerts.fakturoidExpensesNothingNew"), "info");
+          return;
+        }
+
+        const duplicates = parsed.expenses.length - fresh.length;
+        const left = (
+          [
+            [duplicates, "fakturoidSkipDuplicates"],
+            [parsed.skipped.unusable, "fakturoidSkipUnusable"],
+          ] as const
+        )
+          .filter(([count]) => count > 0)
+          .map(([count, key]) => t(`settings.${key}`, { count }));
+
+        const confirmed = await confirmDialog({
+          title: t("settings.fakturoidExpensesConfirmTitle"),
+          message: [
+            tp("settings.fakturoidCountExpenses", fresh.length),
+            left.length
+              ? t("settings.fakturoidSkipped", { parts: left.join(", ") })
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          confirmLabel: t("settings.fakturoidConfirmLabel"),
+        });
+        if (!confirmed) return;
+
+        const isVatPayer = profile?.vatPayer === Evolu.sqliteTrue;
+        let written = 0;
+        const failed: string[] = [];
+
+        for (const expense of fresh) {
+          /* Through the form's own shape, so an imported cost is stored by
+             exactly the rules a typed one is — including a non-VAT payer's,
+             for whom the net figure is the gross one. */
+          const values: ExpenseFormValues = {
+            supplierName: trim100(expense.supplierName),
+            currency: expense.currency ?? "",
+            /* Fakturoid converted the document already; the rate it used is
+               that conversion over the document's own total, which is the
+               rate this cost is in the books at. */
+            exchangeRate:
+              expense.homeTotal != null && expense.amountWithVat > 0
+                ? String(
+                    Math.round(
+                      (expense.homeTotal / expense.amountWithVat) * 10000,
+                    ) / 10000,
+                  )
+                : "",
+            supplierVat: trim100(expense.supplierVat ?? ""),
+            supplierIco: trim100(expense.supplierIco ?? ""),
+            description: trim100(expense.description),
+            expenseDate: expense.expenseDate,
+            expenseNumber: trim100(expense.expenseNumber ?? ""),
+            note: trim1000(
+              [
+                expense.note ?? "",
+                /* The koruna figure Fakturoid had converted the document to:
+                   the cost keeps its own currency, and the VAT return still
+                   wants this number. */
+                expense.homeTotal != null
+                  ? t("settings.fakturoidExpenseConverted", {
+                      amount: formatMoney(
+                        expense.homeTotal,
+                        locale,
+                        DEFAULT_CURRENCY,
+                      ),
+                    })
+                  : "",
+              ]
+                .filter(Boolean)
+                .join("\n"),
+            ),
+            amountWithoutVat: String(expense.amountWithoutVat),
+            vatRate: String(expense.vatRate),
+            amountWithVat: String(expense.amountWithVat),
+            /* A supplier charges VAT whether or not it can be claimed back.
+               For a non-VAT payer the form's lines are quoted gross, so the
+               net prices out of Fakturoid are grossed up on the way in —
+               left as they were, every receipt would be understated by its
+               own VAT. */
+            items: expense.items
+              .map((item) =>
+                isVatPayer
+                  ? item
+                  : {
+                      ...item,
+                      unitPrice:
+                        Math.round(item.unitPrice * (1 + item.vat / 100) * 100) /
+                        100,
+                      vat: 0,
+                    },
+              )
+              .map(itemToForm),
+          };
+
+          const columns = expenseAmountColumns(values, isVatPayer);
+          const items = normalizeExpenseItems(values.items, isVatPayer);
+          const label = values.expenseNumber || values.description;
+
+          /* Midday, not midnight: a date stored at 00:00 UTC reads as the day
+             before once the browser is west of Greenwich. */
+          const dateIso = Evolu.dateToDateIso(
+            new Date(`${expense.expenseDate}T12:00:00`),
+          );
+          const net = Evolu.NonNegativeNumber.from(columns.amountWithoutVat);
+          const rate = Evolu.NonNegativeNumber.from(columns.vatRate);
+          const gross = Evolu.NonNegativeNumber.from(columns.amountWithVat);
+          const stored = Evolu.Json.from(JSON.stringify(items));
+          if (
+            !dateIso.ok ||
+            !net.ok ||
+            !rate.ok ||
+            !gross.ok ||
+            !stored.ok ||
+            !values.description
+          ) {
+            failed.push(label);
+            continue;
+          }
+
+          const typedRate = Number(values.exchangeRate);
+          const exchangeRate =
+            values.currency &&
+            values.currency !== DEFAULT_CURRENCY &&
+            typedRate > 0
+              ? Evolu.NonNegativeNumber.from(typedRate)
+              : null;
+          const result = evolu.insert("expense", {
+            expenseNumber: values.expenseNumber || null,
+            currency: values.currency || null,
+            exchangeRate: exchangeRate?.ok ? exchangeRate.value : null,
+            supplierName: values.supplierName || null,
+            supplierVat: values.supplierVat || null,
+            supplierIco: values.supplierIco || null,
+            amountWithoutVat: net.value,
+            vatRate: rate.value,
+            amountWithVat: gross.value,
+            description: values.description,
+            expenseDate: dateIso.value,
+            items: items.length > 0 ? stored.value : null,
+            note: values.note || null,
+            templateId: null,
+            deleted: Evolu.sqliteFalse,
+          });
+          if (!result.ok) {
+            console.error("Fakturoid expense insert error:", result.error);
+            failed.push(label);
+            continue;
+          }
+          written += 1;
+        }
+
+        notify(
+          t("alerts.fakturoidExpensesImported", {
+            summary: tp("settings.fakturoidCountExpenses", written),
+          }),
+          "success",
+        );
+        if (failed.length > 0) {
+          notify(
+            t("alerts.fakturoidExpensesPartial", { numbers: failed.join(", ") }),
+            "error",
+          );
+        }
+      } catch (error) {
+        console.error("Fakturoid expense import error:", error);
+        notify(t("alerts.fakturoidImportFailed"), "error");
+      } finally {
+        if (importFakturoidExpensesInputRef.current) {
+          importFakturoidExpensesInputRef.current.value = "";
+        }
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  /* Save data via Evolu (local-first + sync). Reports whether it went
+     through, so the unsaved-changes guard can offer to save on the way out. */
+  const handleSave = async (): Promise<boolean> => {
     setSaveError(null);
 
     setIsSaving(true);
@@ -1288,6 +1561,8 @@ export function SettingsPage({
         mempoolUrl: toNullable(mempoolUrl),
         invoiceNamingFormat: toNullable(invoiceNamingFormat),
         invoiceNumberFormat: toNullable(invoiceNumberFormat),
+        invoiceEmailSubject: toNullable(invoiceEmailSubject),
+        invoiceEmailBody: toNullable(invoiceEmailBody),
         language: (language || "cz").toString().trim().toLowerCase(),
       };
 
@@ -1295,7 +1570,7 @@ export function SettingsPage({
          this page updates an existing row and never creates one. */
       if (!profile?.id) {
         setSaveError(t("settings.profileFirst"));
-        return;
+        return false;
       }
 
       const result = evolu.update("userProfile", { id: profile.id, ...payload });
@@ -1304,13 +1579,15 @@ export function SettingsPage({
         const formatted = formatTypeError(result.error);
         console.error("Validation error:", result.error);
         notify(t("alerts.settingsValidationError", { details: formatted }), "error");
-        return;
+        return false;
       }
 
       onSettingsSaved();
+      return true;
     } catch (error) {
       console.error("Error saving settings:", error);
       notify(t("alerts.settingsSaveFailed"), "error");
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -1430,6 +1707,8 @@ export function SettingsPage({
     "mempoolUrl",
     "invoiceNamingFormat",
     "invoiceNumberFormat",
+    "invoiceEmailSubject",
+    "invoiceEmailBody",
     "taxOfficeCode",
     "taxOfficeWorkplaceCode",
     "updatedAt",
@@ -1445,6 +1724,9 @@ export function SettingsPage({
     "companyIdentificationNumber",
     "vatNumber",
     "note",
+    "fileNameAlias",
+    "emailSubject",
+    "emailBody",
   ];
 
   const invoicesExportHeaders = [
@@ -1479,6 +1761,8 @@ export function SettingsPage({
   const expensesExportHeaders = [
     "id",
     "expenseNumber",
+    "currency",
+    "exchangeRate",
     "supplierName",
     "supplierVat",
     "supplierIco",
@@ -1554,6 +1838,8 @@ export function SettingsPage({
         profile?.invoiceNamingFormat,
       ),
       invoiceNumberFormat: profile?.invoiceNumberFormat ?? NUMBER_DEFAULT,
+      invoiceEmailSubject: profile?.invoiceEmailSubject ?? "",
+      invoiceEmailBody: profile?.invoiceEmailBody ?? "",
     }),
     [profile],
   );
@@ -1569,14 +1855,25 @@ export function SettingsPage({
       mempoolUrl,
       invoiceNamingFormat,
       invoiceNumberFormat,
+      invoiceEmailSubject,
+      invoiceEmailBody,
     }) !== JSON.stringify(storedValues);
+  /* A reconnect or a data reset reloads the page, and the browser's own
+     prompt covers that — everything else here is a route change. */
+  useUnsavedGuard(dirty, () => handleSave());
 
   /* One sample document behind both previews below, so the filename and the
-     number they show are the same document. */
+     number they show are the same document — and it is the document that
+     would really be issued next: the preview used to invent sequence 7, so
+     "Next number" named an invoice nobody was about to write. */
   const previewDate = new Date();
   const numberPreview = formatInvoiceNumber(
     invoiceNumberFormat,
-    7,
+    nextSequence(
+      invoiceNumberFormat,
+      invoices.map((row) => row.invoiceNumber),
+      previewDate,
+    ),
     previewDate,
   );
 
@@ -1706,6 +2003,7 @@ export function SettingsPage({
             </label>
             <input
               id="invoiceNumberFormat"
+              ref={numberFormatRef}
               type="text"
               value={invoiceNumberFormat}
               onChange={(e) => setInvoiceNumberFormat(e.target.value)}
@@ -1714,16 +2012,13 @@ export function SettingsPage({
             />
             <div className="token-help">
               {NUMBER_TOKENS.map((token) => (
-                <button
+                <TokenButton
                   key={token}
-                  type="button"
-                  className="token"
-                  onClick={() =>
-                    setInvoiceNumberFormat((current) => `${current}${token}`)
-                  }
-                >
-                  {token}
-                </button>
+                  token={token}
+                  field={numberFormatRef}
+                  value={invoiceNumberFormat}
+                  onChange={setInvoiceNumberFormat}
+                />
               ))}
             </div>
             <p className="field-hint">
@@ -1735,6 +2030,7 @@ export function SettingsPage({
             </label>
             <input
               id="invoiceNamingFormat"
+              ref={namingFormatRef}
               type="text"
               value={invoiceNamingFormat}
               onChange={(e) => setInvoiceNamingFormat(e.target.value)}
@@ -1743,18 +2039,13 @@ export function SettingsPage({
             />
             <div className="token-help">
               {FILENAME_TOKENS.map((token) => (
-                <button
+                <TokenButton
                   key={token}
-                  type="button"
-                  className="token"
-                  onClick={() => {
-                    setInvoiceNamingFormat(
-                      (current) => `${current}${token}`,
-                    );
-                  }}
-                >
-                  {token}
-                </button>
+                  token={token}
+                  field={namingFormatRef}
+                  value={invoiceNamingFormat}
+                  onChange={setInvoiceNamingFormat}
+                />
               ))}
             </div>
             <p className="field-hint">
@@ -2056,6 +2347,48 @@ export function SettingsPage({
             </div>
           </section>
 
+          {/* ---- Covering e-mail ------------------------------------- */}
+          <section className="compose-block">
+            <h2 className="compose-heading">{t("settings.emailTitle")}</h2>
+            <p className="field-hint mb-2">{t("settings.emailHint")}</p>
+
+            <label htmlFor="invoiceEmailSubject" className="form-label">
+              {t("settings.emailSubjectLabel")}
+            </label>
+            <input
+              id="invoiceEmailSubject"
+              type="text"
+              value={invoiceEmailSubject}
+              onChange={(e) => setInvoiceEmailSubject(e.target.value)}
+              placeholder={t("settings.emailSubjectDefault")}
+              className="form-input"
+            />
+
+            <label htmlFor="invoiceEmailBody" className="form-label mt-3">
+              {t("settings.emailBodyLabel")}
+            </label>
+            <textarea
+              id="invoiceEmailBody"
+              ref={emailBodyRef}
+              value={invoiceEmailBody}
+              onChange={(e) => setInvoiceEmailBody(e.target.value)}
+              placeholder={t("settings.emailBodyDefault")}
+              className="form-textarea"
+              rows={8}
+            />
+            <div className="token-help">
+              {EMAIL_TOKENS.map((token) => (
+                <TokenButton
+                  key={token}
+                  token={token}
+                  field={emailBodyRef}
+                  value={invoiceEmailBody}
+                  onChange={setInvoiceEmailBody}
+                />
+              ))}
+            </div>
+          </section>
+
           {/* ---- Fakturoid ------------------------------------------- */}
           <section className="compose-block">
             <h2 className="compose-heading">{t("settings.fakturoidTitle")}</h2>
@@ -2067,13 +2400,38 @@ export function SettingsPage({
               onChange={handleImportFakturoidXml}
               className="hidden"
             />
-            <button
-              className="btn-secondary"
-              onClick={() => importFakturoidInputRef.current?.click()}
-            >
-              <Upload />
-              {t("settings.fakturoidPick")}
-            </button>
+            <input
+              ref={importFakturoidExpensesInputRef}
+              type="file"
+              accept=".xml,text/xml,application/xml"
+              onChange={handleImportFakturoidExpensesXml}
+              className="hidden"
+            />
+            <div className="btn-row">
+              <button
+                className="btn-secondary"
+                onClick={() => importFakturoidInputRef.current?.click()}
+              >
+                <Upload />
+                {t("settings.fakturoidPickInvoices")}
+              </button>
+              {expenses ? (
+                <button
+                  className="btn-secondary"
+                  onClick={() =>
+                    importFakturoidExpensesInputRef.current?.click()
+                  }
+                >
+                  <Upload />
+                  {t("settings.fakturoidPickExpenses")}
+                </button>
+              ) : null}
+            </div>
+            {expenses ? (
+              <p className="field-hint mt-2">
+                {t("settings.fakturoidExpensesHint")}
+              </p>
+            ) : null}
           </section>
 
           {/* ---- Danger zone ----------------------------------------- */}

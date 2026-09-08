@@ -1,4 +1,4 @@
-import { use, useMemo, useState } from "react";
+import { use, useMemo, useRef, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { PDFDownloadLink } from "@react-pdf/renderer";
@@ -7,6 +7,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  Mail,
   Pencil,
   RotateCcw,
   Trash2,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEvolu } from "../evolu";
 import { useI18n } from "../i18n";
+import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { InvoiceComposer } from "./invoices/InvoiceComposer";
 import { InvoiceSummary } from "./invoices/InvoiceSummary";
@@ -30,6 +32,12 @@ import {
   type InvoiceStatus,
 } from "../lib/invoice";
 import { buildInvoiceFileName } from "../lib/invoiceFileName";
+import {
+  buildMailto,
+  fillEmailTemplate,
+  pickTemplate,
+  variableSymbol,
+} from "../lib/invoiceEmail";
 import { useInvoiceForm } from "../lib/useInvoiceForm";
 import { DEFAULT_CURRENCY, formatAmount, formatMoney } from "../lib/money";
 import type { BankAccountRow } from "../lib/bankAccounts";
@@ -143,6 +151,9 @@ export function InvoiceDetailPage({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [payingOpen, setPayingOpen] = useState(false);
+  /* Raised while a compose window is open and waiting for the invoice. */
+  const [dragPrompt, setDragPrompt] = useState(false);
+  const previewRef = useRef<HTMLDivElement | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
 
   const storedItems = useMemo(() => parseItems(invoice?.items), [invoice]);
@@ -195,6 +206,8 @@ export function InvoiceDetailPage({
     { isVatPayer, billPerUnitDefault, locale, t },
   );
 
+  const guard = useUnsavedGuard(isEditing && form.dirty, () => handleSave());
+
   /* Discrete mode hides amounts wherever the app states them. The document
      preview still shows them — you opened the invoice itself. */
   const invoiceCurrency = invoice?.currency ?? DEFAULT_CURRENCY;
@@ -228,6 +241,7 @@ export function InvoiceDetailPage({
   const fileName = buildInvoiceFileName(profile?.invoiceNamingFormat, {
     number: invoice.invoiceNumber ?? "",
     client: invoice.clientName ?? "",
+    clientAlias: selectedClientRecord?.fileNameAlias ?? null,
     supplier: profile?.name ?? "",
     issueDate: invoice.issueDate ? new Date(invoice.issueDate) : null,
   })
@@ -310,20 +324,16 @@ export function InvoiceDetailPage({
     setIsEditing(false);
   };
 
-  const leave = async () => {
-    if (isEditing && form.dirty && !(await confirmDialog({
-      title: t("invoiceDetail.discardConfirm"),
-      confirmLabel: t("invoiceDetail.cancelEdits"),
-      tone: "danger",
-    }))) {
-      return;
-    }
-    onBack();
-  };
+  /* No confirmation of its own any more: leaving with unsaved edits is
+     caught by the guard above, whichever way you leave — this button, a tab
+     in the nav, or the phone's back gesture. */
+  const leave = () => onBack();
 
-  const handleSave = async () => {
+  /* Reports whether it went through, so the unsaved-changes guard can offer
+     to save on the way out and keep you here when the form does not pass. */
+  const handleSave = async (): Promise<boolean> => {
     const found = form.validate();
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) return false;
 
     const formatTypeError = Evolu.createFormatTypeError();
     const issueDateResult = Evolu.dateToDateIso(
@@ -331,14 +341,14 @@ export function InvoiceDetailPage({
     );
     if (!issueDateResult.ok) {
       form.setErrors({ issueDate: t("alerts.issueDateInvalid") });
-      return;
+      return false;
     }
     const paymentDaysResult = Evolu.NonNegativeNumber.from(
       Number(form.values.paymentDays),
     );
     if (!paymentDaysResult.ok) {
       form.setErrors({ paymentDays: t("alerts.paymentDaysInvalid") });
-      return;
+      return false;
     }
 
     setIsSaving(true);
@@ -347,7 +357,7 @@ export function InvoiceDetailPage({
       if (!itemsResult.ok) {
         console.error("Items error:", formatTypeError(itemsResult.error));
         notify(t("alerts.invoiceItemsInvalid"), "error");
-        return;
+        return false;
       }
       const result = evolu.update("invoice", {
         id: invoice.id,
@@ -371,15 +381,17 @@ export function InvoiceDetailPage({
       if (!result.ok) {
         console.error("Update error:", formatTypeError(result.error));
         notify(t("alerts.invoiceSaveValidation"), "error");
-        return;
+        return false;
       }
       form.setDirty(false);
       setIsEditing(false);
       setFlash(t("alerts.invoiceUpdateSaved"));
       window.setTimeout(() => setFlash(null), 3000);
+      return true;
     } catch (error) {
       console.error("Error updating invoice:", error);
       notify(t("alerts.invoiceSaveFailed"), "error");
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -408,6 +420,85 @@ export function InvoiceDetailPage({
       paymentDate: null,
     });
     if (!result.ok) notify(t("alerts.paymentCancelFailed"), "error");
+  };
+
+  /**
+   * The covering e-mail, worded from the template.
+   *
+   * The app sends nothing itself; it hands a draft to the machine's own mail
+   * client. Which handover is used is not a preference but a limit of the
+   * platform, and no single one carries everything:
+   *
+   * - the system share sheet takes the invoice and the text, and has nowhere
+   *   to put the recipient;
+   * - an `.eml` file carries all four, and has to be opened from Downloads
+   *   rather than opening the client itself;
+   * - `mailto:` prefills the recipient and the text, and cannot attach.
+   *
+   * So the button shares where the browser can share, writes the draft file
+   * where it cannot, and falls back to `mailto:` when there is no invoice to
+   * attach in the first place.
+   */
+  const emailParts = () => {
+    const address = (selectedClientRecord?.email ?? "").trim();
+    const vars = {
+      cislo: invoice.invoiceNumber ?? "",
+      klient: invoice.clientName ?? "",
+      /* Never the discrete-mode mask: this figure is going to the client,
+         who is entitled to read it. */
+      castka: formatMoney(storedTotal, locale, invoiceCurrency),
+      splatnost: formatDate(form.dueDate?.toISOString() ?? null, locale),
+      datum: formatDate(invoice.issueDate, locale),
+      dodavatel: profile?.name ?? "",
+      vs: variableSymbol(invoice.invoiceNumber ?? ""),
+    };
+    const fill = (
+      fromClient: string | null | undefined,
+      fromProfile: string | null | undefined,
+      fallback: string,
+    ) => fillEmailTemplate(pickTemplate(fromClient, fromProfile, fallback), vars);
+
+    return {
+      address,
+      subject: fill(
+        selectedClientRecord?.emailSubject,
+        profile?.invoiceEmailSubject,
+        t("settings.emailSubjectDefault"),
+      ),
+      body: fill(
+        selectedClientRecord?.emailBody,
+        profile?.invoiceEmailBody,
+        t("settings.emailBodyDefault"),
+      ),
+    };
+  };
+
+  /**
+   * Opens the mail client on a draft addressed to the client.
+   *
+   * `mailto:` is what actually launches a mail client, and it cannot carry an
+   * attachment — the RFC has no field for one. The invoice goes in by being
+   * dragged out of the preview below into the compose window, which puts no
+   * file on disk on the way.
+   */
+  const sendByEmail = () => {
+    const { address, subject, body } = emailParts();
+    if (!address) {
+      notify(t("alerts.emailNoAddress"), "error");
+      return;
+    }
+    window.location.href = buildMailto(address, subject, body);
+    /* The draft is open somewhere behind this tab; the sheet below is the
+       next thing to do, so it says so until the invoice is picked up. */
+    setDragPrompt(true);
+    window.setTimeout(
+      () =>
+        previewRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        }),
+      150,
+    );
   };
 
   /* Duplicating opens a prefilled new invoice to confirm, rather than silently
@@ -449,6 +540,8 @@ export function InvoiceDetailPage({
       notify(t("alerts.invoiceDeleteFailed"), "error");
       return;
     }
+    /* The edits went with the invoice; nothing left to warn about. */
+    guard.release();
     onInvoiceDeleted();
   };
 
@@ -496,6 +589,10 @@ export function InvoiceDetailPage({
               </>
             )}
           </PDFDownloadLink>
+          <button className="btn-secondary" onClick={sendByEmail}>
+            <Mail />
+            {t("invoiceDetail.emailSend")}
+          </button>
           {isPaid ? (
             <button className="btn-secondary" onClick={undoPayment}>
               <RotateCcw />
@@ -588,8 +685,14 @@ export function InvoiceDetailPage({
             />
           </>
         ) : (
-          <div className="saved">
-            <InvoicePdfPreview document={pdfDocument} title={fileName} />
+          <div className="saved" ref={previewRef}>
+            <InvoicePdfPreview
+              document={pdfDocument}
+              title={fileName}
+              dragFileName={fileName}
+              prompt={dragPrompt}
+              onDragged={() => setDragPrompt(false)}
+            />
           </div>
         )}
       </div>

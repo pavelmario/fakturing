@@ -2,7 +2,7 @@
 
 A local-first invoicing app for Czech freelancers and small companies. Your data
 lives in the browser, is encrypted end-to-end by Evolu, and syncs between your
-devices through a relay you can point anywhere — including one you run yourself.
+devices through a relay you can point anywhere.
 There is no account, no server-side database, and nothing to sign up for: a BIP39
 seed phrase *is* the identity.
 
@@ -41,6 +41,13 @@ The landing screen is a ledger, not a dashboard.
 - **Duplicate** opens a prefilled draft rather than silently writing a new record.
 - **PDF export** (A4, `@react-pdf/renderer`) with repeating table headers, totals
   that never orphan, and a filename built from your own template.
+- **Poslat e-mailem** opens the machine's own mail client on a draft to the
+  client, worded from your template — the app sends nothing itself. The
+  invoice cannot ride along in a `mailto:`, so **the preview below is the
+  attachment**: drag the sheet into the compose window and Chrome hands the
+  file over at the drop, without writing anything to disk. Pressing the
+  button says so on the sheet itself — it dims and asks for the drag until
+  the invoice is picked up.
 - **Czech SPD payment QR** for CZK invoices; suppressed with a note for other
   currencies, because the SPD format encodes CZK only.
 - **Bitcoin invoices** — a BTC address per invoice, optionally read straight off a
@@ -56,6 +63,11 @@ outstanding (kept per currency, on separate lines, never summed across them), la
 issue date, and the full invoice history. **IČO lookup against ARES** prefills
 company details on both create and edit. Invoices reference clients by id, so
 renaming a client keeps its history.
+
+A client also carries how its invoices leave the app: what `{klient}` becomes in
+a PDF filename (blank falls back to the name without spaces), and its own
+subject and body for the covering e-mail. Both are overrides — left empty, the
+client follows Nastavení.
 
 ### Náklady — expenses
 
@@ -75,6 +87,14 @@ what:
   composer uses. Without it you type the total off the receipt and the base
   back-computes; with it the lines are the truth and the total is their sum.
   Mixed rates on one document are reported per band in the control statement.
+- **Měna a kurz** — a cost keeps the currency it was billed in, the same way
+  an invoice does, and the app converts nothing on its own. What it will use
+  is the rate *you* put the document in the books at: type it, or load the
+  ČNB rate for the document's date with one button. With a rate the cost
+  counts in the koruna totals and goes into the control statement converted;
+  without one it stays on a line of its own and the export says how many
+  documents it left behind. A recurring cost in euros is stamped with the
+  bank's rate for the day it is booked.
 - **Pravidelné náklady** — warehouse rent, hosting, the accountant. Saved as a
   template (from scratch, or from an expense you are already looking at) and
   booked into a period from a checklist that shows what this month is still
@@ -97,9 +117,10 @@ Everything that changes how the app behaves, grouped:
 | **Vzhled a jazyk** | theme, language, discrete mode (masks every amount) |
 | **Fakturace** | invoice number pattern, PDF filename pattern, per-unit billing default, PO requirement, expenses toggle |
 | **Evolu** | relay URL and connection state, seed phrase backup and restore |
+| **Průvodní e-mail** | subject and body an invoice's e-mail is built from, per-client overridable |
 | **Bitcoin** | mempool explorer URL |
 | **Export/Import dat (CSV)** | per-section checkboxes — settings, clients, invoices, expenses — exported together or separately; templates live in `public/` |
-| **Import z Fakturoidu** | a Fakturoid XML export becomes invoices and clients — see below |
+| **Import z Fakturoidu** | Fakturoid XML exports become invoices and clients, or expenses — see below |
 | **Nebezpečná zóna** | destructive resets |
 
 ---
@@ -123,6 +144,20 @@ counted in that summary rather than silently dropped. Line prices are taken net
 whichever way Fakturoid quoted them, and the due date comes from the dates on
 the document rather than its stated payment terms, so an invoice whose due date
 was moved by hand keeps the one the client actually saw.
+
+Costs come out of Fakturoid as their own export, and go in through their own
+picker. What is written is the supplier's document: its number — which is what
+the control statement reports — its taxable supply date rather than the day it
+was issued, and its lines. An expense already carrying that supplier's document
+number is left where it is, so overlapping exports are as safe as they are on
+the invoice side.
+
+A document keeps the currency it was billed in — nothing here is converted —
+and where Fakturoid also carried a converted total, the rate it used comes in
+with it (that total over the document's own) and the figure itself goes into
+the note. For a non-VAT payer
+the net line prices are grossed up on the way in, because the supplier charged
+VAT either way.
 
 Fakturoid has no Bitcoin payment method, so an invoice payable in BTC says so in
 its note — "Adresa pro příjem BTC: bc1…". That address is what marks the invoice
@@ -153,6 +188,32 @@ Safe-area insets are respected, so the tab bar clears the home indicator.
 
 ---
 
+## Sync and the seed phrase
+
+Nothing here is a client for a server. The database is SQLite **in the browser**,
+every screen reads from it, and that is why the app is instant and works on a
+plane. Sync is a background extra, not the path the data takes.
+
+Identity is a BIP39 seed phrase — no account, no e-mail, no password. It derives
+both the owner every row is stamped with and the key the data is encrypted with.
+Type it on another device and your ledger is there; lose it and nobody, the relay
+operator included, can get the data back.
+
+What leaves the browser is not the state of the database but a stream of small
+changes — which column of which row took which value, at which logical time —
+encrypted before it goes. The relay stores them per owner as opaque blobs
+(`evolu_message`) alongside the timestamps it needs to compare histories; it has
+no idea any of it is invoices.
+
+Two devices editing the same invoice do not conflict: every change carries a
+logical clock, and they merge per column, deterministically. This is also why
+nothing is ever hard-deleted — every table has its own `deleted` flag, because a
+deletion is just another change, while a vanished row would be indistinguishable
+from one a device has not heard about yet.
+
+Offline, the app keeps writing locally and says so in a banner; it catches up
+when the connection returns.
+
 ## Configuration worth knowing
 
 **Invoice numbers** follow a pattern you set, with a live preview:
@@ -170,13 +231,44 @@ highest existing number sharing the pattern's fixed prefix, so a pattern with
 
 **PDF filenames** use their own tokens: `{cislo}`, `{klient}`, `{dodavatel}`,
 `{rok}`, `{rrmmdd}`, `{rrrrmmdd}`. Punctuation inside a token's value is stripped
-(`Jan Šetina` → `jansetina`) while the template's own separators are kept.
+(`Jan Šetina` → `jansetina`) while the template's own separators are kept — with
+one exception: the number keeps its own separator as a hyphen, so `2026/001`
+files as `2026-001` rather than `2026001`. `{klient}` is overridable per client.
 Default `faktura-{cislo}`.
 
-**Currencies** offered: CZK, EUR, USD, GBP, PLN. Amounts are never converted.
+**The covering e-mail** takes `{cislo}`, `{klient}`, `{castka}`, `{splatnost}`,
+`{datum}`, `{dodavatel}` and `{vs}`. Clicking a token inserts it where the caret
+is, in every template field.
+
+**Currencies** offered: CZK, EUR, USD, GBP, PLN, on invoices and on costs
+alike. Amounts are never converted — totals state each currency separately
+rather than inventing a rate.
 
 **Relay** defaults to `wss://free.evoluhq.com` and is overridable in settings
-(stored under `invoiceApp_relayUrl`). `npm run relay` starts a local one.
+(stored under `invoiceApp_relayUrl`). It only ever carries encrypted messages —
+see [Sync](#sync-and-the-seed-phrase).
+
+Self-hosting one is currently not possible off the shelf: the published
+`@evolu/relay` pins `@evolu/common` 6 while this app's client is on 7. It
+accepts the connection and answers, but stores nothing — verified against
+`1.1.2-preview.6`, whose `evolu_message`, `evolu_timestamp` and `evolu_writeKey`
+tables stayed empty after a real edit. A relay built from Evolu at the matching
+version would work; the setting is there and takes any `ws://` or `wss://` URL.
+
+**Exchange rates** come from the ČNB's daily table, which sends no CORS
+headers — a browser cannot read it directly however public the data is. The
+request goes through this origin at `/api/cnb/*` and the host rewrites it onto
+`api.cnb.cz/cnbapi/*`: `vercel.json` for Vercel, `public/_redirects` for
+Netlify, `vite.config.ts` for dev and preview. Cloudflare Pages cannot proxy
+another host from `_redirects`.
+
+What comes back is told apart rather than collapsed into "it did not work",
+because each answer asks something different of you: being offline, the host
+not forwarding the path at all, the bank not answering, a date before the
+series, a currency it does not quote. A weekend or a holiday is not a failure
+— the bank answers with the last table published, which is the rate in force
+that day, and the app says which day that was. A day's table is cached in
+`localStorage`, since a published rate never changes.
 
 **Security headers** are set in four places that must stay in step:
 `public/_headers` (Netlify, Cloudflare Pages), `vercel.json`, and `server` /
@@ -223,13 +315,6 @@ npm install
 npm run dev            # http://localhost:5173
 ```
 
-Optionally run your own relay instead of the public one, and point settings at
-`ws://localhost:8080`:
-
-```bash
-npm run relay          # RELAY_PORT / RELAY_DATA_FILE override the defaults
-```
-
 ### Scripts
 
 | Script | Does |
@@ -238,7 +323,6 @@ npm run relay          # RELAY_PORT / RELAY_DATA_FILE override the defaults
 | `npm run build` | `tsc -b` then a production build |
 | `npm run preview` | serve the production build |
 | `npm run lint` | ESLint (currently clean: 0 errors, 0 warnings) |
-| `npm run relay` | local Evolu WebSocket relay on port 8080 |
 
 ---
 
@@ -246,8 +330,9 @@ npm run relay          # RELAY_PORT / RELAY_DATA_FILE override the defaults
 
 ```
 src/
-├── App.tsx                      # shell, nav, routes
-├── main.tsx                     # entry: Evolu + Router + ConfirmProvider
+├── App.tsx                      # shell: nav, theme, migrations, Outlet
+├── router.tsx, routes.tsx       # the route table and its page wrappers
+├── main.tsx                     # entry: Evolu + ConfirmProvider + RouterProvider
 ├── evolu.ts                     # schema, relay URL, Evolu instance
 ├── index.css                    # component layer
 ├── styles/tokens.css            # the design tokens (palette, type, radii)
@@ -269,6 +354,7 @@ src/
 │   ├── profile/BankAccounts.tsx # multiple accounts, one per currency
 │   ├── SettingsPage.tsx         # preferences, CSV, relay, seed
 │   ├── ConfirmProvider.tsx      # in-app confirm + notices (no native dialogs)
+│   ├── TokenButton.tsx          # one template token, inserted at the caret
 │   ├── PaymentDialog.tsx, OfflineBanner.tsx, PWAUpdatePrompt.tsx
 └── lib/                         # pure logic + hooks
     ├── invoice.ts               # totals, status, dates
@@ -277,9 +363,14 @@ src/
     ├── money.ts                 # currencies, formatting, SPD support
     ├── invoiceNumber.ts         # number patterns + next sequence
     ├── invoiceFileName.ts       # PDF filename templating
+    ├── invoiceEmail.ts          # covering-mail templates and the mailto
+    ├── exchangeRate.ts          # the koruna value of a foreign document
+    ├── fakturoidImport.ts       # Fakturoid XML: invoices, clients, expenses
+    ├── useUnsavedGuard.ts       # blocks navigation away from a dirty form
     ├── aging.ts, clientStats.ts # year series, per-client totals
     ├── bankAccounts.ts, useLegacyBankAccountMigration.ts
     ├── useInvoiceForm.ts, useAres.ts, useTrezorAddress.ts, useInvoiceQr.ts
+    ├── insertToken.ts, useExpensesEnabled.ts
     └── useTheme.ts, confirmContext.ts, useClientIdBackfill.ts
 ```
 
@@ -290,6 +381,8 @@ src/
   spinners — every control is in the app's own design language.
 - **Amounts are tabular.** Monospaced figures, aligned, and maskable via discrete
   mode for screen sharing.
+- **Nothing typed is lost silently.** Leaving a page with unsaved changes asks
+  first, whichever way you leave it — a tab, the back gesture, a closed tab.
 - **Migrations run silently.** Legacy single bank accounts and name-joined
   invoices are upgraded on load, without asking.
 - **Layout switches, it does not scale.** A table that will not fit is
@@ -298,7 +391,12 @@ src/
 
 ## Known gaps
 
-- **No invoice drafts** — an interrupted invoice is lost.
+- **No invoice drafts** — an interrupted invoice is lost, though leaving one
+  half-written now asks first.
+- **No handover carries a whole e-mail.** `mailto:` opens the client but
+  cannot attach, and dragging the file out of the page is a Chrome and Edge
+  ability — in Safari and Firefox the invoice is exported and attached by
+  hand.
 - **Recurring expense templates are not in the CSV export** — they live in the
   synced database only. Expenses themselves round-trip in full, breakdown
   included.
