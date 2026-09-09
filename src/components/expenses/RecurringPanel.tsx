@@ -19,8 +19,10 @@ export type ExpenseTemplateRow = {
 
 type RecurringPanelProps = {
   templates: readonly ExpenseTemplateRow[];
-  /** Templates already booked into the period on screen. */
-  booked: ReadonlySet<string>;
+  /** How many months of the period on screen each template is booked in. */
+  coverage: ReadonlyMap<string, number>;
+  /** False in the year view: a monthly cost is booked into a month. */
+  bookable: boolean;
   periodLabel: string;
   money: (value: number, currency?: string) => string;
   onGenerate: (template: ExpenseTemplateRow) => void;
@@ -40,7 +42,8 @@ type RecurringPanelProps = {
  */
 export function RecurringPanel({
   templates,
-  booked,
+  coverage,
+  bookable,
   periodLabel,
   money,
   onGenerate,
@@ -48,8 +51,10 @@ export function RecurringPanel({
   onEdit,
   onCreate,
 }: RecurringPanelProps) {
-  const { t } = useI18n();
-  const missing = templates.filter((template) => !booked.has(template.id));
+  const { t, tp } = useI18n();
+  const missing = bookable
+    ? templates.filter((template) => !coverage.has(template.id))
+    : [];
 
   return (
     <section className="rec">
@@ -83,9 +88,16 @@ export function RecurringPanel({
       ) : (
         <ul className="rec-list">
           {templates.map((template) => {
-            const done = booked.has(template.id);
+            const months = coverage.get(template.id) ?? 0;
+            const done = months > 0;
+            /* Dimmed means handled, which a year cannot say from one booked
+               month — there the row states the count instead. */
             return (
-              <li key={template.id} className="rec-row" data-done={done}>
+              <li
+                key={template.id}
+                className="rec-row"
+                data-done={bookable && done}
+              >
                 <button
                   type="button"
                   className="rec-open"
@@ -113,7 +125,15 @@ export function RecurringPanel({
                     template.currency ?? undefined,
                   )}
                 </span>
-                {done ? (
+                {/* A year reports coverage instead of offering a button:
+                    which months it is in is the answer that period has. */}
+                {!bookable ? (
+                  <span className="rec-count" data-done={done}>
+                    {done
+                      ? `${months} ${tp("expensesList.monthCount", months)}`
+                      : t("expenseTemplates.notBooked")}
+                  </span>
+                ) : done ? (
                   <span className="rec-done">
                     <Check />
                     {t("expenseTemplates.booked")}

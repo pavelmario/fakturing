@@ -224,6 +224,22 @@ export function InvoiceListPage({
     [chartYear, scoped],
   );
 
+  /* Every year there is anything to see in, newest first — the label lists
+     these so a back year is one click rather than one click per year. */
+  const yearOptions = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const row of scoped) {
+      const year = invoiceYear(row.issueDate);
+      if (year) counts.set(year, (counts.get(year) ?? 0) + 1);
+    }
+    for (const year of [chartYear, currentYear]) {
+      if (!counts.has(year)) counts.set(year, 0);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[0] - a[0])
+      .map(([year, count]) => ({ year, count }));
+  }, [scoped, chartYear, currentYear]);
+
   /* Lateness in aggregate exists only while something is late. */
   const overdue = useMemo(
     () => inYear.filter((row) => row.status === "overdue"),
@@ -404,6 +420,7 @@ export function InvoiceListPage({
           <div className="mb-4">
             <YearStrip
               series={yearSeries}
+              years={yearOptions}
               /* A month picked in the old year would filter the new one to
                  nothing, so stepping years drops it. */
               onGoToYear={(year) => {

@@ -82,6 +82,8 @@ export function SettingsPage({
      a sticky bar that says so and carries Save. */
 
   const [billPerUnit, setBillPerUnit] = useState<boolean>(false);
+  /* Whether Náklady are read a month or a whole year at a time. */
+  const [periodScope, setPeriodScope] = useState<"month" | "year">("month");
   const [mempoolUrl, setMempoolUrl] = useState<string>(
     "https://mempool.space/",
   );
@@ -394,6 +396,7 @@ export function SettingsPage({
     setSupplierVatPrefill(profile.supplierVatPrefill ?? "");
     setPoRequired(profile.poRequired === Evolu.sqliteTrue);
     setBillPerUnit(profile.billPerUnit === Evolu.sqliteTrue);
+    setPeriodScope(profile.periodScope === "year" ? "year" : "month");
     setMempoolUrl(profile.mempoolUrl ?? "https://mempool.space/");
     setInvoiceNamingFormat(
       normalizeFileNameTemplate(profile.invoiceNamingFormat),
@@ -604,6 +607,7 @@ export function SettingsPage({
           billPerUnit: parseCsvBoolean(row.billPerUnit)
             ? Evolu.sqliteTrue
             : Evolu.sqliteFalse,
+          periodScope: row.periodScope?.trim() === "year" ? "year" : "month",
           mempoolUrl: toNullable(row.mempoolUrl) ?? "https://mempool.space/",
           /* Stored as a token template, not the legacy preset name that
              older exports (and the shipped sample) still carry. */
@@ -644,6 +648,7 @@ export function SettingsPage({
         setSupplierVatPrefill(row.supplierVatPrefill?.trim() ?? "");
         setPoRequired(parseCsvBoolean(row.poRequired));
         setBillPerUnit(parseCsvBoolean(row.billPerUnit));
+        setPeriodScope(row.periodScope?.trim() === "year" ? "year" : "month");
         setMempoolUrl(row.mempoolUrl?.trim() || "https://mempool.space/");
         setInvoiceNamingFormat(
           normalizeFileNameTemplate(row.invoiceNamingFormat?.trim()),
@@ -1558,6 +1563,7 @@ export function SettingsPage({
         supplierVatPrefill: toNullable(supplierVatPrefill),
         poRequired: poRequired ? Evolu.sqliteTrue : Evolu.sqliteFalse,
         billPerUnit: billPerUnit ? Evolu.sqliteTrue : Evolu.sqliteFalse,
+        periodScope,
         mempoolUrl: toNullable(mempoolUrl),
         invoiceNamingFormat: toNullable(invoiceNamingFormat),
         invoiceNumberFormat: toNullable(invoiceNumberFormat),
@@ -1704,6 +1710,7 @@ export function SettingsPage({
     "language",
     "poRequired",
     "billPerUnit",
+    "periodScope",
     "mempoolUrl",
     "invoiceNamingFormat",
     "invoiceNumberFormat",
@@ -1833,6 +1840,7 @@ export function SettingsPage({
       supplierVatPrefill: profile?.supplierVatPrefill ?? "",
       poRequired: profile?.poRequired === Evolu.sqliteTrue,
       billPerUnit: profile?.billPerUnit === Evolu.sqliteTrue,
+      periodScope: profile?.periodScope === "year" ? "year" : "month",
       mempoolUrl: profile?.mempoolUrl ?? "https://mempool.space/",
       invoiceNamingFormat: normalizeFileNameTemplate(
         profile?.invoiceNamingFormat,
@@ -1852,6 +1860,7 @@ export function SettingsPage({
       supplierVatPrefill,
       poRequired,
       billPerUnit,
+      periodScope,
       mempoolUrl,
       invoiceNamingFormat,
       invoiceNumberFormat,
@@ -1972,6 +1981,39 @@ export function SettingsPage({
                   </button>
                 </div>
               </div>
+            </div>
+            {/* How long a period the cost ledger covers. It lives here with
+                the other display choices rather than on the page itself —
+                it is set once and then left alone. */}
+            <div className="setting-row">
+              <span className="form-label">
+                {t("settings.periodScopeLabel")}
+              </span>
+              <div className="theme-choice">
+                <button
+                  type="button"
+                  className="fchip"
+                  data-on={periodScope === "month"}
+                  aria-pressed={periodScope === "month"}
+                  onClick={() => setPeriodScope("month")}
+                >
+                  {periodScope === "month" ? <Check /> : null}
+                  {t("settings.periodScopeMonth")}
+                </button>
+                <button
+                  type="button"
+                  className="fchip"
+                  data-on={periodScope === "year"}
+                  aria-pressed={periodScope === "year"}
+                  onClick={() => setPeriodScope("year")}
+                >
+                  {periodScope === "year" ? <Check /> : null}
+                  {t("settings.periodScopeYear")}
+                </button>
+              </div>
+              {/* `setting-hint` indents past a checkbox this row has not
+                  got — the hint would start 1.5rem in from its own label. */}
+              <p className="field-hint">{t("settings.periodScopeHint")}</p>
             </div>
             {toggle(
               discreteMode,

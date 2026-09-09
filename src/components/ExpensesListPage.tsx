@@ -21,6 +21,7 @@ import {
   type ExpenseItem,
 } from "../lib/expense";
 import { parseSupplierVatPrefill } from "../supplierVatPrefill";
+import { PeriodPicker, type PeriodOption } from "./PeriodPicker";
 import {
   RecurringPanel,
   type ExpenseTemplateRow,
@@ -127,8 +128,10 @@ export function ExpensesListPage({
      hidden inside a collapsed filter panel — which is where the control
      statement export used to get its range from. */
   const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
   const [period, setPeriod] = useState({
-    year: now.getFullYear(),
+    year: currentYear,
     month: now.getMonth(),
   });
   /* null = the whole period; otherwise a plain text search across everything */
@@ -155,6 +158,8 @@ export function ExpensesListPage({
   );
   const profile = useQuery(profileQuery)[0] ?? null;
   const isVatPayer = profile?.vatPayer === Evolu.sqliteTrue;
+  /* Month or year, chosen once in Nastavení rather than on the page. */
+  const byYear = profile?.periodScope === "year";
   const isDiscreteMode = profile?.discreteMode === Evolu.sqliteTrue;
   /* Expenses recorded before there was a supplier field carry only a DIČ;
      the list in Settings is what turns those back into a name. */
@@ -231,27 +236,37 @@ export function ExpensesListPage({
     if (!expense.expenseDate) return false;
     const date = new Date(expense.expenseDate);
     if (Number.isNaN(date.getTime())) return false;
-    return (
-      date.getFullYear() === period.year && date.getMonth() === period.month
-    );
+    if (date.getFullYear() !== period.year) return false;
+    return byYear || date.getMonth() === period.month;
   };
 
   const dateRangeExpenses = useMemo(
     () => expenses.filter(inPeriod),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [expenses, period.year, period.month],
+    [expenses, period.year, period.month, byYear],
   );
 
-  /** Which recurring costs the chosen period already carries. */
-  const booked = useMemo(
-    () =>
-      new Set(
-        dateRangeExpenses
-          .map((expense) => expense.templateId)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    [dateRangeExpenses],
-  );
+  /**
+   * How many months of the period on screen each recurring cost is booked in.
+   *
+   * A month can only answer yes or no, and the checklist asks nothing else.
+   * A year asks something different: rent booked in ten months out of twelve
+   * is two months somebody forgot, and the panel can say that without
+   * pretending a year is a period you book a monthly cost into.
+   */
+  const bookedMonths = useMemo(() => {
+    const months = new Map<string, Set<number>>();
+    for (const expense of dateRangeExpenses) {
+      if (!expense.templateId || !expense.expenseDate) continue;
+      const date = new Date(expense.expenseDate);
+      if (Number.isNaN(date.getTime())) continue;
+      const seen = months.get(expense.templateId) ?? new Set<number>();
+      seen.add(date.getMonth());
+      months.set(expense.templateId, seen);
+    }
+    return new Map([...months].map(([id, seen]) => [id, seen.size] as const));
+  }, [dateRangeExpenses]);
+
 
   const needle = search.trim().toLowerCase();
   const visible = useMemo(() => {
@@ -298,6 +313,9 @@ export function ExpensesListPage({
   const yearTotal = useMemo(() => {
     let gross = 0;
     const foreign = new Map<string, number>();
+    /* In the year view the period cell already is the year, so the cell this
+       feeds is not rendered — and this is the same pass over the same rows. */
+    if (byYear) return { gross, foreign };
     for (const expense of expenses) {
       if (!expense.expenseDate) continue;
       const date = new Date(expense.expenseDate);
@@ -314,7 +332,7 @@ export function ExpensesListPage({
       gross += toHome(expense.amounts.gross, expense.rate);
     }
     return { gross, foreign };
-  }, [expenses, period.year]);
+  }, [expenses, period.year, byYear]);
 
   const money = (value: number, currency: string = DEFAULT_CURRENCY) =>
     isDiscreteMode
@@ -328,15 +346,80 @@ export function ExpensesListPage({
     currency === DEFAULT_CURRENCY ? amount(value) : money(value, currency);
 
   const shiftPeriod = (delta: number) => {
-    const next = new Date(period.year, period.month + delta, 1);
-    setPeriod({ year: next.getFullYear(), month: next.getMonth() });
+    setPeriod((current) => {
+      if (byYear) return { ...current, year: current.year + delta };
+      const next = new Date(current.year, current.month + delta, 1);
+      return { year: next.getFullYear(), month: next.getMonth() };
+    });
     setBrowseAll(false);
   };
 
-  const periodLabel = new Date(period.year, period.month, 1).toLocaleDateString(
+  const monthLabel = (year: number, month: number) =>
+    new Date(year, month, 1).toLocaleDateString(locale, {
+      month: "long",
+      year: "numeric",
+    });
+
+  const periodLabel = byYear
+    ? String(period.year)
+    : monthLabel(period.year, period.month);
+  const periodKey = byYear
+    ? String(period.year)
+    : `${period.year}-${period.month}`;
+
+  /**
+   * Every period there is something to see in, newest first.
+   *
+   * Stepping back to prosinec 2024 was twenty-one clicks on an arrow. The
+   * list holds only periods that actually carry documents — plus the one on
+   * screen, so an empty period can still say where you are.
+   */
+  const periodOptions = useMemo<readonly PeriodOption[]>(() => {
+    const found = new Map<string, PeriodOption>();
+    /* Kept as the period itself rather than a string to parse back: the key
+       exists to deduplicate, and only one place needs to know its shape. */
+    const add = (year: number, month: number, count: number) => {
+      const key = byYear ? String(year) : `${year}-${month}`;
+      const seen = found.get(key);
+      if (seen) {
+        seen.count += count;
+        return;
+      }
+      found.set(key, {
+        key,
+        label: byYear ? String(year) : monthLabel(year, month),
+        count,
+        year,
+        month: byYear ? null : month,
+      });
+    };
+
+    for (const expense of expenses) {
+      if (!expense.expenseDate) continue;
+      const date = new Date(expense.expenseDate);
+      if (Number.isNaN(date.getTime())) continue;
+      add(date.getFullYear(), date.getMonth(), 1);
+    }
+    /* The period on screen and the one you are actually in are always on the
+       list, empty or not. Without the second, stepping back to prosinec 2024
+       is a door that closes behind you: this month has nothing booked yet, so
+       nothing offers it, and the way back is the arrow, twenty-one times. */
+    add(period.year, period.month, 0);
+    add(currentYear, currentMonth, 0);
+
+    return [...found.values()].sort(
+      (a, b) => b.year - a.year || (b.month ?? 0) - (a.month ?? 0),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    expenses,
+    byYear,
+    currentYear,
+    currentMonth,
+    period.year,
+    period.month,
     locale,
-    { month: "long", year: "numeric" },
-  );
+  ]);
 
   /**
    * Books a recurring cost into the period on screen.
@@ -347,7 +430,8 @@ export function ExpensesListPage({
    */
   const generateFromTemplate = (template: ExpenseTemplateRow): boolean => {
     const stamp = `${template.id}:${period.year}-${period.month}`;
-    if (booked.has(template.id) || generated.current.has(stamp)) return false;
+    if (bookedMonths.has(template.id) || generated.current.has(stamp))
+      return false;
     const day = Math.min(
       Math.max(Math.round(Number(template.dayOfMonth ?? 1)) || 1, 1),
       lastDay,
@@ -632,16 +716,33 @@ export function ExpensesListPage({
                 type="button"
                 className="ystrip-arrow"
                 onClick={() => shiftPeriod(-1)}
-                aria-label={t("expensesList.periodPrev")}
+                aria-label={t(
+                  byYear ? "expensesList.yearPrev" : "expensesList.periodPrev",
+                )}
               >
                 <ChevronLeft />
               </button>
-              <span className="period-label">{periodLabel}</span>
+              <PeriodPicker
+                label={periodLabel}
+                value={periodKey}
+                options={periodOptions}
+                countLabel={(count) => tp("expensesList.expenseCount", count)}
+                ariaLabel={t("expensesList.periodPick")}
+                onPick={(option) => {
+                  setPeriod((current) => ({
+                    year: option.year,
+                    month: option.month ?? current.month,
+                  }));
+                  setBrowseAll(false);
+                }}
+              />
               <button
                 type="button"
                 className="ystrip-arrow"
                 onClick={() => shiftPeriod(1)}
-                aria-label={t("expensesList.periodNext")}
+                aria-label={t(
+                  byYear ? "expensesList.yearNext" : "expensesList.periodNext",
+                )}
               >
                 <ChevronRight />
               </button>
@@ -675,30 +776,38 @@ export function ExpensesListPage({
               </div>
             ) : null}
 
-            <div className="ystrip-cell">
-              <div className="ystrip-cell-label">
-                {t("expensesList.yearTotal", { year: period.year })}
-              </div>
-              <div className="ystrip-figure">{money(yearTotal.gross)}</div>
-              {[...yearTotal.foreign].map(([code, value]) => (
-                <div key={code} className="ystrip-figure-alt">
-                  + {money(value, code)}
+            {/* In the year view the cell beside it already is the year. */}
+            {byYear ? null : (
+              <div className="ystrip-cell">
+                <div className="ystrip-cell-label">
+                  {t("expensesList.yearTotal", { year: period.year })}
                 </div>
-              ))}
-            </div>
+                <div className="ystrip-figure">{money(yearTotal.gross)}</div>
+                {[...yearTotal.foreign].map(([code, value]) => (
+                  <div key={code} className="ystrip-figure-alt">
+                    + {money(value, code)}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
+          {/* The statement is filed for a month, so it is offered for one. */}
           {isVatPayer ? (
             <div className="period-actions">
-              <button
-                className="btn-secondary"
-                onClick={handleExportKontrolniHlaseni}
-              >
-                <FileDown />
-                {t("expensesList.exportXml")}
-              </button>
+              {byYear ? null : (
+                <button
+                  className="btn-secondary"
+                  onClick={handleExportKontrolniHlaseni}
+                >
+                  <FileDown />
+                  {t("expensesList.exportXml")}
+                </button>
+              )}
               <span className="settings-help-text">
-                {t("expensesList.exportXmlHint", { period: periodLabel })}
+                {byYear
+                  ? t("expensesList.exportXmlMonthOnly")
+                  : t("expensesList.exportXmlHint", { period: periodLabel })}
               </span>
             </div>
           ) : null}
@@ -707,13 +816,14 @@ export function ExpensesListPage({
         {/* ---- What repeats every month ------------------------------- */}
         <RecurringPanel
           templates={templates}
-          booked={booked}
+          coverage={bookedMonths}
+          bookable={!byYear}
           periodLabel={periodLabel}
           money={money}
           onGenerate={(template) => runGeneration([template])}
           onGenerateMissing={() =>
             runGeneration(
-              templates.filter((template) => !booked.has(template.id)),
+              templates.filter((template) => !bookedMonths.has(template.id)),
             )
           }
           onEdit={onEditTemplate}

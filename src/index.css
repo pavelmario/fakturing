@@ -2710,14 +2710,72 @@
     gap: 0.5rem;
   }
 
+  /* Set like the year the invoice ledger heads its strip with, and spaced
+     like it too: the old 8rem floor held the arrows a thumb away from a
+     label that never needed the room. */
   .period-label {
-    font-size: var(--fs-md);
+    font-size: var(--fs-lg);
     font-weight: 600;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     color: var(--ink);
-    min-width: 8rem;
+    min-width: 3.75rem;
     text-align: center;
     text-transform: capitalize;
+  }
+
+  /* ---- Period picker ---------------------------------------------------
+     The label is also the way to jump straight to a period, so it takes a
+     tint under the cursor — and nothing else. No chevron, no box: it is the
+     heading you read to know where you are, not a control beside it. */
+  .period-pick {
+    position: relative;
+  }
+
+  .period-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.125rem 0.375rem;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+  }
+
+  .period-trigger:hover,
+  .period-trigger[aria-expanded="true"] {
+    background: var(--surface-3);
+  }
+
+  /* Hangs off the label's left edge rather than centring on it: centred, a
+     short label at the start of the panel put half the list outside it. */
+  .period-pop {
+    right: auto;
+    min-width: 15rem;
+  }
+
+  .period-option {
+    text-transform: capitalize;
+  }
+
+  .period-option-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* The count is a way to recognise the period, not a figure to read, so it
+     stays quiet — and leaves room for the tick on the chosen one. */
+  .period-option-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    font-size: var(--fs-sm);
+    color: var(--ink-faint);
+    text-transform: none;
   }
 
   .period-actions {
@@ -2896,6 +2954,20 @@
     justify-content: center;
     padding-top: 0.25rem;
     padding-bottom: 0.25rem;
+  }
+
+  /* The year view has no button to offer here: it says how much of the year
+     the cost is actually in. */
+  .rec-count {
+    flex: none;
+    min-width: 6.25rem;
+    text-align: right;
+    font-size: var(--fs-sm);
+    color: var(--ink-faint);
+  }
+
+  .rec-count[data-done="true"] {
+    color: var(--ink-muted);
   }
 
   /* ---- Client detail ---------------------------------------------------- */
@@ -3167,11 +3239,16 @@
     width: auto;
   }
 
-  .items-table th:not(:first-child):not(:last-child) {
+  .items-table th:not(:first-child):not([aria-hidden]) {
     width: 6.5rem;
   }
 
-  .items-table th:last-child {
+  /* The remove button's column, keyed off the header that has no label —
+     `:last-child` also caught the line total on the read-only table, which
+     squeezed it to the width of an icon and clipped the figure. The two
+     selectors exclude each other rather than tie on specificity and settle
+     it by source order. */
+  .items-table th[aria-hidden="true"] {
     width: 2.25rem;
   }
 
@@ -3220,12 +3297,29 @@
   }
 
   .items-line-total {
-    padding: 0 0.5rem !important;
     text-align: right;
     font-size: var(--fs-base);
     font-weight: 500;
     color: var(--ink);
     white-space: nowrap;
+  }
+
+  /* Outranks `.items-table td` on specificity rather than on `!important`,
+     so the read-only rules below can still say otherwise. */
+  .items-table td.items-line-total {
+    padding: 0 0.5rem;
+  }
+
+  /* Read-only lines, as the detail pages print them. There are no inputs to
+     carry the padding the header already has, so the text would otherwise
+     start hard against the table's own border. */
+  .items-table[data-readonly="true"] td,
+  .items-table[data-readonly="true"] td.items-line-total {
+    padding: 0.375rem 0.5rem;
+  }
+
+  .items-table[data-readonly="true"] td.num {
+    text-align: right;
   }
 
   .items-remove {
@@ -3690,6 +3784,24 @@
       border-bottom: 1px solid var(--rule);
     }
 
+    /* The nav takes the whole row here, so the list centres under the label
+       rather than hanging off its left edge into the margin. It animates on
+       its own keyframe: `pop-in` ends on no horizontal offset, and against
+       this transform that interpolates as a slide in from half a list to the
+       right. */
+    .period-pop {
+      left: 50%;
+      transform: translateX(-50%);
+      animation: pop-in-centred 0.12s ease;
+    }
+
+    @keyframes pop-in-centred {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(6px) scale(0.98);
+      }
+    }
+
     .ystrip-cell {
       flex: 1 1 50%;
       padding: 0.5rem 0.75rem;
@@ -4142,8 +4254,17 @@
       border-bottom: 0;
     }
 
-    .items-table td {
+    /* A card, not a row: the cell keeps no padding of its own here — the
+       card already has it — and a figure has no column left to align to. */
+    .items-table td,
+    .items-table[data-readonly="true"] td,
+    .items-table[data-readonly="true"] td.items-line-total {
+      padding: 0;
       border-bottom: 0;
+    }
+
+    .items-table[data-readonly="true"] td.num {
+      text-align: left;
     }
 
     .items-table td[data-cell="description"] {

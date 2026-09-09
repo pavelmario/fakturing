@@ -21,7 +21,8 @@ The landing screen is a ledger, not a dashboard.
 
 - **Year strip** — a 12-month bar chart of invoiced vs. paid for the selected
   year, with tick marks showing how many invoices each month carried. Arrows step
-  between years that actually have invoices.
+  between years that actually have invoices, and the year itself drops down a
+  list of them with their invoice counts.
 - **Overdue banner** — appears only when something is genuinely past due, per
   invoice, and filters the ledger down to those rows in one click.
 - **Ledger table** — number, client, issue date, due date, state, amount, with a
@@ -74,7 +75,12 @@ client follows Nastavení.
 Visible only for VAT payers (it defaults to your VAT-payer flag and stays an
 explicit toggle). Period-driven: pick a month, get the expenses and the VAT
 figures for it, and export a **kontrolní hlášení** XML (`DPHKH1` 02.01, sections
-B2/B3/C) ready for the tax portal.
+B2/B3/C) ready for the tax portal. **Zobrazení nákladů** in Nastavení switches
+the page to whole years instead; the statement is still offered per month,
+because that is how it is filed, and recurring costs report which months of the
+year they were booked in rather than a button they cannot offer. Clicking the
+period itself drops down every month (or year) that holds documents, so a back
+period is one click rather than one click per step.
 
 An expense is the invoice model read the other way round — from whom, and for
 what:
@@ -108,13 +114,18 @@ VAT status, invoice footer, and **multiple bank accounts** — one per currency,
 a default — which the invoice composer then offers per invoice. Presented read-only
 until you press **Upravit**, same as invoices.
 
+The footer starts filled in with the trade-register sentence — § 435 of the civil
+code has every business document state where its author is registered, and an
+invoice is one. It is ordinary text: a company replaces it with its
+commercial-register entry, and clearing it deliberately keeps it cleared.
+
 ### Nastavení — settings
 
 Everything that changes how the app behaves, grouped:
 
 | Section | Contains |
 |---|---|
-| **Vzhled a jazyk** | theme, language, discrete mode (masks every amount) |
+| **Vzhled a jazyk** | theme, language, expenses view (by month or by year), discrete mode (masks every amount) |
 | **Fakturace** | invoice number pattern, PDF filename pattern, per-unit billing default, PO requirement, expenses toggle |
 | **Evolu** | relay URL and connection state, seed phrase backup and restore |
 | **Průvodní e-mail** | subject and body an invoice's e-mail is built from, per-client overridable |
