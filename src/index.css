@@ -3167,11 +3167,16 @@
     width: auto;
   }
 
-  .items-table th:not(:first-child):not(:last-child) {
+  .items-table th:not(:first-child):not([aria-hidden]) {
     width: 6.5rem;
   }
 
-  .items-table th:last-child {
+  /* The remove button's column, keyed off the header that has no label —
+     `:last-child` also caught the line total on the read-only table, which
+     squeezed it to the width of an icon and clipped the figure. The two
+     selectors exclude each other rather than tie on specificity and settle
+     it by source order. */
+  .items-table th[aria-hidden="true"] {
     width: 2.25rem;
   }
 
@@ -3220,12 +3225,29 @@
   }
 
   .items-line-total {
-    padding: 0 0.5rem !important;
     text-align: right;
     font-size: var(--fs-base);
     font-weight: 500;
     color: var(--ink);
     white-space: nowrap;
+  }
+
+  /* Outranks `.items-table td` on specificity rather than on `!important`,
+     so the read-only rules below can still say otherwise. */
+  .items-table td.items-line-total {
+    padding: 0 0.5rem;
+  }
+
+  /* Read-only lines, as the detail pages print them. There are no inputs to
+     carry the padding the header already has, so the text would otherwise
+     start hard against the table's own border. */
+  .items-table[data-readonly="true"] td,
+  .items-table[data-readonly="true"] td.items-line-total {
+    padding: 0.375rem 0.5rem;
+  }
+
+  .items-table[data-readonly="true"] td.num {
+    text-align: right;
   }
 
   .items-remove {
@@ -4142,8 +4164,17 @@
       border-bottom: 0;
     }
 
-    .items-table td {
+    /* A card, not a row: the cell keeps no padding of its own here — the
+       card already has it — and a figure has no column left to align to. */
+    .items-table td,
+    .items-table[data-readonly="true"] td,
+    .items-table[data-readonly="true"] td.items-line-total {
+      padding: 0;
       border-bottom: 0;
+    }
+
+    .items-table[data-readonly="true"] td.num {
+      text-align: left;
     }
 
     .items-table td[data-cell="description"] {

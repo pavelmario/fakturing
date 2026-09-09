@@ -448,7 +448,7 @@ export function ExpenseDetailPage({
                   {t("expenseForm.aboutTitle")}
                 </h2>
                 <div className="items-block">
-                  <table className="items-table">
+                  <table className="items-table" data-readonly="true">
                     <thead>
                       <tr>
                         <th>{t("invoiceCreate.itemDescription")}</th>
