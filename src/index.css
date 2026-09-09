@@ -3143,6 +3143,24 @@
     animation: drag-hint-in 180ms ease-out;
   }
 
+  /* Saying what to do instead of asking for a drag: a sentence, not a label,
+     so it wraps and drops the shout. */
+  .pdf-drag-hint[data-plain="true"] {
+    max-width: min(28rem, calc(100% - 24px));
+    white-space: normal;
+    text-align: left;
+    align-items: flex-start;
+    border-style: solid;
+    font-size: var(--fs-base);
+    font-weight: 500;
+    line-height: 1.35;
+  }
+
+  .pdf-drag-hint[data-plain="true"] svg {
+    margin-top: 2px;
+    flex: none;
+  }
+
   .pdf-drag-hint svg {
     width: 18px;
     height: 18px;

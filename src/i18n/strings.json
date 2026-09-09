@@ -347,7 +347,8 @@
       "pdfOpen": "Otevřít PDF",
       "emailSend": "Poslat e-mailem",
       "dragHelp": "Přetáhněte do e-mailu",
-      "dragPrompt": "Přetáhněte fakturu do rozepsaného e-mailu"
+      "dragPrompt": "Přetáhněte fakturu do rozepsaného e-mailu",
+      "dragUnsupported": "Tenhle prohlížeč neumí přetáhnout soubor ze stránky — stáhněte fakturu tlačítkem Exportovat do PDF a přiložte ji do e-mailu."
     },
     "settings": {
       "sectionTitle": "Předvolby",
@@ -1121,7 +1122,8 @@
       "pdfOpen": "Open the PDF",
       "emailSend": "Send by e-mail",
       "dragHelp": "Drag into the e-mail",
-      "dragPrompt": "Drag the invoice into the open e-mail"
+      "dragPrompt": "Drag the invoice into the open e-mail",
+      "dragUnsupported": "This browser cannot drag a file out of a page — use Export to PDF and attach the invoice to the e-mail."
     },
     "settings": {
       "sectionTitle": "Preferences",
