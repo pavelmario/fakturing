@@ -698,9 +698,38 @@
     setTimeout(() => (button.textContent = "Zkopírovat výsledek"), 2500);
   });
 
-  renderFacts();
-  renderTests();
-  report();
+  /* Opened inside a preview frame — an artifact viewer, an embed — this page
+     cannot measure anything: an embedded document is not allowed to start a
+     download, so all five tests would report "nothing happened" whatever the
+     machine can actually do. Say that instead of handing back five false
+     negatives. */
+  if (window.top !== window.self) {
+    const wrap = document.querySelector(".wrap");
+    wrap.innerHTML = "";
+    const box = document.createElement("section");
+    box.className = "panel panel-pad";
+    const title = document.createElement("h1");
+    title.style.fontSize = "1.4rem";
+    title.textContent = "Tenhle odkaz test nezměří";
+    const first = document.createElement("p");
+    first.className = "lede";
+    first.textContent =
+      "Stránka je otevřená uvnitř náhledu, kde prohlížeč zakazuje ukládání " +
+      "souborů. Všech pět testů by tady dopadlo jako „nic se nestalo“ bez " +
+      "ohledu na to, co váš počítač umí.";
+    const second = document.createElement("p");
+    second.className = "lede";
+    second.style.color = "var(--muted)";
+    second.textContent =
+      "Otevřete prosím odkaz končící na /drag-test.html přímo na adrese " +
+      "fakturační aplikace — ten měří správně.";
+    box.append(title, first, second);
+    wrap.append(box);
+  } else {
+    renderFacts();
+    renderTests();
+    report();
+  }
 </script>
 
 </body>
