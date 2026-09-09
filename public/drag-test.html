@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  img { max-width: 100%; }
+</style>
+<title>Proč nejde přetáhnout fakturu</title>
+</head>
+<body>
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #f2f4f7;
+    --panel: #ffffff;
+    --panel-2: #f7f9fb;
+    --rule: #dde3ea;
+    --rule-strong: #c6cfda;
+    --ink: #161a20;
+    --ink-2: #39414d;
+    --muted: #6b7583;
+    --faint: #929cab;
+    --accent: #2b5bd7;
+    --accent-soft: #e6ecfb;
+    --ok: #1c7a4b;
+    --ok-soft: #e2f3ea;
+    --bad: #b23a2f;
+    --bad-soft: #fbe9e6;
+    --shadow: 0 1px 2px rgba(20, 28, 40, 0.06), 0 8px 24px rgba(20, 28, 40, 0.07);
+    --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+      "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #101317;
+      --panel: #191d23;
+      --panel-2: #14181d;
+      --rule: #2a3038;
+      --rule-strong: #3b434e;
+      --ink: #e9ecf1;
+      --ink-2: #c3cad4;
+      --muted: #939cab;
+      --faint: #6e7885;
+      --accent: #7ea1ff;
+      --accent-soft: #1e2740;
+      --ok: #6cc79a;
+      --ok-soft: #16291f;
+      --bad: #e8867a;
+      --bad-soft: #2b1917;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #101317;
+    --panel: #191d23;
+    --panel-2: #14181d;
+    --rule: #2a3038;
+    --rule-strong: #3b434e;
+    --ink: #e9ecf1;
+    --ink-2: #c3cad4;
+    --muted: #939cab;
+    --faint: #6e7885;
+    --accent: #7ea1ff;
+    --accent-soft: #1e2740;
+    --ok: #6cc79a;
+    --ok-soft: #16291f;
+    --bad: #e8867a;
+    --bad-soft: #2b1917;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--ui);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 54rem;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(1.6rem, 4.5vw, 2.1rem);
+    font-weight: 650;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+
+  .lede {
+    margin: 0.6rem 0 0;
+    max-width: 42rem;
+    color: var(--ink-2);
+  }
+
+  .steps {
+    margin: 1.1rem 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.35rem;
+    counter-reset: step;
+  }
+
+  .steps li {
+    counter-increment: step;
+    display: flex;
+    gap: 0.5rem;
+    color: var(--ink-2);
+  }
+
+  .steps li::before {
+    content: counter(step) ".";
+    flex: 0 0 1.25rem;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+  }
+
+  .panel-pad {
+    padding: 1.15rem 1.25rem;
+  }
+
+  .eyebrow {
+    margin: 0 0 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    gap: 0.5rem 1.5rem;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+
+  .facts div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .facts dt {
+    color: var(--muted);
+  }
+
+  .facts div.wide {
+    grid-column: 1 / -1;
+  }
+
+  .facts dd {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--ink-2);
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  /* One test per card: the number is the order to do them in, and the order
+     matters — the last one tells us whether downloads work at all. */
+  .test {
+    display: grid;
+    grid-template-columns: 2rem 1fr;
+    gap: 0 0.9rem;
+    padding: 1.15rem 1.25rem;
+  }
+
+  .test + .test {
+    border-top: 1px solid var(--rule);
+  }
+
+  .num {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+    padding-top: 0.1rem;
+  }
+
+  .test h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 640;
+    letter-spacing: -0.01em;
+  }
+
+  .test p {
+    margin: 0.2rem 0 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  .body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.9rem;
+    margin-top: 0.9rem;
+  }
+
+  /* The thing to grab. Dashed, because it is going somewhere else. */
+  .tile {
+    flex: 0 0 auto;
+    width: 12rem;
+    height: 5.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    border: 2px dashed var(--rule-strong);
+    border-radius: 8px;
+    background: var(--panel-2);
+    color: var(--ink-2);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    cursor: grab;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.12s ease, background-color 0.12s ease;
+  }
+
+  .tile:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .tile:active {
+    cursor: grabbing;
+  }
+
+  .tile small {
+    font-weight: 500;
+    color: var(--faint);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+  }
+
+  .tile iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    pointer-events: none;
+  }
+
+  .tile .over {
+    position: relative;
+    z-index: 1;
+    padding: 0.15rem 0.5rem;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--panel) 78%, transparent);
+  }
+
+  .verdict {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 550;
+    padding: 0.4rem 0.7rem;
+    border-radius: 7px;
+    border: 1px solid var(--rule-strong);
+    background: var(--panel);
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: border-color 0.12s ease, background-color 0.12s ease,
+      color 0.12s ease;
+  }
+
+  button:hover {
+    border-color: var(--faint);
+    color: var(--ink);
+  }
+
+  button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  button[aria-pressed="true"][data-kind="yes"] {
+    background: var(--ok-soft);
+    border-color: var(--ok);
+    color: var(--ok);
+  }
+
+  button[aria-pressed="true"][data-kind="no"] {
+    background: var(--bad-soft);
+    border-color: var(--bad);
+    color: var(--bad);
+  }
+
+  .log {
+    font-family: var(--mono);
+    font-size: 0.76rem;
+    color: var(--faint);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    min-height: 1.2em;
+  }
+
+  .report {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 13rem;
+    resize: vertical;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--ink-2);
+    background: var(--panel-2);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 0.75rem;
+  }
+
+  textarea:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .copy {
+    align-self: flex-start;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .copy:hover {
+    background: color-mix(in srgb, var(--accent) 86%, #000);
+    border-color: color-mix(in srgb, var(--accent) 86%, #000);
+    color: #fff;
+  }
+
+  footer {
+    color: var(--faint);
+    font-size: 0.82rem;
+    max-width: 42rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Proč nejde přetáhnout fakturu</h1>
+    <p class="lede">
+      Ve Fakturingu jde faktura poslat tak, že se náhled přetáhne rovnou do
+      rozepsaného e-mailu. Na jednom počítači s Windows to nedělá nic. Tahle
+      stránka zkouší pět různých způsobů, jak prohlížeči soubor podstrčit —
+      podle toho, který z nich projde, se pozná, kde je problém.
+    </p>
+    <ol class="steps">
+      <li>Otevřete tuhle stránku ve stejném prohlížeči, kde přetahování nefunguje.</li>
+      <li>Každou dlaždici chyťte myší a přetáhněte <strong>na plochu</strong> (nebo do okna rozepsaného e-mailu).</li>
+      <li>U každé klikněte, co se stalo. Dole pak zkopírujte výsledek a pošlete ho zpátky.</li>
+    </ol>
+  </header>
+
+  <section class="panel panel-pad">
+    <p class="eyebrow">Co o prohlížeči víme</p>
+    <dl class="facts" id="facts"></dl>
+  </section>
+
+  <section class="panel" id="tests"></section>
+
+  <section class="panel panel-pad report">
+    <div>
+      <p class="eyebrow" style="margin-bottom: 0.25rem">Výsledek k odeslání</p>
+      <p style="margin: 0; color: var(--muted); font-size: 0.9rem">
+        Vyplní se sám podle toho, co jste naklikali.
+      </p>
+    </div>
+    <textarea id="report" readonly spellcheck="false"></textarea>
+    <button class="copy" id="copy" type="button">Zkopírovat výsledek</button>
+  </section>
+
+  <footer>
+    Stránka nic neodesílá a nikam nic neukládá — všechno se děje jen ve vašem
+    prohlížeči. Soubory, které při testu vzniknou, můžete smazat.
+  </footer>
+</div>
+
+<script>
+  /* A small, valid PDF built byte by byte: the dropped file has to be a file
+     that actually opens, or "nic se nestalo" and "něco divného se stalo" look
+     the same to the person doing the test. */
+  function makePdf(label) {
+    const stream = `BT /F1 14 Tf 24 60 Td (${label}) Tj ET`;
+    const objects = [
+      "<</Type/Catalog/Pages 2 0 R>>",
+      "<</Type/Pages/Kids[3 0 R]/Count 1>>",
+      "<</Type/Page/Parent 2 0 R/MediaBox[0 0 320 120]/Contents 4 0 R" +
+        "/Resources<</Font<</F1 5 0 R>>>>>>",
+      `<</Length ${stream.length}>>stream\n${stream}\nendstream`,
+      "<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>",
+    ];
+    let out = "%PDF-1.4\n";
+    const offsets = [];
+    objects.forEach((body, index) => {
+      offsets.push(out.length);
+      out += `${index + 1} 0 obj\n${body}\nendobj\n`;
+    });
+    const start = out.length;
+    out += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+    offsets.forEach((offset) => {
+      out += String(offset).padStart(10, "0") + " 00000 n \n";
+    });
+    out += `trailer\n<</Size ${objects.length + 1}/Root 1 0 R>>\n`;
+    out += `startxref\n${start}\n%%EOF`;
+    return out;
+  }
+
+  const pdf = makePdf("Fakturing drag test");
+  const blob = new Blob([pdf], { type: "application/pdf" });
+  const blobUrl = URL.createObjectURL(blob);
+  const dataUrl = "data:application/pdf;base64," + btoa(pdf);
+
+  const TESTS = [
+    {
+      id: "blob",
+      name: "Odkaz na dokument (blob)",
+      why: "Takhle to dělala verze 2.3, která u vás nefungovala.",
+      file: "test-1-blob.pdf",
+      url: () => blobUrl,
+      tile: "Přetáhnout na plochu",
+    },
+    {
+      id: "data",
+      name: "Dokument v datech (data URL)",
+      why: "Takhle to dělá verze 2.4 — posílá se rovnou obsah souboru.",
+      file: "test-2-data.pdf",
+      url: () => dataUrl,
+      tile: "Přetáhnout na plochu",
+    },
+    {
+      id: "http",
+      name: "Běžná adresa (https)",
+      why:
+        "Soubor, který leží na webu. Když neprojde ani tenhle, přetahování " +
+        "souborů z prohlížeče na tomhle počítači nefunguje vůbec.",
+      file: "test-3-stranka.html",
+      mime: "text/html",
+      url: () => location.href,
+      tile: "Přetáhnout na plochu",
+    },
+    {
+      id: "frame",
+      name: "Jako ve Fakturingu: list s náhledem PDF",
+      why:
+        "Stejné vrstvení jako v aplikaci — tažení začíná na rámu, ve kterém " +
+        "je vidět PDF. Když projde test 2 a tenhle ne, je problém v tom rámu.",
+      file: "test-4-nahled.pdf",
+      url: () => dataUrl,
+      frame: true,
+      tile: "",
+    },
+    {
+      id: "download",
+      name: "Obyčejné stažení",
+      why:
+        "Netestuje přetahování. Když se ani tímhle tlačítkem nic nestáhne, " +
+        "blokuje stahování politika firmy nebo antivirus.",
+      file: "test-5-stazeni.pdf",
+      download: true,
+      tile: "Stáhnout soubor",
+    },
+  ];
+
+  const state = {};
+  const events = {};
+
+  /* Reported as facts, not guesses: everything here is something the browser
+     says about itself, and it is what makes a two-line answer useful. */
+  function facts() {
+    const brands = (navigator.userAgentData?.brands ?? [])
+      .map((b) => `${b.brand} ${b.version}`)
+      .join(", ");
+    return {
+      Prohlížeč: brands || "neuvedeno (starší API)",
+      Systém: navigator.userAgentData?.platform ?? navigator.platform ?? "?",
+      "User agent": navigator.userAgent,
+      "Režim okna": window.matchMedia("(display-mode: standalone)").matches
+        ? "nainstalovaná aplikace (PWA)"
+        : "běžná záložka",
+      "Zabezpečené spojení": window.isSecureContext ? "ano" : "ne",
+      "Dotykové ovládání": navigator.maxTouchPoints > 0 ? "ano" : "ne",
+    };
+  }
+
+  function renderFacts() {
+    const dl = document.getElementById("facts");
+    dl.innerHTML = "";
+    for (const [key, value] of Object.entries(facts())) {
+      const row = document.createElement("div");
+      if (value.length > 40) row.className = "wide";
+      const dt = document.createElement("dt");
+      dt.textContent = key;
+      const dd = document.createElement("dd");
+      dd.textContent = value;
+      row.append(dt, dd);
+      dl.append(row);
+    }
+  }
+
+  function renderTests() {
+    const host = document.getElementById("tests");
+    TESTS.forEach((test, index) => {
+      const card = document.createElement("div");
+      card.className = "test";
+
+      const num = document.createElement("div");
+      num.className = "num";
+      num.textContent = String(index + 1);
+
+      const main = document.createElement("div");
+      const h2 = document.createElement("h2");
+      h2.textContent = test.name;
+      const why = document.createElement("p");
+      why.textContent = test.why;
+
+      const body = document.createElement("div");
+      body.className = "body";
+
+      let tile;
+      if (test.download) {
+        tile = document.createElement("a");
+        tile.className = "tile";
+        tile.href = blobUrl;
+        tile.download = test.file;
+        tile.style.textDecoration = "none";
+        tile.append(label(test.tile, test.file));
+      } else {
+        tile = document.createElement("div");
+        tile.className = "tile";
+        tile.draggable = true;
+        if (test.frame) {
+          const frame = document.createElement("iframe");
+          frame.src = blobUrl + "#toolbar=0&navpanes=0&view=FitH";
+          frame.title = "Náhled PDF";
+          tile.append(frame);
+        }
+        tile.append(label(test.tile || "Přetáhnout na plochu", test.file));
+        tile.addEventListener("dragstart", (event) => {
+          event.dataTransfer.setData(
+            "DownloadURL",
+            `${test.mime ?? "application/pdf"}:${test.file}:${test.url()}`,
+          );
+          event.dataTransfer.effectAllowed = "copy";
+          note(test.id, "tažení začalo");
+        });
+        tile.addEventListener("dragend", (event) => {
+          note(test.id, `tažení skončilo, výsledek "${event.dataTransfer.dropEffect}"`);
+        });
+      }
+
+      const verdict = document.createElement("div");
+      verdict.className = "verdict";
+      verdict.append(
+        choice(test.id, "yes", "Soubor se vytvořil"),
+        choice(test.id, "no", "Nic se nestalo"),
+      );
+
+      const log = document.createElement("div");
+      log.className = "log";
+      log.id = `log-${test.id}`;
+      log.textContent = test.download ? "" : "zatím nic";
+
+      body.append(tile, verdict);
+      main.append(h2, why, body, log);
+      card.append(num, main);
+      host.append(card);
+    });
+  }
+
+  function label(text, file) {
+    const wrap = document.createElement("span");
+    wrap.className = "over";
+    wrap.textContent = text;
+    const small = document.createElement("small");
+    small.className = "over";
+    small.textContent = file;
+    const box = document.createDocumentFragment();
+    box.append(wrap, small);
+    return box;
+  }
+
+  function choice(id, kind, text) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.kind = kind;
+    button.textContent = text;
+    button.setAttribute("aria-pressed", "false");
+    button.addEventListener("click", () => {
+      state[id] = kind;
+      document
+        .querySelectorAll(`[data-test="${id}"]`)
+        .forEach((other) =>
+          other.setAttribute(
+            "aria-pressed",
+            String(other.dataset.kind === kind),
+          ),
+        );
+      report();
+    });
+    button.dataset.test = id;
+    return button;
+  }
+
+  function note(id, text) {
+    events[id] = [...(events[id] ?? []), text].slice(-2);
+    const log = document.getElementById(`log-${id}`);
+    if (log) log.textContent = events[id].join(" → ");
+    report();
+  }
+
+  function report() {
+    const lines = ["FAKTURING — test přetažení", ""];
+    for (const [key, value] of Object.entries(facts())) {
+      lines.push(`${key}: ${value}`);
+    }
+    lines.push("");
+    TESTS.forEach((test, index) => {
+      const said =
+        state[test.id] === "yes"
+          ? "soubor se vytvořil"
+          : state[test.id] === "no"
+            ? "nic se nestalo"
+            : "nevyzkoušeno";
+      const seen = events[test.id]?.join(" → ") ?? "žádná událost";
+      lines.push(`${index + 1}. ${test.name}`);
+      lines.push(`   výsledek: ${said}`);
+      if (!test.download) lines.push(`   prohlížeč hlásí: ${seen}`);
+    });
+    document.getElementById("report").value = lines.join("\n");
+  }
+
+  document.getElementById("copy").addEventListener("click", async () => {
+    const field = document.getElementById("report");
+    const button = document.getElementById("copy");
+    try {
+      await navigator.clipboard.writeText(field.value);
+      button.textContent = "Zkopírováno";
+    } catch {
+      field.removeAttribute("readonly");
+      field.select();
+      button.textContent = "Zkopírujte prosím ručně (Ctrl+C)";
+    }
+    setTimeout(() => (button.textContent = "Zkopírovat výsledek"), 2500);
+  });
+
+  renderFacts();
+  renderTests();
+  report();
+</script>
+
+</body>
+</html>
