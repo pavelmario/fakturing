@@ -58,6 +58,9 @@ export const Schema = {
     /* Whether the cost ledger is read a month or a whole year at a time —
        `month` or `year`, unset meaning month. */
     periodScope: Evolu.nullOr(Evolu.TrimmedString100),
+    /* Set once the register entry has been put in the footer, so clearing it
+       on purpose keeps it cleared. */
+    footerDefaulted: Evolu.nullOr(Evolu.SqliteBoolean),
   },
   /* Several accounts, e.g. one per currency. The legacy single account on
      userProfile stays as a fallback for anyone who has not added one yet. */
@@ -193,6 +196,7 @@ export type UserProfileInput = {
   invoiceEmailSubject?: string;
   invoiceEmailBody?: string;
   periodScope?: string;
+  footerDefaulted?: 0 | 1 | null;
 };
 
 const evolu = createEvolu(evoluReactWebDeps)(Schema, {

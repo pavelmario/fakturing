@@ -12,6 +12,7 @@ import { OfflineBanner } from "./components/OfflineBanner";
 import { useI18n } from "./i18n";
 import { useLegacyBankAccountMigration } from "./lib/useLegacyBankAccountMigration";
 import { useClientIdBackfill } from "./lib/useClientIdBackfill";
+import { useInvoiceFooterDefault } from "./lib/useInvoiceFooterDefault";
 import { useExpensesEnabled } from "./lib/useExpensesEnabled";
 import { useTheme } from "./lib/useTheme";
 import "./index.css";
@@ -28,6 +29,7 @@ function App() {
 
   useLegacyBankAccountMigration();
   useClientIdBackfill();
+  useInvoiceFooterDefault();
 
   const expensesEnabled = useExpensesEnabled();
 

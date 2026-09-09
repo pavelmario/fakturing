@@ -114,6 +114,11 @@ VAT status, invoice footer, and **multiple bank accounts** — one per currency,
 a default — which the invoice composer then offers per invoice. Presented read-only
 until you press **Upravit**, same as invoices.
 
+The footer starts filled in with the trade-register sentence — § 435 of the civil
+code has every business document state where its author is registered, and an
+invoice is one. It is ordinary text: a company replaces it with its
+commercial-register entry, and clearing it deliberately keeps it cleared.
+
 ### Nastavení — settings
 
 Everything that changes how the app behaves, grouped:
