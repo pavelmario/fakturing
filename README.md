@@ -75,7 +75,12 @@ client follows Nastavení.
 Visible only for VAT payers (it defaults to your VAT-payer flag and stays an
 explicit toggle). Period-driven: pick a month, get the expenses and the VAT
 figures for it, and export a **kontrolní hlášení** XML (`DPHKH1` 02.01, sections
-B2/B3/C) ready for the tax portal.
+B2/B3/C) ready for the tax portal. **Zobrazení nákladů** in Nastavení switches
+the page to whole years instead; the statement is still offered per month,
+because that is how it is filed, and recurring costs report which months of the
+year they were booked in rather than a button they cannot offer. Clicking the
+period itself drops down every month (or year) that holds documents, so a back
+period is one click rather than one click per step.
 
 An expense is the invoice model read the other way round — from whom, and for
 what:
@@ -115,7 +120,7 @@ Everything that changes how the app behaves, grouped:
 
 | Section | Contains |
 |---|---|
-| **Vzhled a jazyk** | theme, language, discrete mode (masks every amount) |
+| **Vzhled a jazyk** | theme, language, expenses view (by month or by year), discrete mode (masks every amount) |
 | **Fakturace** | invoice number pattern, PDF filename pattern, per-unit billing default, PO requirement, expenses toggle |
 | **Evolu** | relay URL and connection state, seed phrase backup and restore |
 | **Průvodní e-mail** | subject and body an invoice's e-mail is built from, per-client overridable |

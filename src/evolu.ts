@@ -55,6 +55,9 @@ export const Schema = {
        both, so these are the wording used when it does not. */
     invoiceEmailSubject: Evolu.nullOr(Evolu.TrimmedString1000),
     invoiceEmailBody: Evolu.nullOr(Evolu.TrimmedString1000),
+    /* Whether the cost ledger is read a month or a whole year at a time —
+       `month` or `year`, unset meaning month. */
+    periodScope: Evolu.nullOr(Evolu.TrimmedString100),
   },
   /* Several accounts, e.g. one per currency. The legacy single account on
      userProfile stays as a fallback for anyone who has not added one yet. */
@@ -189,6 +192,7 @@ export type UserProfileInput = {
   taxOfficeWorkplaceCode?: string;
   invoiceEmailSubject?: string;
   invoiceEmailBody?: string;
+  periodScope?: string;
 };
 
 const evolu = createEvolu(evoluReactWebDeps)(Schema, {

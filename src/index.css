@@ -2956,6 +2956,20 @@
     padding-bottom: 0.25rem;
   }
 
+  /* The year view has no button to offer here: it says how much of the year
+     the cost is actually in. */
+  .rec-count {
+    flex: none;
+    min-width: 6.25rem;
+    text-align: right;
+    font-size: var(--fs-sm);
+    color: var(--ink-faint);
+  }
+
+  .rec-count[data-done="true"] {
+    color: var(--ink-muted);
+  }
+
   /* ---- Client detail ---------------------------------------------------- */
 
   .client-form {
