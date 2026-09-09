@@ -119,6 +119,7 @@
       "seriesUnpaid": "neuhrazeno",
       "yearPrev": "Předchozí rok",
       "yearNext": "Následující rok",
+      "yearPick": "Vybrat rok",
       "colState": "Stav",
       "dueToday": "dnes",
       "dueIn": {
@@ -877,6 +878,7 @@
       "seriesUnpaid": "unpaid",
       "yearPrev": "Previous year",
       "yearNext": "Next year",
+      "yearPick": "Pick a year",
       "colState": "State",
       "dueToday": "today",
       "dueIn": {

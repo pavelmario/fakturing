@@ -2710,14 +2710,72 @@
     gap: 0.5rem;
   }
 
+  /* Set like the year the invoice ledger heads its strip with, and spaced
+     like it too: the old 8rem floor held the arrows a thumb away from a
+     label that never needed the room. */
   .period-label {
-    font-size: var(--fs-md);
+    font-size: var(--fs-lg);
     font-weight: 600;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     color: var(--ink);
-    min-width: 8rem;
+    min-width: 3.75rem;
     text-align: center;
     text-transform: capitalize;
+  }
+
+  /* ---- Period picker ---------------------------------------------------
+     The label is also the way to jump straight to a period, so it takes a
+     tint under the cursor — and nothing else. No chevron, no box: it is the
+     heading you read to know where you are, not a control beside it. */
+  .period-pick {
+    position: relative;
+  }
+
+  .period-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.125rem 0.375rem;
+    border: 0;
+    border-radius: var(--r-sm);
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+  }
+
+  .period-trigger:hover,
+  .period-trigger[aria-expanded="true"] {
+    background: var(--surface-3);
+  }
+
+  /* Hangs off the label's left edge rather than centring on it: centred, a
+     short label at the start of the panel put half the list outside it. */
+  .period-pop {
+    right: auto;
+    min-width: 15rem;
+  }
+
+  .period-option {
+    text-transform: capitalize;
+  }
+
+  .period-option-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* The count is a way to recognise the period, not a figure to read, so it
+     stays quiet — and leaves room for the tick on the chosen one. */
+  .period-option-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    font-size: var(--fs-sm);
+    color: var(--ink-faint);
+    text-transform: none;
   }
 
   .period-actions {
@@ -3710,6 +3768,24 @@
       padding: 0.3125rem 0.75rem;
       border-right: 0;
       border-bottom: 1px solid var(--rule);
+    }
+
+    /* The nav takes the whole row here, so the list centres under the label
+       rather than hanging off its left edge into the margin. It animates on
+       its own keyframe: `pop-in` ends on no horizontal offset, and against
+       this transform that interpolates as a slide in from half a list to the
+       right. */
+    .period-pop {
+      left: 50%;
+      transform: translateX(-50%);
+      animation: pop-in-centred 0.12s ease;
+    }
+
+    @keyframes pop-in-centred {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(6px) scale(0.98);
+      }
     }
 
     .ystrip-cell {

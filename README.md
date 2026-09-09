@@ -21,7 +21,8 @@ The landing screen is a ledger, not a dashboard.
 
 - **Year strip** — a 12-month bar chart of invoiced vs. paid for the selected
   year, with tick marks showing how many invoices each month carried. Arrows step
-  between years that actually have invoices.
+  between years that actually have invoices, and the year itself drops down a
+  list of them with their invoice counts.
 - **Overdue banner** — appears only when something is genuinely past due, per
   invoice, and filters the ledger down to those rows in one click.
 - **Ledger table** — number, client, issue date, due date, state, amount, with a

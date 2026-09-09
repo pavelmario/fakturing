@@ -7,9 +7,12 @@ import {
   type YearSeries,
 } from "../../lib/aging";
 import { useI18n } from "../../i18n";
+import { PeriodPicker } from "../PeriodPicker";
 
 type YearStripProps = {
   series: YearSeries;
+  /** Every year with invoices in it, newest first, for the label's list. */
+  years: readonly { year: number; count: number }[];
   onGoToYear: (year: number) => void;
   activeMonth: number | null;
   onSelectMonth: (month: number | null) => void;
@@ -44,6 +47,7 @@ type YearStripProps = {
  */
 export function YearStrip({
   series,
+  years,
   onGoToYear,
   activeMonth,
   onSelectMonth,
@@ -129,7 +133,23 @@ export function YearStrip({
           >
             <ChevronLeft />
           </button>
-          <span className="ystrip-year-label num">{series.year}</span>
+          {/* The year is also how you leave it: the arrows step, the label
+              lists the years there is anything to see in. */}
+          <PeriodPicker
+            label={String(series.year)}
+            value={String(series.year)}
+            labelClassName="ystrip-year-label num"
+            options={years.map((entry) => ({
+              key: String(entry.year),
+              label: String(entry.year),
+              count: entry.count,
+              year: entry.year,
+              month: null,
+            }))}
+            countLabel={(count) => tp("invoicesList.invoiceCount", count)}
+            ariaLabel={t("invoicesList.yearPick")}
+            onPick={(option) => onGoToYear(option.year)}
+          />
           <button
             type="button"
             className="ystrip-arrow"
