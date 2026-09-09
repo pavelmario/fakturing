@@ -46,9 +46,13 @@ The landing screen is a ledger, not a dashboard.
   client, worded from your template — the app sends nothing itself. The
   invoice cannot ride along in a `mailto:`, so **the preview below is the
   attachment**: drag the sheet into the compose window and Chrome hands the
-  file over at the drop, without writing anything to disk. Pressing the
-  button says so on the sheet itself — it dims and asks for the drag until
-  the invoice is picked up.
+  file over at the drop, without writing anything to disk. The drag carries
+  the document as a `data:` URL rather than a handle to it, because the drop
+  is resolved by the browser after the mouse is released and a `blob:` handle
+  was not surviving that trip on Windows. Pressing the button says so on the
+  sheet itself — it dims and asks for the drag until the invoice is picked
+  up, and in a browser that cannot drag a file out it says to export the PDF
+  instead rather than asking for a drag that would do nothing.
 - **Czech SPD payment QR** for CZK invoices; suppressed with a note for other
   currencies, because the SPD format encodes CZK only.
 - **Bitcoin invoices** — a BTC address per invoice, optionally read straight off a
@@ -406,8 +410,9 @@ src/
   half-written now asks first.
 - **No handover carries a whole e-mail.** `mailto:` opens the client but
   cannot attach, and dragging the file out of the page is a Chrome and Edge
-  ability — in Safari and Firefox the invoice is exported and attached by
-  hand.
+  ability — `DownloadURL` is a Chromium convention no other engine implements.
+  Safari and Firefox get a sheet that stays still and a banner saying to
+  export the PDF and attach it by hand.
 - **Recurring expense templates are not in the CSV export** — they live in the
   synced database only. Expenses themselves round-trip in full, breakdown
   included.
