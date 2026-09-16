@@ -1040,8 +1040,8 @@
     box-shadow: var(--shadow-pop);
   }
 
-  /* Clear of `.notices`, which stacks upward from bottom: 1rem — the reload
-     button is useless behind a toast. Above them too, so an overlap on a
+  /* Clear of `.notices`, which stack upward from the bottom on a phone — the
+     reload button is useless behind a toast. Above them too, so an overlap on a
      crowded screen still leaves the actionable thing on top. */
   .pwa-prompt {
     position: fixed;
@@ -3488,7 +3488,9 @@
   .notices {
     position: fixed;
     right: 1rem;
-    bottom: 1rem;
+    /* Below the floating nav pill rather than over it: on a narrower desktop
+       the pill reaches the right edge. */
+    top: 4.5rem;
     z-index: 60;
     display: flex;
     flex-direction: column;
@@ -4223,6 +4225,8 @@
     .notices {
       left: 0.75rem;
       right: 0.75rem;
+      /* A phone keeps them under the thumb, above the bar, not at the top. */
+      top: auto;
       bottom: calc(var(--tab-bar-h) + env(safe-area-inset-bottom) + 0.75rem);
       max-width: none;
     }

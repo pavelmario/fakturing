@@ -23,6 +23,12 @@ type InvoicePdfPreviewProps = {
   prompt?: boolean;
   /** Called once the invoice has been picked up, so the prompt can drop. */
   onDragged?: () => void;
+  /**
+   * Handed the finished document. A share can then reuse the bytes the preview
+   * already rendered instead of rendering the PDF again inside the click, where
+   * the render can outlast the click's transient activation.
+   */
+  onBlob?: (blob: Blob) => void;
 };
 
 /**
@@ -61,6 +67,7 @@ function PdfSheet({
   dragFileName,
   prompt = false,
   onDragged,
+  onBlob,
 }: SheetProps) {
   const { t } = useI18n();
   const [canDrag] = useState(dragOutSupported);
@@ -69,6 +76,12 @@ function PdfSheet({
   const [inline, setInline] = useState<{ of: Blob; url: string } | null>(null);
   const draggable = Boolean(dragFileName) && canDrag;
   const dragUrl = inline && inline.of === blob ? inline.url : url;
+
+  /* Handed up as soon as there is one, so the page can share the bytes this
+     preview already rendered. */
+  useEffect(() => {
+    if (blob) onBlob?.(blob);
+  }, [blob, onBlob]);
 
   /**
    * The document as a `data:` URL, which is what the drag hands over.
@@ -115,12 +128,16 @@ function PdfSheet({
         onClick={() => onDragged?.()}
         onDragStart={(event) => {
           if (!draggable) return;
-          event.dataTransfer.setData(
-            "DownloadURL",
-            `application/pdf:${dragFileName}:${dragUrl}`,
-          );
+          const payload = `application/pdf:${dragFileName}:${dragUrl}`;
+          event.dataTransfer.setData("DownloadURL", payload);
           event.dataTransfer.effectAllowed = "copy";
-          onDragged?.();
+        }}
+        onDragEnd={(event) => {
+          /* The prompt drops once the invoice has actually left, not the moment
+             the mouse goes down: re-rendering mid-drag is what used to cancel
+             it, and a cancelled drag is not a picked-up one. A drag that was
+             cancelled — Escape, or a target that refused it — reports `none`. */
+          if (event.dataTransfer.dropEffect !== "none") onDragged?.();
         }}
       >
         <iframe
@@ -171,21 +188,19 @@ export function InvoicePdfPreview({
       data-prompt={sheet.prompt}
     >
       <BlobProvider document={document}>
-        {({ blob, url, loading, error }) => {
-          if (loading || !url) {
+        {({ blob, url, error }) => {
+          /* The placeholder stands in only until there is a document to show.
+             Once one is there it stays mounted through every later reload —
+             `loading` fires whenever the page re-renders, and swapping the sheet
+             out then pulls the drag source out from under a drag in progress, so
+             Chrome cancels it. A stale sheet is worth more than no sheet. */
+          if (!url) {
             return (
               <div className="pdf-frame">
                 <div className="pdf-frame-state">
-                  {t("invoiceDetail.pdfPreparing")}
-                </div>
-              </div>
-            );
-          }
-          if (error) {
-            return (
-              <div className="pdf-frame">
-                <div className="pdf-frame-state">
-                  {t("invoiceCreate.previewFailed")}
+                  {error
+                    ? t("invoiceCreate.previewFailed")
+                    : t("invoiceDetail.pdfPreparing")}
                 </div>
               </div>
             );

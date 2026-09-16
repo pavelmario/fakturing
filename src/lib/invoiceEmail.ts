@@ -34,6 +34,15 @@ export type EmailVars = {
 export const variableSymbol = (invoiceNumber: string): string =>
   invoiceNumber.replace(/\D/g, "");
 
+/**
+ * CRLF, which is what a mail client keeps.
+ *
+ * The template is typed with `\n`, and some clients — Gmail on iOS among them —
+ * drop a bare `\n` when the body arrives from a `mailto:` or a share.
+ */
+export const withCrlf = (value: string): string =>
+  value.replace(/\r?\n/g, "\r\n");
+
 export const fillEmailTemplate = (
   template: string,
   vars: EmailVars,
@@ -57,7 +66,7 @@ export const buildMailto = (
 ): string => {
   const query = [
     subject.trim() ? `subject=${encodeURIComponent(subject)}` : "",
-    body.trim() ? `body=${encodeURIComponent(body)}` : "",
+    body.trim() ? `body=${encodeURIComponent(withCrlf(body))}` : "",
   ]
     .filter(Boolean)
     .join("&");

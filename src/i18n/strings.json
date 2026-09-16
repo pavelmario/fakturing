@@ -348,7 +348,8 @@
       "emailSend": "Poslat e-mailem",
       "dragHelp": "Přetáhněte do e-mailu",
       "dragPrompt": "Přetáhněte fakturu do rozepsaného e-mailu",
-      "dragUnsupported": "Tenhle prohlížeč neumí přetáhnout soubor ze stránky — stáhněte fakturu tlačítkem Exportovat do PDF a přiložte ji do e-mailu."
+      "dragUnsupported": "Tenhle prohlížeč neumí přetáhnout soubor ze stránky — stáhněte fakturu tlačítkem Exportovat do PDF a přiložte ji do e-mailu.",
+      "shareCopied": "Adresa {address} je zkopírovaná do schránky."
     },
     "settings": {
       "sectionTitle": "Předvolby",
@@ -1123,7 +1124,8 @@
       "emailSend": "Send by e-mail",
       "dragHelp": "Drag into the e-mail",
       "dragPrompt": "Drag the invoice into the open e-mail",
-      "dragUnsupported": "This browser cannot drag a file out of a page — use Export to PDF and attach the invoice to the e-mail."
+      "dragUnsupported": "This browser cannot drag a file out of a page — use Export to PDF and attach the invoice to the e-mail.",
+      "shareCopied": "The address {address} has been copied to the clipboard."
     },
     "settings": {
       "sectionTitle": "Preferences",
