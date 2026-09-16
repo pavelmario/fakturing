@@ -23,6 +23,12 @@ type InvoicePdfPreviewProps = {
   prompt?: boolean;
   /** Called once the invoice has been picked up, so the prompt can drop. */
   onDragged?: () => void;
+  /**
+   * Handed the finished document. A share can then reuse the bytes the preview
+   * already rendered instead of rendering the PDF again inside the click, where
+   * the render can outlast the click's transient activation.
+   */
+  onBlob?: (blob: Blob) => void;
 };
 
 /**
@@ -61,6 +67,7 @@ function PdfSheet({
   dragFileName,
   prompt = false,
   onDragged,
+  onBlob,
 }: SheetProps) {
   const { t } = useI18n();
   const [canDrag] = useState(dragOutSupported);
@@ -69,6 +76,12 @@ function PdfSheet({
   const [inline, setInline] = useState<{ of: Blob; url: string } | null>(null);
   const draggable = Boolean(dragFileName) && canDrag;
   const dragUrl = inline && inline.of === blob ? inline.url : url;
+
+  /* Handed up as soon as there is one, so the page can share the bytes this
+     preview already rendered. */
+  useEffect(() => {
+    if (blob) onBlob?.(blob);
+  }, [blob, onBlob]);
 
   /**
    * The document as a `data:` URL, which is what the drag hands over.

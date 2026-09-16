@@ -1,7 +1,7 @@
-import { use, useMemo, useRef, useState } from "react";
+import { use, useCallback, useMemo, useRef, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
-import { PDFDownloadLink } from "@react-pdf/renderer";
+import { pdf, PDFDownloadLink } from "@react-pdf/renderer";
 import {
   ArrowLeft,
   Copy,
@@ -38,6 +38,7 @@ import {
   pickTemplate,
   variableSymbol,
 } from "../lib/invoiceEmail";
+import { copyAddress, invoiceFile, shareInvoice } from "../lib/invoiceShare";
 import { useInvoiceForm } from "../lib/useInvoiceForm";
 import { DEFAULT_CURRENCY, formatAmount, formatMoney } from "../lib/money";
 import type { BankAccountRow } from "../lib/bankAccounts";
@@ -153,8 +154,18 @@ export function InvoiceDetailPage({
   const [payingOpen, setPayingOpen] = useState(false);
   /* Raised while a compose window is open and waiting for the invoice. */
   const [dragPrompt, setDragPrompt] = useState(false);
+  /* Raised while the invoice is being rendered for the share sheet. */
+  const [emailBusy, setEmailBusy] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  /* The bytes the preview has already rendered, so a share need not render the
+     document again inside the click — a render there can outlast the click's
+     transient activation, and `share` then fails. */
+  const pdfBlobRef = useRef<Blob | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+
+  const handlePdfBlob = useCallback((blob: Blob) => {
+    pdfBlobRef.current = blob;
+  }, []);
 
   const storedItems = useMemo(() => parseItems(invoice?.items), [invoice]);
 
@@ -429,15 +440,14 @@ export function InvoiceDetailPage({
    * client. Which handover is used is not a preference but a limit of the
    * platform, and no single one carries everything:
    *
-   * - the system share sheet takes the invoice and the text, and has nowhere
-   *   to put the recipient;
-   * - an `.eml` file carries all four, and has to be opened from Downloads
-   *   rather than opening the client itself;
-   * - `mailto:` prefills the recipient and the text, and cannot attach.
+   * - the system share sheet opens the client with the invoice already attached,
+   *   and has nowhere to put the recipient;
+   * - `mailto:` prefills the recipient and the text, and cannot attach;
+   * - a browser file drop into the client carries both, and some clients — the new
+   *   Outlook is a WebView and does not take it — refuse it.
    *
-   * So the button shares where the browser can share, writes the draft file
-   * where it cannot, and falls back to `mailto:` when there is no invoice to
-   * attach in the first place.
+   * So the button shares where the platform can, and falls back to `mailto:` and
+   * the drag where it cannot.
    */
   const emailParts = () => {
     const address = (selectedClientRecord?.email ?? "").trim();
@@ -474,18 +484,53 @@ export function InvoiceDetailPage({
   };
 
   /**
-   * Opens the mail client on a draft addressed to the client.
+   * Sends the invoice by e-mail, the sheet first and the draft as the fallback.
    *
-   * `mailto:` is what actually launches a mail client, and it cannot carry an
-   * attachment — the RFC has no field for one. The invoice goes in by being
-   * dragged out of the preview below into the compose window, which puts no
-   * file on disk on the way.
+   * The OS share sheet is the better handover: it opens a new message in the
+   * mail client with the invoice already attached, which `mailto:` cannot do. The
+   * sheet cannot prefill the recipient, so the address goes to the clipboard and
+   * the app says so.
+   *
+   * The sheet is attempted rather than asked about first: `canShare` and `share`
+   * disagree on some machines — an iPhone among them, where `canShare` says no and
+   * `share` would have worked — and trusting the former is what drops the file.
+   * Only a real failure falls back to `mailto:` and the drag, which is the one
+   * handover that prefills the recipient.
    */
-  const sendByEmail = () => {
+  const sendByEmail = async () => {
     const { address, subject, body } = emailParts();
     if (!address) {
       notify(t("alerts.emailNoAddress"), "error");
       return;
+    }
+    setEmailBusy(true);
+    let file: File | null = null;
+    try {
+      /* The bytes the preview has already rendered where it has; only a preview
+         that has not finished needs the document rendered here, in the click. */
+      const blob = pdfBlobRef.current ?? (await pdf(pdfDocument).toBlob());
+      file = invoiceFile(blob, fileName);
+    } catch {
+      /* The render failed; the draft can still go out without the file. */
+    }
+    setEmailBusy(false);
+    if (file) {
+      const copied = copyAddress(address);
+      try {
+        await shareInvoice(file, subject, body);
+        if (await copied) {
+          notify(t("invoiceDetail.shareCopied", { address }), "info");
+        }
+        return;
+      } catch (error) {
+        if ((error as DOMException | undefined)?.name === "AbortError") {
+          /* The sheet was dismissed; the address is on the clipboard. */
+          if (await copied) {
+            notify(t("invoiceDetail.shareCopied", { address }), "info");
+          }
+          return;
+        }
+      }
     }
     window.location.href = buildMailto(address, subject, body);
     /* The draft is open somewhere behind this tab; the sheet below is the
@@ -589,7 +634,11 @@ export function InvoiceDetailPage({
               </>
             )}
           </PDFDownloadLink>
-          <button className="btn-secondary" onClick={sendByEmail}>
+          <button
+            className="btn-secondary"
+            onClick={() => void sendByEmail()}
+            disabled={emailBusy}
+          >
             <Mail />
             {t("invoiceDetail.emailSend")}
           </button>
@@ -692,6 +741,7 @@ export function InvoiceDetailPage({
               dragFileName={fileName}
               prompt={dragPrompt}
               onDragged={() => setDragPrompt(false)}
+              onBlob={handlePdfBlob}
             />
           </div>
         )}
