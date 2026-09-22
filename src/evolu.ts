@@ -165,6 +165,9 @@ export const Schema = {
     note: Evolu.nullOr(Evolu.TrimmedString1000),
     /** Which day of the month the generated expense is dated. */
     dayOfMonth: Evolu.nullOr(Evolu.NonNegativeNumber),
+    /* Whether the cost is booked by itself once that day arrives. Unset
+       means it waits for a click, the way it always did. */
+    autoCreate: Evolu.nullOr(Evolu.SqliteBoolean),
     deleted: Evolu.nullOr(Evolu.SqliteBoolean),
   },
 };

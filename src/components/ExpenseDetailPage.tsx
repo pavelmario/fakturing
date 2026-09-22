@@ -20,7 +20,7 @@ import {
   validateExpense,
   type ExpenseErrors,
 } from "../lib/expenseSave";
-import { expenseAmounts, expenseItems, supplierLabel } from "../lib/expense";
+import { expenseAmounts, expenseDate, expenseItems, supplierLabel } from "../lib/expense";
 import { collectSuppliers } from "../lib/supplierOptions";
 import { parseSupplierVatPrefill } from "../supplierVatPrefill";
 import { formatDate, usesQuantity } from "../lib/invoice";
@@ -256,12 +256,13 @@ export function ExpenseDetailPage({
       confirmLabel: t("expenseTemplates.saveFromExpense"),
     });
     if (!ok) return;
-    const day = new Date(expense.expenseDate ?? "").getDate();
+    const day = expenseDate(expense.expenseDate)?.getDate();
     const payload = buildTemplatePayload(
       source,
       isVatPayer,
       source.description,
       Number.isFinite(day) ? String(day) : "",
+      false,
     );
     const result = evolu.insert("expenseTemplate", {
       ...payload,

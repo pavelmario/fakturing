@@ -108,8 +108,12 @@ what:
 - **Pravidelné náklady** — warehouse rent, hosting, the accountant. Saved as a
   template (from scratch, or from an expense you are already looking at) and
   booked into a period from a checklist that shows what this month is still
-  missing. Nothing is ever written without you asking: a month you did not pay
-  for stays empty.
+  missing. A template can opt into **Vytvářet automaticky**: once its day of the
+  month arrives, the cost is booked by itself for the current month, and a
+  deleted expense is not written back. In the year view each cost carries a
+  strip of twelve — booked months ticked, the rest a click away — so a month
+  somebody forgot can be filled in without leaving the year. Nothing else is
+  ever written without you asking: a month you did not pay for stays empty.
 
 ### Profil — your company
 

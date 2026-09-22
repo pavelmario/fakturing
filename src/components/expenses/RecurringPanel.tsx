@@ -15,30 +15,36 @@ export type ExpenseTemplateRow = {
   items: unknown;
   note: string | null;
   dayOfMonth: number | null;
+  autoCreate: number | null;
 };
 
 type RecurringPanelProps = {
   templates: readonly ExpenseTemplateRow[];
-  /** How many months of the period on screen each template is booked in. */
-  coverage: ReadonlyMap<string, number>;
+  /** The months of the period on screen each template is already booked in. */
+  coverage: ReadonlyMap<string, ReadonlySet<number>>;
   /** False in the year view: a monthly cost is booked into a month. */
   bookable: boolean;
   periodLabel: string;
   money: (value: number, currency?: string) => string;
+  /** The month's own name, for the year view's strip and its tooltips. */
+  monthLabel: (month: number) => string;
   onGenerate: (template: ExpenseTemplateRow) => void;
+  /** Books one template into a chosen month; the year view's strip. */
+  onGenerateMonth: (template: ExpenseTemplateRow, month: number) => void;
   onGenerateMissing: () => void;
   onEdit: (templateId: string) => void;
   onCreate: () => void;
 };
 
+const MONTHS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] as const;
+
 /**
  * Costs that repeat unchanged — warehouse rent, hosting, the accountant.
  *
- * Deliberately a checklist against the chosen period rather than a schedule
- * that writes by itself: the question you actually have at the end of a month
- * is "what have I not booked yet", and answering it is one click per line.
- * Nothing is ever entered on your behalf, so a month you did not pay for
- * simply stays empty.
+ * A month asks one question — "what have I not booked yet" — and answers it
+ * with a tick or a button. A year asks which months the cost is in, so it shows
+ * a strip of twelve: booked months ticked, the rest a click away, so a month
+ * somebody forgot can be filled in without leaving the year.
  */
 export function RecurringPanel({
   templates,
@@ -46,14 +52,16 @@ export function RecurringPanel({
   bookable,
   periodLabel,
   money,
+  monthLabel,
   onGenerate,
+  onGenerateMonth,
   onGenerateMissing,
   onEdit,
   onCreate,
 }: RecurringPanelProps) {
-  const { t, tp } = useI18n();
+  const { t } = useI18n();
   const missing = bookable
-    ? templates.filter((template) => !coverage.has(template.id))
+    ? templates.filter((template) => (coverage.get(template.id)?.size ?? 0) === 0)
     : [];
 
   return (
@@ -88,10 +96,10 @@ export function RecurringPanel({
       ) : (
         <ul className="rec-list">
           {templates.map((template) => {
-            const months = coverage.get(template.id) ?? 0;
-            const done = months > 0;
+            const months = coverage.get(template.id);
+            const done = (months?.size ?? 0) > 0;
             /* Dimmed means handled, which a year cannot say from one booked
-               month — there the row states the count instead. */
+               month — there each month states its own state instead. */
             return (
               <li
                 key={template.id}
@@ -114,6 +122,9 @@ export function RecurringPanel({
                             day: template.dayOfMonth,
                           })
                         : null,
+                      template.autoCreate
+                        ? t("expenseTemplates.autoCreateShort")
+                        : null,
                     ]
                       .filter(Boolean)
                       .join(" · ")}
@@ -125,14 +136,41 @@ export function RecurringPanel({
                     template.currency ?? undefined,
                   )}
                 </span>
-                {/* A year reports coverage instead of offering a button:
-                    which months it is in is the answer that period has. */}
+                {/* A year books into a month, so it offers one cell per
+                    month: the booked ones ticked, the rest a click away. */}
                 {!bookable ? (
-                  <span className="rec-count" data-done={done}>
-                    {done
-                      ? `${months} ${tp("expensesList.monthCount", months)}`
-                      : t("expenseTemplates.notBooked")}
-                  </span>
+                  <div className="rec-months">
+                    {MONTHS.map((month) => {
+                      const booked = months?.has(month) ?? false;
+                      const label = monthLabel(month);
+                      return booked ? (
+                        <span
+                          key={month}
+                          className="rec-month"
+                          data-done="true"
+                          title={label}
+                          aria-label={label}
+                        >
+                          <Check />
+                        </span>
+                      ) : (
+                        <button
+                          key={month}
+                          type="button"
+                          className="rec-month"
+                          title={t("expenseTemplates.generateInto", {
+                            period: label,
+                          })}
+                          aria-label={t("expenseTemplates.generateInto", {
+                            period: label,
+                          })}
+                          onClick={() => onGenerateMonth(template, month)}
+                        >
+                          {month + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
                 ) : done ? (
                   <span className="rec-done">
                     <Check />
