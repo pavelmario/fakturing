@@ -4,3 +4,4 @@
 # Cloudflare Pages does not proxy to another host from here — there the rate
 # is typed by hand, which the field allows for.
 /api/cnb/*  https://api.cnb.cz/cnbapi/:splat  200
+/*  /index.html  200

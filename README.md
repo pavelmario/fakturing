@@ -282,6 +282,12 @@ request goes through this origin at `/api/cnb/*` and the host rewrites it onto
 Netlify, `vite.config.ts` for dev and preview. Cloudflare Pages cannot proxy
 another host from `_redirects`.
 
+**Deep links** are client-side routes — `/naklady`, `/faktury` and the rest are
+`createBrowserRouter` paths, not files. The host has to serve `index.html` for
+them, or reloading on one is the host's 404 rather than the app's own screen:
+`vercel.json` and `public/_redirects` both carry the catch-all, after the
+`/api/cnb/*` rewrite so the rate proxy still wins.
+
 What comes back is told apart rather than collapsed into "it did not work",
 because each answer asks something different of you: being offline, the host
 not forwarding the path at all, the bank not answering, a date before the
