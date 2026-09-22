@@ -513,7 +513,10 @@
         "many": "{count} nákladů"
       },
       "fakturoidExpensesConfirmTitle": "Importovat náklady z Fakturoidu?",
-      "fakturoidExpenseConverted": "Přepočet z Fakturoidu: {amount}."
+      "fakturoidExpenseConverted": "Přepočet z Fakturoidu: {amount}.",
+      "versionLabel": "Verze",
+      "madeBy": "Vytvořili",
+      "madeByAnd": "a"
     },
     "alerts": {
       "confirmResetSeed": "Chystáte se resetovat lokální data a vygenerovat nový seed zálohy. Chcete pokračovat?",
@@ -1295,7 +1298,10 @@
         "many": "{count} expenses"
       },
       "fakturoidExpensesConfirmTitle": "Import expenses from Fakturoid?",
-      "fakturoidExpenseConverted": "Fakturoid's conversion: {amount}."
+      "fakturoidExpenseConverted": "Fakturoid's conversion: {amount}.",
+      "versionLabel": "Version",
+      "madeBy": "Made by",
+      "madeByAnd": "and"
     },
     "alerts": {
       "confirmResetSeed": "You are about to reset local data and generate a new backup seed. Continue?",

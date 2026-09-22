@@ -48,6 +48,7 @@ import { useI18n } from "../i18n";
 import { useUnsavedGuard } from "../lib/useUnsavedGuard";
 import { useConfirm, useNotify } from "../lib/confirmContext";
 import { DonatePanel } from "./invoices/DonatePanel";
+import { AppFooter } from "./AppFooter";
 
 type SettingsPageProps = {
   theme: "light" | "dark";
@@ -2488,6 +2489,8 @@ export function SettingsPage({
 
           <DonatePanel />
         </div>
+
+        <AppFooter />
 
         <button
           onClick={handleSave}
