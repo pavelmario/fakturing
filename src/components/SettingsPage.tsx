@@ -2490,8 +2490,6 @@ export function SettingsPage({
           <DonatePanel />
         </div>
 
-        <AppFooter />
-
         <button
           onClick={handleSave}
           disabled={isSaving}
@@ -2499,6 +2497,8 @@ export function SettingsPage({
         >
           {isSaving ? t("settings.saving") : t("common.save")}
         </button>
+
+        <AppFooter />
       </div>
     </div>
   );
