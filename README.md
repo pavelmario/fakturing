@@ -314,6 +314,13 @@ preview goes blank. Getting either wrong shows up as a handshake timeout when
 the popup opens, not as an obvious header error. Adding
 `Cross-Origin-Embedder-Policy` would break the popup too.
 
+**The version** at the bottom of Nastavení is `package.json`'s, baked in at
+build time (`__APP_VERSION__`, see `vite.config.ts`). It is bumped with the
+release: set it to the version being tagged — `2.8.0` for `v2.8` — before the
+tag, so the number on the screen and the number on the release are the same
+one. It is there to answer the question a stale copy cannot: is this build
+current?
+
 ---
 
 ## Tech stack
@@ -385,6 +392,7 @@ src/
 │   ├── ConfirmProvider.tsx      # in-app confirm + notices (no native dialogs)
 │   ├── TokenButton.tsx          # one template token, inserted at the caret
 │   ├── PaymentDialog.tsx, OfflineBanner.tsx
+│   ├── AppFooter.tsx            # the version, and who built it
 └── lib/                         # pure logic + hooks
     ├── invoice.ts               # totals, status, dates
     ├── expense.ts               # expense totals + the VAT band split
