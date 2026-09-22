@@ -13,9 +13,12 @@ import {
 } from "../lib/expenseForm";
 import {
   buildExpensePayload,
+  buildTemplatePayload,
+  effectiveDescription,
   validateExpense,
   type ExpenseErrors,
 } from "../lib/expenseSave";
+import { expenseDate } from "../lib/expense";
 import { collectSuppliers } from "../lib/supplierOptions";
 import { parseSupplierVatPrefill } from "../supplierVatPrefill";
 import { DEFAULT_CURRENCY, formatAmount, formatMoney } from "../lib/money";
@@ -81,6 +84,11 @@ export function ExpenseCreatePage({
   const [noteOpen, setNoteOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [touched, setTouched] = useState(false);
+  /* A cost can be the first sighting of one that repeats: ticking this saves
+     a template from the document as it is entered, rather than making you open
+     the detail page and save it again. */
+  const [recurring, setRecurring] = useState(false);
+  const [autoCreate, setAutoCreate] = useState(true);
 
   const totals = expenseFormTotals(values, isVatPayer);
   const money = (value: number) =>
@@ -101,10 +109,37 @@ export function ExpenseCreatePage({
       return false;
     }
 
+    /* The template first, so the document is written already carrying it.
+       Its day of the month is the day of the document: the cost repeats on
+       the date it was entered as. */
+    let templateId: string | null = null;
+    if (recurring) {
+      const day = expenseDate(values.expenseDate)?.getDate();
+      const templatePayload = buildTemplatePayload(
+        values,
+        isVatPayer,
+        effectiveDescription(values),
+        day != null ? String(day) : "",
+        autoCreate,
+      );
+      const templateResult = evolu.insert("expenseTemplate", {
+        ...templatePayload,
+        deleted: Evolu.sqliteFalse,
+      });
+      if (!templateResult.ok) {
+        console.error("Expense template insert error:", templateResult.error);
+        /* The document is not lost over it: it is saved as a one-off and
+           the failed template is said out loud. */
+        notify(t("expenseForm.recurringFailed"), "error");
+      } else {
+        templateId = templateResult.value.id;
+      }
+    }
+
     setIsSaving(true);
     const result = evolu.insert("expense", {
       ...payload,
-      templateId: null,
+      templateId,
       deleted: Evolu.sqliteFalse,
     });
     setIsSaving(false);
@@ -146,6 +181,40 @@ export function ExpenseCreatePage({
           }}
           sidebarFooter={
             <div className="compose-panel compose-sticky">
+              <div className="setting-row">
+                <label className="setting-toggle">
+                  <input
+                    type="checkbox"
+                    checked={recurring}
+                    onChange={(e) => {
+                      setTouched(true);
+                      setRecurring(e.target.checked);
+                    }}
+                  />
+                  <span>{t("expenseForm.recurringLabel")}</span>
+                </label>
+                <p className="field-hint setting-hint">
+                  {t("expenseForm.recurringHint")}
+                </p>
+              </div>
+              {recurring ? (
+                <div className="setting-row">
+                  <label className="setting-toggle">
+                    <input
+                      type="checkbox"
+                      checked={autoCreate}
+                      onChange={(e) => {
+                        setTouched(true);
+                        setAutoCreate(e.target.checked);
+                      }}
+                    />
+                    <span>{t("expenseTemplates.autoCreateLabel")}</span>
+                  </label>
+                  <p className="field-hint setting-hint">
+                    {t("expenseTemplates.autoCreateHint")}
+                  </p>
+                </div>
+              ) : null}
               <InvoiceSummary
                 net={totals.net}
                 vat={totals.vat}
