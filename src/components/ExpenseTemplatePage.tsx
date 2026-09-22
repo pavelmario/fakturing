@@ -113,12 +113,14 @@ export function ExpenseTemplatePage({
     values: ExpenseFormValues;
     name: string;
     dayOfMonth: string;
+    autoCreate: boolean;
   } => {
     if (!template) {
       return {
         values: emptyExpense(isVatPayer),
         name: "",
         dayOfMonth: "1",
+        autoCreate: false,
       };
     }
     return {
@@ -145,6 +147,7 @@ export function ExpenseTemplatePage({
       },
       name: template.name ?? "",
       dayOfMonth: template.dayOfMonth != null ? String(template.dayOfMonth) : "",
+      autoCreate: template.autoCreate === Evolu.sqliteTrue,
     };
   };
 
@@ -182,6 +185,7 @@ export function ExpenseTemplatePage({
       isVatPayer,
       state.name,
       state.dayOfMonth,
+      state.autoCreate,
     );
 
     setIsSaving(true);
@@ -308,6 +312,20 @@ export function ExpenseTemplatePage({
               <p className="field-hint">
                 {t("expenseTemplates.dayOfMonthHint")}
               </p>
+
+              <div className="setting-row">
+                <label className="setting-toggle">
+                  <input
+                    type="checkbox"
+                    checked={state.autoCreate}
+                    onChange={(e) => patch({ autoCreate: e.target.checked })}
+                  />
+                  <span>{t("expenseTemplates.autoCreateLabel")}</span>
+                </label>
+                <p className="field-hint setting-hint">
+                  {t("expenseTemplates.autoCreateHint")}
+                </p>
+              </div>
             </>
           }
           sidebarFooter={

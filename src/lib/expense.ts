@@ -26,6 +26,29 @@ export type ExpenseAmountSource = {
 
 export const round2 = (value: number): number => Math.round(value * 100) / 100;
 
+/**
+ * A DateIso read as the calendar day it names.
+ *
+ * `new Date("2026-09-01")` is UTC midnight, which in a timezone west of
+ * Greenwich is the previous day — a cost booked on the first would be filed in
+ * the month before. Reading the three numbers directly keeps the day the day.
+ */
+export const expenseDate = (iso: string | null | undefined): Date | null => {
+  if (!iso) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!match) return null;
+  const date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+  );
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+/** The day a recurring cost is dated, clamped into a shorter month. */
+export const clampDayOfMonth = (value: number | null, lastDay: number): number =>
+  Math.min(Math.max(Math.round(Number(value ?? 1)) || 1, 1), lastDay);
+
 const num = (value: unknown): number => {
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;

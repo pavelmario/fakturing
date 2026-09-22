@@ -1,4 +1,4 @@
-import { use, useMemo, useRef, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import * as Evolu from "@evolu/common";
 import { useQuery } from "@evolu/react";
 import { ChevronLeft, ChevronRight, FileDown, Plus, Search } from "lucide-react";
@@ -12,7 +12,9 @@ import { useCompactLayout } from "../lib/useCompactLayout";
 import {
   addBands,
   bandsAreEmpty,
+  clampDayOfMonth,
   expenseAmountsOf,
+  expenseDate as parseDateIso,
   expenseItems,
   expenseVatBands,
   scaleBands,
@@ -142,6 +144,10 @@ export function ExpensesListPage({
      rent twice. State cannot do this: both of its updates land in the same
      batch, so no render ever observes them. */
   const generated = useRef(new Set<string>());
+  /* What automatic booking has already looked at this session, keyed the same
+     way. Without it, deleting a cost the app booked by itself would have it
+     written straight back on the next render. */
+  const autoHandled = useRef(new Set<string>());
 
   const profileQuery = useMemo(
     () =>
@@ -233,9 +239,8 @@ export function ExpensesListPage({
   const dateTo = `${period.year}-${pad(period.month)}-${String(lastDay).padStart(2, "0")}`;
 
   const inPeriod = (expense: DecoratedExpense) => {
-    if (!expense.expenseDate) return false;
-    const date = new Date(expense.expenseDate);
-    if (Number.isNaN(date.getTime())) return false;
+    const date = parseDateIso(expense.expenseDate);
+    if (!date) return false;
     if (date.getFullYear() !== period.year) return false;
     return byYear || date.getMonth() === period.month;
   };
@@ -257,15 +262,29 @@ export function ExpensesListPage({
   const bookedMonths = useMemo(() => {
     const months = new Map<string, Set<number>>();
     for (const expense of dateRangeExpenses) {
-      if (!expense.templateId || !expense.expenseDate) continue;
-      const date = new Date(expense.expenseDate);
-      if (Number.isNaN(date.getTime())) continue;
+      if (!expense.templateId) continue;
+      const date = parseDateIso(expense.expenseDate);
+      if (!date) continue;
       const seen = months.get(expense.templateId) ?? new Set<number>();
       seen.add(date.getMonth());
       months.set(expense.templateId, seen);
     }
-    return new Map([...months].map(([id, seen]) => [id, seen.size] as const));
+    return months as ReadonlyMap<string, ReadonlySet<number>>;
   }, [dateRangeExpenses]);
+
+  /* Every period the session has a recurring cost in, across the whole ledger
+     rather than the period on screen — what automatic booking needs, since it
+     books into the current month wherever the page happens to be looking. */
+  const bookedKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const expense of expenses) {
+      if (!expense.templateId) continue;
+      const date = parseDateIso(expense.expenseDate);
+      if (!date) continue;
+      keys.add(`${expense.templateId}:${date.getFullYear()}-${date.getMonth()}`);
+    }
+    return keys;
+  }, [expenses]);
 
 
   const needle = search.trim().toLowerCase();
@@ -317,9 +336,8 @@ export function ExpensesListPage({
        feeds is not rendered — and this is the same pass over the same rows. */
     if (byYear) return { gross, foreign };
     for (const expense of expenses) {
-      if (!expense.expenseDate) continue;
-      const date = new Date(expense.expenseDate);
-      if (Number.isNaN(date.getTime()) || date.getFullYear() !== period.year) {
+      const date = parseDateIso(expense.expenseDate);
+      if (!date || date.getFullYear() !== period.year) {
         continue;
       }
       if (expense.rate == null) {
@@ -395,9 +413,8 @@ export function ExpensesListPage({
     };
 
     for (const expense of expenses) {
-      if (!expense.expenseDate) continue;
-      const date = new Date(expense.expenseDate);
-      if (Number.isNaN(date.getTime())) continue;
+      const date = parseDateIso(expense.expenseDate);
+      if (!date) continue;
       add(date.getFullYear(), date.getMonth(), 1);
     }
     /* The period on screen and the one you are actually in are always on the
@@ -422,21 +439,22 @@ export function ExpensesListPage({
   ]);
 
   /**
-   * Books a recurring cost into the period on screen.
+   * Books a recurring cost into a chosen month.
    *
-   * The template's day of the month is clamped to the period's length, so a
+   * The template's day of the month is clamped to that month's length, so a
    * cost dated the 31st still lands inside February rather than silently
    * rolling into March.
    */
-  const generateFromTemplate = (template: ExpenseTemplateRow): boolean => {
-    const stamp = `${template.id}:${period.year}-${period.month}`;
-    if (bookedMonths.has(template.id) || generated.current.has(stamp))
-      return false;
-    const day = Math.min(
-      Math.max(Math.round(Number(template.dayOfMonth ?? 1)) || 1, 1),
-      lastDay,
-    );
-    const iso = `${period.year}-${pad(period.month)}-${String(day).padStart(2, "0")}`;
+  const bookTemplate = (
+    template: ExpenseTemplateRow,
+    year: number,
+    month: number,
+  ): boolean => {
+    const stamp = `${template.id}:${year}-${month}`;
+    if (generated.current.has(stamp) || bookedKeys.has(stamp)) return false;
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    const day = clampDayOfMonth(template.dayOfMonth, lastDayOfMonth);
+    const iso = `${year}-${pad(month)}-${String(day).padStart(2, "0")}`;
     const dateResult = Evolu.dateToDateIso(new Date(`${iso}T12:00:00`));
     if (!dateResult.ok) return false;
 
@@ -481,8 +499,13 @@ export function ExpensesListPage({
     return true;
   };
 
-  const runGeneration = (chosen: readonly ExpenseTemplateRow[]) => {
-    const done = chosen.filter((template) => generateFromTemplate(template));
+  const runGeneration = (
+    chosen: readonly ExpenseTemplateRow[],
+    year: number,
+    month: number,
+    label: string,
+  ) => {
+    const done = chosen.filter((template) => bookTemplate(template, year, month));
     if (done.length === 0) {
       notify(t("expenseTemplates.generateFailed"), "error");
       return;
@@ -491,14 +514,49 @@ export function ExpensesListPage({
       done.length === 1
         ? t("expenseTemplates.generated", {
             name: done[0].name ?? "",
-            period: periodLabel,
+            period: label,
           })
         : t("expenseTemplates.generatedMany", {
             count: done.length,
-            period: periodLabel,
+            period: label,
           }),
     );
   };
+
+  /* A recurring cost is booked by itself once its day arrives, but only
+     the ones whose template opted in, and only for the current month: a month
+     already gone stays as it was left, and a month you did not pay for stays
+     empty. */
+  useEffect(() => {
+    if (templates.length === 0) return;
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    const dayToday = today.getDate();
+    let count = 0;
+    for (const template of templates) {
+      if (template.autoCreate !== Evolu.sqliteTrue) continue;
+      const stamp = `${template.id}:${year}-${month}`;
+      if (autoHandled.current.has(stamp)) continue;
+      if (dayToday < clampDayOfMonth(template.dayOfMonth, lastDayOfMonth))
+        continue;
+      /* Marked handled before the write: deleting an automatically booked
+         cost must not have it written straight back. */
+      autoHandled.current.add(stamp);
+      if (bookedKeys.has(stamp)) continue;
+      if (bookTemplate(template, year, month)) count += 1;
+    }
+    if (count > 0) {
+      notify(
+        tp("expenseTemplates.autoGenerated", count, {
+          period: monthLabel(year, month),
+        }),
+        "info",
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templates, bookedKeys]);
 
   const handleExportKontrolniHlaseni = () => {
     if (!dateFrom || !dateTo) {
@@ -820,10 +878,28 @@ export function ExpensesListPage({
           bookable={!byYear}
           periodLabel={periodLabel}
           money={money}
-          onGenerate={(template) => runGeneration([template])}
+          monthLabel={(month) =>
+            new Date(period.year, month, 1).toLocaleDateString(locale, {
+              month: "long",
+            })
+          }
+          onGenerate={(template) =>
+            runGeneration([template], period.year, period.month, periodLabel)
+          }
+          onGenerateMonth={(template, month) =>
+            runGeneration(
+              [template],
+              period.year,
+              month,
+              monthLabel(period.year, month),
+            )
+          }
           onGenerateMissing={() =>
             runGeneration(
               templates.filter((template) => !bookedMonths.has(template.id)),
+              period.year,
+              period.month,
+              periodLabel,
             )
           }
           onEdit={onEditTemplate}

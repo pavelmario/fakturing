@@ -2956,18 +2956,46 @@
     padding-bottom: 0.25rem;
   }
 
-  /* The year view has no button to offer here: it says how much of the year
-     the cost is actually in. */
-  .rec-count {
+  /* The year view books into a month, so each cost carries a strip of
+     twelve: booked months ticked, the rest a click away. */
+  .rec-months {
     flex: none;
-    min-width: 6.25rem;
-    text-align: right;
-    font-size: var(--fs-sm);
-    color: var(--ink-faint);
+    display: flex;
+    gap: 2px;
   }
 
-  .rec-count[data-done="true"] {
-    color: var(--ink-muted);
+  .rec-month {
+    width: 1.375rem;
+    height: 1.375rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: transparent;
+    font-family: inherit;
+    font-size: var(--fs-xs);
+    color: var(--ink-faint);
+    cursor: pointer;
+  }
+
+  .rec-month:hover {
+    border-color: var(--accent);
+    color: var(--accent-text);
+  }
+
+  .rec-month[data-done="true"] {
+    border-color: var(--paid-rule);
+    background: var(--paid-soft);
+    color: var(--paid);
+    cursor: default;
+  }
+
+  .rec-month svg {
+    width: 11px;
+    height: 11px;
+    stroke-width: 2.5;
   }
 
   /* ---- Client detail ---------------------------------------------------- */
@@ -3952,6 +3980,13 @@
     .rec-head-actions {
       flex-basis: 100%;
       margin-left: 0;
+    }
+
+    /* Twelve cells will not share a line with the amount here, so the strip
+       takes the line below it. */
+    .rec-months {
+      flex-basis: 100%;
+      flex-wrap: wrap;
     }
   }
 

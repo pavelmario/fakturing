@@ -112,6 +112,7 @@ export const buildTemplatePayload = (
   isVatPayer: boolean,
   name: string,
   dayOfMonth: string,
+  autoCreate: boolean,
 ) => {
   const day = Number(dayOfMonth);
   const dayResult =
@@ -123,5 +124,6 @@ export const buildTemplatePayload = (
     ...columns,
     name: trim100(name) || columns.description,
     dayOfMonth: dayResult?.ok ? dayResult.value : null,
+    autoCreate: autoCreate ? Evolu.sqliteTrue : Evolu.sqliteFalse,
   };
 };
