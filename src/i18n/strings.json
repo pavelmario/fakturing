@@ -622,13 +622,8 @@
       "unsavedSave": "Uložit a odejít"
     },
     "pwa": {
-      "updateAvailable": "Je k dispozici nová verze aplikace.",
-      "updateNow": "Aktualizovat",
-      "updateLater": "Později",
       "offline": "Jste offline",
-      "backOnline": "Připojení obnoveno",
-      "updateTitle": "Nová verze",
-      "updateHint": "Aplikace se po aktualizaci znovu načte."
+      "backOnline": "Připojení obnoveno"
     },
     "pdf": {
       "invoiceTitle": "Faktura {number}",
@@ -1409,13 +1404,8 @@
       "unsavedSave": "Save and leave"
     },
     "pwa": {
-      "updateAvailable": "A new version of the app is available.",
-      "updateNow": "Update",
-      "updateLater": "Later",
       "offline": "You are offline",
-      "backOnline": "Back online",
-      "updateTitle": "New version",
-      "updateHint": "The app reloads after updating."
+      "backOnline": "Back online"
     },
     "pdf": {
       "invoiceTitle": "Invoice {number}",
