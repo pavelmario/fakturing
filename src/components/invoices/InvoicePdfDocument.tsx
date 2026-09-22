@@ -73,7 +73,7 @@ export type InvoicePdfData = {
   qrCodes: InvoiceQrCodes;
   showQuantity: boolean;
   displayClientName: string;
-  sanitizedInvoiceNumber: string;
+  variableSymbol: string;
   t: (key: string, vars?: Record<string, string | number>) => string;
   formatCurrency: (value: number) => string;
   formatNumber: (value: number, maxFraction?: number) => string;
@@ -284,7 +284,7 @@ export function InvoicePdfDocument({
   qrCodes,
   showQuantity,
   displayClientName,
-  sanitizedInvoiceNumber,
+  variableSymbol,
   t,
   formatCurrency,
   formatNumber,
@@ -374,7 +374,7 @@ export function InvoicePdfDocument({
                     <Text style={pdfStyles.textMuted}>
                       {t("pdf.variableSymbol")}
                     </Text>
-                    <Text>{sanitizedInvoiceNumber}</Text>
+                    <Text>{variableSymbol}</Text>
                   </View>
                 </>
               ) : null}

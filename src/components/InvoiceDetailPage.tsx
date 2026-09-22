@@ -29,6 +29,7 @@ import {
   invoiceTotal,
   parseItems,
   usesQuantity,
+  variableSymbol,
   type InvoiceStatus,
 } from "../lib/invoice";
 import { buildInvoiceFileName } from "../lib/invoiceFileName";
@@ -36,7 +37,6 @@ import {
   buildMailto,
   fillEmailTemplate,
   pickTemplate,
-  variableSymbol,
 } from "../lib/invoiceEmail";
 import { copyAddress, invoiceFile, shareInvoice } from "../lib/invoiceShare";
 import { useInvoiceForm } from "../lib/useInvoiceForm";
