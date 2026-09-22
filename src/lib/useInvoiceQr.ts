@@ -20,7 +20,10 @@ type QrInput = {
   invoiceTotal: number;
   invoiceTotalWithVat: number;
   invoiceDueDateQr: string;
-  sanitizedInvoiceNumber: string;
+  /** The digits-only symbol a Czech bank transfer carries. */
+  variableSymbol: string;
+  /** The invoice number as a human-readable note, for the BTC URI. */
+  label: string;
   showVat: boolean;
 };
 
@@ -52,7 +55,8 @@ export const useInvoiceQr = ({
   invoiceTotal,
   invoiceTotalWithVat,
   invoiceDueDateQr,
-  sanitizedInvoiceNumber,
+  variableSymbol,
+  label,
   showVat,
 }: QrInput): InvoiceQrCodes => {
   /* Kept as two strings rather than one object so an unchanged code still
@@ -68,11 +72,11 @@ export const useInvoiceQr = ({
       const address = (invoice.btcAddress ?? "").trim();
       if (!address) return null;
 
-      const label = sanitizedInvoiceNumber
-        ? `?label=${encodeURIComponent(sanitizedInvoiceNumber)}`
+      const btcLabel = label
+        ? `?label=${encodeURIComponent(label)}`
         : "";
       try {
-        return await QRCode.toDataURL(`bitcoin:${address}${label}`, {
+        return await QRCode.toDataURL(`bitcoin:${address}${btcLabel}`, {
           margin: 0,
           width: 256,
         });
@@ -101,7 +105,6 @@ export const useInvoiceQr = ({
       const amount = Number.isFinite(totalForQr) ? totalForQr : 0;
       if (!amount || amount <= 0) return null;
 
-      const variableSymbol = sanitizedInvoiceNumber;
       const formattedAmount = Number.isInteger(amount)
         ? String(amount)
         : amount.toFixed(2);
@@ -154,7 +157,8 @@ export const useInvoiceQr = ({
     profile?.bankAccount,
     profile?.swift,
     showVat,
-    sanitizedInvoiceNumber,
+    variableSymbol,
+    label,
   ]);
 
   return useMemo(() => ({ bank: bankQr, btc: btcQr }), [bankQr, btcQr]);

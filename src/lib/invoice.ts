@@ -146,3 +146,13 @@ export const usesQuantity = (items: readonly InvoiceItem[]): boolean =>
     const raw = String(item.amount ?? "").trim();
     return Boolean(raw) && Number(raw) !== 1;
   });
+
+/**
+ * The variable symbol a Czech bank transfer carries: the number's digits.
+ *
+ * A bank takes digits only, so an invoice numbered `RK2026053` — or
+ * `2026-053` — is paid under `2026053`. The printed symbol and the payment
+ * QR both read this, so what is on the paper is what the client types.
+ */
+export const variableSymbol = (invoiceNumber: string): string =>
+  invoiceNumber.replace(/\D/g, "");

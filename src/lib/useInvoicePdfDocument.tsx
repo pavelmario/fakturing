@@ -3,7 +3,7 @@ import type { DocumentProps } from "@react-pdf/renderer";
 import type { ReactElement } from "react";
 import { useI18n } from "../i18n";
 import { useInvoiceQr } from "./useInvoiceQr";
-import { invoiceNet, invoiceVat, parseItems, usesQuantity } from "./invoice";
+import { invoiceNet, invoiceVat, parseItems, usesQuantity, variableSymbol } from "./invoice";
 import { resolveAccount, type BankAccountRow } from "./bankAccounts";
 import { DEFAULT_CURRENCY } from "./money";
 import {
@@ -81,7 +81,10 @@ export const useInvoicePdfDocument = (
   }, [invoice.issueDate, invoice.paymentDays]);
 
   const invoiceNumberValue = invoice.invoiceNumber ?? "";
-  const sanitizedInvoiceNumber = invoiceNumberValue.replace(/-/g, "");
+  /* The symbol a bank takes is the number's digits; the QR's label is a
+     note rather than a symbol, so it keeps the number's own shape. */
+  const invoiceVariableSymbol = variableSymbol(invoiceNumberValue);
+  const invoiceLabel = invoiceNumberValue.replace(/-/g, "");
 
   /* Falls back to the profile's legacy single account when none are set up. */
   const account = resolveAccount(bankAccounts, profile, invoice.bankAccountId);
@@ -100,7 +103,8 @@ export const useInvoicePdfDocument = (
     invoiceDueDateQr: due
       ? `${due.getFullYear()}${pad(due.getMonth() + 1)}${pad(due.getDate())}`
       : "",
-    sanitizedInvoiceNumber,
+    variableSymbol: invoiceVariableSymbol,
+    label: invoiceLabel,
     showVat,
   });
 
@@ -125,7 +129,7 @@ export const useInvoicePdfDocument = (
       qrCodes={qrCodes}
       showQuantity={usesQuantity(normalizedItems)}
       displayClientName={invoice.clientName ?? "—"}
-      sanitizedInvoiceNumber={sanitizedInvoiceNumber}
+      variableSymbol={invoiceVariableSymbol}
       t={t}
       formatCurrency={formatCurrency}
       formatNumber={formatNumber}

@@ -30,10 +30,6 @@ export type EmailVars = {
   vs: string;
 };
 
-/** The variable symbol a Czech bank transfer carries: digits only. */
-export const variableSymbol = (invoiceNumber: string): string =>
-  invoiceNumber.replace(/\D/g, "");
-
 /**
  * CRLF, which is what a mail client keeps.
  *
