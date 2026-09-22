@@ -232,7 +232,10 @@ deletion is just another change, while a vanished row would be indistinguishable
 from one a device has not heard about yet.
 
 Offline, the app keeps writing locally and says so in a banner; it catches up
-when the connection returns.
+when the connection returns. An installed copy takes a new build as it lands — the
+new service worker activates and the page reloads, so a client that missed one
+update is not left on it. A half-filled form is still not lost over that reload:
+the browser's own prompt comes first while a form is dirty.
 
 ## Configuration worth knowing
 
@@ -328,7 +331,7 @@ the popup opens, not as an obvious header error. Adding
   available in iOS browsers, where Suite Web refuses to run — the app says so
   instead of sending you there
 - **`bip39`** for the seed phrase, **`lucide-react`** for icons
-- **`vite-plugin-pwa`** — offline shell with an explicit update prompt
+- **`vite-plugin-pwa`** — offline shell that updates itself when a new build lands
 
 ---
 
@@ -381,7 +384,7 @@ src/
 │   ├── SettingsPage.tsx         # preferences, CSV, relay, seed
 │   ├── ConfirmProvider.tsx      # in-app confirm + notices (no native dialogs)
 │   ├── TokenButton.tsx          # one template token, inserted at the caret
-│   ├── PaymentDialog.tsx, OfflineBanner.tsx, PWAUpdatePrompt.tsx
+│   ├── PaymentDialog.tsx, OfflineBanner.tsx
 └── lib/                         # pure logic + hooks
     ├── invoice.ts               # totals, status, dates
     ├── expense.ts               # expense totals + the VAT band split

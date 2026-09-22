@@ -7,9 +7,9 @@ import {
   UserRound,
   Users,
 } from "lucide-react";
-import { PWAUpdatePrompt } from "./components/PWAUpdatePrompt";
 import { OfflineBanner } from "./components/OfflineBanner";
 import { useI18n } from "./i18n";
+import { usePWA } from "./hooks/usePWA";
 import { useLegacyBankAccountMigration } from "./lib/useLegacyBankAccountMigration";
 import { useClientIdBackfill } from "./lib/useClientIdBackfill";
 import { useInvoiceFooterDefault } from "./lib/useInvoiceFooterDefault";
@@ -30,6 +30,8 @@ function App() {
   useLegacyBankAccountMigration();
   useClientIdBackfill();
   useInvoiceFooterDefault();
+  /* Registers the service worker and takes a new build as it lands. */
+  usePWA();
 
   const expensesEnabled = useExpensesEnabled();
 
@@ -96,7 +98,6 @@ function App() {
         )}
       </nav>
 
-      <PWAUpdatePrompt />
       <OfflineBanner />
     </div>
   );
